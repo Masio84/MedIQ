@@ -27,17 +27,18 @@ export default function AgendaPage() {
   const [quickPatientSearch, setQuickPatientSearch] = useState('');
   const [quickPatientDropdown, setQuickPatientDropdown] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
-
   const supabase = createClient();
 
-  useEffect(() => {
-    if (selectedDateString) {
-      const filtered = allAppointments.filter(app => 
-        app.date === selectedDateString && (selectedDoctorId === 'todos' || app.doctor_id === selectedDoctorId)
-      );
-      setSelectedDayAppointments(filtered);
-    }
-  }, [selectedDoctorId, allAppointments, selectedDateString]);
+  const filteredAppointments = allAppointments.filter(app => {
+    const matchesDoctor = selectedDoctorId === 'todos' || app.doctor_id === selectedDoctorId;
+    const patientName = app.patients ? app.patients.name : 'Paciente';
+    const matchesPatient = selectedPatientId 
+      ? app.patient_id === selectedPatientId
+      : searchTerm.trim() === '' 
+          ? true 
+          : patientName.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesDoctor && matchesPatient;
+  });
 
   useEffect(() => {
     fetchMonthAppointments();
@@ -81,15 +82,26 @@ export default function AgendaPage() {
     const startCount = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
     const endCount = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
 
-    const { data } = await supabase
-      .from('appointments')
-      .select('*, patients(name), profiles:doctor_id(name)')
-      .gte('date', startCount)
-      .lte('date', endCount)
-      .order('time', { ascending: true });
-
-    if (data) setAllAppointments(data);
-    setLoading(false);
+    try {
+      if (role === 'admin') {
+        const res = await fetch(`/api/admin/list-appointments?start=${startCount}&end=${endCount}`);
+        const result = await res.json();
+        if (result.success) setAllAppointments(result.data);
+      } else {
+        const { data } = await supabase
+          .from('appointments')
+          .select('*, patients(name), profiles:doctor_id(name)')
+          .gte('date', startCount)
+          .lte('date', endCount)
+          .order('time', { ascending: true });
+        
+        if (data) setAllAppointments(data);
+      }
+    } catch (err) {
+      console.error('Error fetching appointments API:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchPatients = async () => {
@@ -221,9 +233,7 @@ export default function AgendaPage() {
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
               const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-              const dayAppointments = allAppointments.filter(app => 
-                app.date === dayStr && (selectedDoctorId === 'todos' || app.doctor_id === selectedDoctorId)
-              );
+              const dayAppointments = filteredAppointments.filter(app => app.date === dayStr);
               const hasCitas = dayAppointments.length > 0;
 
               // Validate highlight for selected searching Patient ID
@@ -286,8 +296,10 @@ export default function AgendaPage() {
                     slots.push(`${String(h).padStart(2, '0')}:30`);
                   }
 
+                  const dayAppointments = filteredAppointments.filter(app => app.date === selectedDateString);
+
                   return slots.map(slot => {
-                    const appointment = selectedDayAppointments.find(
+                    const appointment = dayAppointments.find(
                       (app) => app.time.substring(0, 5) === slot
                     );
 

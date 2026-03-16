@@ -1,9 +1,8 @@
-'use client';
-
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Users, FileText, CreditCard, ShieldCheck, Calendar } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
+import { motion } from 'framer-motion';
 
 export default function SidebarLinks() {
   const { role } = useRole();
@@ -28,7 +27,6 @@ export default function SidebarLinks() {
       icon: ShieldCheck,
       roles: ['admin'],
     },
-
     {
       href: '/dashboard/patients',
       label: 'Pacientes',
@@ -41,7 +39,6 @@ export default function SidebarLinks() {
       icon: FileText,
       roles: ['doctor'],
     },
-
     {
       href: '/dashboard/billing',
       label: 'Facturación',
@@ -51,14 +48,13 @@ export default function SidebarLinks() {
     {
       href: '/dashboard/settings',
       label: 'Configuración',
-      icon: Users, // Using appropriate icon if available, maybe Settings later
+      icon: Users,
       roles: ['admin', 'doctor', 'assistant'],
     },
-
   ];
 
   return (
-    <nav className="flex-1 p-4 space-y-1">
+    <nav className="flex-1 py-6 pl-1 pr-0 space-y-2 relative">
       {links
         .filter((link) => link.roles.includes(role))
         .map((link) => {
@@ -69,17 +65,31 @@ export default function SidebarLinks() {
             <Link
               key={link.href}
               href={link.href}
-              className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex items-center gap-3 px-6 py-3.5 text-xs font-semibold rounded-l-full transition-colors duration-200 relative group w-full ${
                 isActive
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-600 hover:bg-gray-50'
+                  ? 'text-blue-600 font-bold'
+                  : 'text-blue-100 hover:text-white hover:bg-blue-700/50'
               }`}
             >
-              <Icon size={20} className={isActive ? 'text-blue-500' : 'text-gray-400'} />
-              {link.label}
+              {/* Animated Inner Curve Layered Backing */}
+              {isActive && (
+                <motion.div 
+                  layoutId="activeNavPill"
+                  className="absolute inset-0 z-0 active-nav-item"
+                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                />
+              )}
+
+              {/* Icon / Content strictly on Top Layer */}
+              <Icon 
+                size={18} 
+                className={`z-10 transition-colors duration-200 ${isActive ? 'text-blue-600' : 'text-blue-200 group-hover:text-white'}`} 
+              />
+              <span className="z-10 transition-colors duration-200">{link.label}</span>
             </Link>
           );
         })}
     </nav>
   );
 }
+

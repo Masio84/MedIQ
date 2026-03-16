@@ -28,3 +28,4 @@ body {
 input, select, textarea {
   color: #000000;
 }
+\n/* Active Navbar item curves inverse radius */\n.active-nav-item {\n  position: absolute;\n  top: 0;\n  bottom: 0;\n  left: 1.25rem;\n  right: 0px;\n  background-color: #ffffff;\n  border-top-left-radius: 9999px;\n  border-bottom-left-radius: 9999px;\n}\n\n.active-nav-item::before {\n  content: "";\n  position: absolute;\n  top: -20px;\n  right: 0px;\n  width: 20px;\n  height: 20px;\n  background-color: transparent;\n  border-bottom-right-radius: 20px;\n  box-shadow: 0 10px 0 0 #ffffff;\n}\n\n.active-nav-item::after {\n  content: "";\n  position: absolute;\n  bottom: -20px;\n  right: 0px;\n  width: 20px;\n  height: 20px;\n  background-color: transparent;\n  border-top-right-radius: 20px;\n  box-shadow: 0 -10px 0 0 #ffffff;\n}

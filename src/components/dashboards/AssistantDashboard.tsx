@@ -1,0 +1,664 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { Search, Calendar, DollarSign, Loader2, CheckCircle, PlusCircle, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import PatientForm from '@/components/PatientForm';
+
+export default function AssistantDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [billings, setBillings] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
+  const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
+  const [todayEarnings, setTodayEarnings] = useState(0);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [currentProfile, setCurrentProfile] = useState<any>(null);
+
+  // Simple appointment state for direct actions
+  const [newAppointment, setNewAppointment] = useState({ patient_id: '', doctor_id: '', date: '', time: '', notes: '' });
+
+  // Direct Calendar Modal states
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [monthAppointments, setMonthAppointments] = useState<any[]>([]);
+
+  // Modal states from previous
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [selectedBilling, setSelectedBilling] = useState<any>(null);
+  const [followUpInfo, setFollowUpInfo] = useState<{ date: string; notes: string } | null>(null);
+  
+  // Agenda states
+  const [agendaData, setAgendaData] = useState({ date: '', time: '', notes: '' });
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [patientSearch, setPatientSearch] = useState('');
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    fetchPendingBillings();
+    fetchSupportData();
+  }, []);
+
+  useEffect(() => {
+    if (isAppointmentModalOpen) fetchMonthAppointments();
+  }, [isAppointmentModalOpen, currentDate]);
+
+  const fetchMonthAppointments = async () => {
+    const startCount = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
+    const endCount = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
+
+    const { data } = await supabase
+      .from('appointments')
+      .select('date, time, doctor_id')
+      .gte('date', startCount)
+      .lte('date', endCount);
+
+    if (data) setMonthAppointments(data);
+  };
+
+  const fetchSupportData = async () => {
+    // 1. Obtener perfil del usuario para el doctor vinculado
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      if (prof) {
+        setCurrentProfile(prof);
+        if (prof.doctor_id) {
+          setNewAppointment(prev => ({ ...prev, doctor_id: prof.doctor_id }));
+        }
+      }
+    }
+
+    // 2. Cargar doctores y pacientes
+    const { data: d } = await supabase.from('profiles').select('id, name').eq('role', 'doctor');
+    const { data: p } = await supabase.from('patients').select('id, name');
+    if (d) setDoctors(d);
+    if (p) setPatients(p);
+  };
+
+  const fetchPendingBillings = async () => {
+    setLoading(true);
+    
+    const { data: allBillings } = await supabase
+      .from('billing')
+      .select('id, normal_fee, discount, extra_charge, created_at, paid, patient_id, patients(name, id), consultations(id, notes, doctor_id)')
+      .order('created_at', { ascending: false });
+
+    if (allBillings) {
+      setBillings(allBillings.filter(b => !b.paid));
+
+      const startOfToday = new Date();
+      startOfToday.setHours(0,0,0,0);
+
+      const todayBillings = allBillings.filter(b => {
+        const d = new Date(b.created_at);
+        return b.paid && d >= startOfToday;
+      });
+
+      const sum = todayBillings.reduce((acc, b) => acc + (Number(b.normal_fee) + Number(b.extra_charge) - Number(b.discount)), 0);
+      setTodayEarnings(sum);
+    }
+
+    setLoading(false);
+  };
+
+  const handleMarkAsPaid = async (billing: any) => {
+    setSelectedBilling(billing);
+    
+    // Extract follow-up instructions from Doctor notes
+    const consultation = billing.consultations?.id ? billing.consultations : billing.consultations?.[0];
+    const notes = consultation?.notes || '';
+    const match = notes.match(/\[SEGUIMIENTO\]: Fecha sugerida: ([^\.]+)\. Notas de médico: ([^\n]+)/);
+
+    if (match) {
+      setFollowUpInfo({
+        date: match[1]?.trim() !== 'N/A' ? match[1] : '',
+        notes: match[2]?.trim() !== 'N/A' ? match[2] : '',
+      });
+      setAgendaData({
+        date: match[1]?.trim() !== 'N/A' ? match[1] : '',
+        time: '09:00', // Default hour
+        notes: `Seguimiento: ${match[2]?.trim() !== 'N/A' ? match[2] : ''}`
+      });
+    } else {
+      setFollowUpInfo(null);
+      setAgendaData({ date: '', time: '', notes: '' });
+    }
+
+    setIsPayModalOpen(true);
+  };
+
+  const confirmPayment = async () => {
+    if (!selectedBilling) return;
+
+    setModalError(null);
+
+    // 1. Mark as Paid in DB
+    const { data: updatedData, error } = await supabase
+      .from('billing')
+      .update({ paid: true }) 
+      .eq('id', selectedBilling.id)
+      .select();
+
+    if (error) {
+      setModalError('Error al registrar pago: ' + error.message);
+      return;
+    }
+
+    if (!updatedData || updatedData.length === 0) {
+      setModalError('Error: No se pudo actualizar el pago en Base de Datos (0 filas modificadas). Probablemente le falta una política de UPDATE habilitada en su Supabase.');
+      return;
+    }
+
+    // 2. If should Schedule appointment
+    if (agendaData.date && agendaData.time) {
+      const patientId = selectedBilling?.consultations?.patient_id || selectedBilling?.consultations?.[0]?.patient_id;
+      const doctorId = selectedBilling?.consultations?.doctor_id || selectedBilling?.consultations?.[0]?.doctor_id;
+
+      const { error: appointError } = await supabase
+        .from('appointments')
+        .insert([
+          {
+            patient_id: patientId,
+            doctor_id: doctorId,
+            date: agendaData.date,
+            time: agendaData.time,
+            type: 'follow_up',
+            notes: agendaData.notes,
+            status: 'scheduled'
+          }
+        ]);
+        
+      if (appointError) {
+        setModalError('Pago registrado, pero no se pudo agendar la cita: ' + appointError.message + '. ¿Ejecutó el SQL de la Cita en Supabase?');
+        return;
+      }
+    }
+
+    // 3. Increment Earnings Dynamically
+    const totalAdded = Number(selectedBilling.normal_fee) + Number(selectedBilling.extra_charge) - Number(selectedBilling.discount);
+    setTodayEarnings((prev) => prev + totalAdded);
+
+    // 4. Clear from local state view instantly
+    setBillings((prev) => prev.filter((b) => b.id !== selectedBilling.id));
+    setIsPayModalOpen(false);
+  };
+
+  const confirmNewAppointment = async () => {
+    if (!newAppointment.patient_id || !newAppointment.doctor_id || !newAppointment.date || !newAppointment.time) {
+      setModalError('Rellena todos los campos obligatorios.');
+      return;
+    }
+    setModalError(null);
+
+    const { error } = await supabase
+      .from('appointments')
+      .insert([{
+        ...newAppointment,
+        type: 'first_visit',
+        status: 'scheduled'
+      }]);
+      
+    if (error) {
+      setModalError('Error: ' + error.message);
+    } else {
+      setIsAppointmentModalOpen(false);
+      setNewAppointment(prev => ({ 
+        patient_id: '', 
+        doctor_id: prev.doctor_id, // Preservar el doctor vinculado por defecto
+        date: '', 
+        time: '', 
+        notes: '' 
+      }));
+      setPatientSearch('');
+    }
+  };
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  const changeMonth = (val: number) => {
+    const d = new Date(currentDate);
+    d.setMonth(d.getMonth() + val);
+    setCurrentDate(d);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Section Stats and Actions CTA */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Earnings Card - Premium Gradient */}
+        <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-400 p-6 rounded-2xl shadow-lg border border-emerald-500/10 flex items-center justify-between text-white relative overflow-hidden group hover:shadow-emerald-200/40 transition-shadow">
+          <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div>
+            <span className="text-xxs font-bold text-emerald-50 uppercase tracking-widest opacity-80">Recaudado Hoy</span>
+            <span className="text-3xl font-black mt-1 flex items-baseline tracking-tight">
+              <span className="text-xl font-bold opacity-80 mr-1">$</span>
+              {todayEarnings.toFixed(2)}
+            </span>
+          </div>
+          <div className="p-3 bg-white/10 backdrop-blur-md rounded-xl shadow-inner group-hover:scale-110 transition-transform">
+            <DollarSign className="text-white" size={24} />
+          </div>
+        </div>
+
+        {/* Buttons Controls shortcuts - Premium Look */}
+        <div className="md:col-span-2 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-4 justify-between">
+          <div className="flex-1">
+            <h3 className="text-sm font-black text-gray-900">Acciones Médicas</h3>
+            <p className="text-xxs text-gray-400 mt-0.5">Agiliza la gestión de tus pacientes y agenda.</p>
+          </div>
+          <div className="flex items-center gap-3 w-full md:w-max">
+            <button 
+              onClick={() => setIsPatientModalOpen(true)}
+              className="flex-1 md:flex-initial px-5 py-3 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-gray-200 hover:shadow-gray-300 transition-all hover:-translate-y-0.5"
+            >
+              <PlusCircle size={16} className="text-teal-400" />
+              Nuevo Paciente
+            </button>
+            <button 
+              onClick={() => setIsAppointmentModalOpen(true)}
+              className="flex-1 md:flex-initial px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-blue-100 hover:shadow-blue-200 transition-all hover:-translate-y-0.5"
+            >
+              <Calendar size={16} />
+              Agendar Cita
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <DollarSign className="text-gray-400" size={20} />
+          Cobros Pendientes
+        </h2>
+        <a href="/dashboard/agenda" className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg font-semibold text-xs hover:bg-blue-100 transition-colors">
+          <Calendar size={14} />
+          Ver Agenda
+        </a>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gray-400" /></div>
+      ) : billings.length === 0 ? (
+        <div className="bg-white p-8 rounded-xl border border-gray-100/50 text-center text-gray-400 text-sm">
+          No hay cuentas pendientes por cobrar.
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-100/50 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase">
+                  <th className="px-6 py-3">Paciente</th>
+                  <th className="px-6 py-3">Fecha</th>
+                  <th className="px-6 py-3">Subtotal</th>
+                  <th className="px-6 py-3">Total a Cobrar</th>
+                  <th className="px-6 py-3 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {billings.map((b) => {
+                  const total = Number(b.normal_fee) + Number(b.extra_charge) - Number(b.discount);
+                  const patientName = b.patients?.name || 'N/A';
+                  return (
+                    <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-bold text-gray-900">
+                        {patientName}
+                      </td>
+                      <td className="px-6 py-4 text-xxs text-gray-400">
+                        {new Date(b.created_at).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-gray-500">
+                        <div className="space-y-0.5">
+                          <p>Base: ${b.normal_fee}</p>
+                          {b.extra_charge > 0 && <p className="text-red-500">+ Extra: ${b.extra_charge}</p>}
+                          {b.discount > 0 && <p className="text-green-500">- Desc: ${b.discount}</p>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-black text-gray-900 text-sm">
+                        ${total.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <button 
+                            onClick={() => {
+                              window.location.href = `/dashboard/consultations?patient_id=${b.patient_id}`;
+                            }}
+                            className="px-2.5 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-xxs font-bold flex items-center gap-1"
+                          >
+                            Visualizar
+                          </button>
+                          <button 
+                            onClick={() => handleMarkAsPaid(b)}
+                            className="px-2.5 py-1 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg text-xxs font-bold flex items-center gap-1"
+                          >
+                            <CheckCircle size={12} />
+                            Validar Pago
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmar Pago y Agendar */}
+      {isPayModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl p-6 space-y-4 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 border-b pb-2">Confirmar Pago</h3>
+            
+            <p className="text-sm text-gray-600">El pago se registrará en el sistema.</p>
+
+            {followUpInfo && (
+              <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl space-y-1">
+                <p className="text-xs font-bold text-blue-700">📌 Indicación de Seguimiento del Doctor:</p>
+                {followUpInfo.date && <p className="text-xs text-blue-600"><strong>Fecha sugerida:</strong> {new Date(followUpInfo.date).toLocaleDateString()}</p>}
+                {followUpInfo.notes && <p className="text-xs text-blue-600"><strong>Indicación:</strong> {followUpInfo.notes}</p>}
+              </div>
+            )}
+
+            <div className="border-t border-gray-50 pt-3 space-y-3">
+              <p className="text-xs font-bold text-gray-700 flex items-center gap-1">
+                <PlusCircle size={14} className="text-gray-400" />
+                ¿Deseas agendar una nueva cita?
+              </p>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xxs text-gray-400">Fecha</label>
+                  <input 
+                    type="date" 
+                    value={agendaData.date}
+                    onChange={(e) => setAgendaData({ ...agendaData, date: e.target.value })}
+                    className="w-full p-2 border border-gray-100 rounded-lg text-xs focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xxs text-gray-400">Hora</label>
+                  <input 
+                    type="time" 
+                    value={agendaData.time}
+                    onChange={(e) => setAgendaData({ ...agendaData, time: e.target.value })}
+                    className="w-full p-2 border border-gray-100 rounded-lg text-xs focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xxs text-gray-400">Notas de Cita</label>
+                <input 
+                  type="text" 
+                  placeholder="Ej: Cita de control"
+                  value={agendaData.notes}
+                  onChange={(e) => setAgendaData({ ...agendaData, notes: e.target.value })}
+                  className="w-full p-2 border border-gray-100 rounded-lg text-xs focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {modalError && (
+              <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs border border-red-100 flex items-start gap-2">
+                <AlertTriangle size={16} className="text-red-500 flex-shrink-0" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2 border-t border-gray-50">
+              <button 
+                onClick={() => {
+                  setIsPayModalOpen(false);
+                  setModalError(null);
+                }} 
+                className="w-full py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-bold"
+              >
+                Cancelar
+              </button>
+              <button onClick={confirmPayment} className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-sm">
+                Confirmar y Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Nuevo Paciente */}
+      {isPatientModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-6 relative">
+            <button
+              onClick={() => setIsPatientModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 text-lg font-bold"
+            >
+              &times;
+            </button>
+            <PatientForm onSuccess={() => {
+              setIsPatientModalOpen(false);
+              fetchSupportData(); // Refresh patient list dropdown handles!
+            }} />
+          </div>
+        </div>
+      )}
+
+      {/* Modal Nueva Cita Directa */}
+      {isAppointmentModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-white rounded-2xl p-6 shadow-xl flex flex-col md:flex-row gap-6 relative">
+            
+            <button
+              onClick={() => setIsAppointmentModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 text-lg font-bold"
+            >
+              &times;
+            </button>
+
+            {/* Columna Izquierda: Calendario */}
+            <div className="flex-1 space-y-3">
+              <h3 className="text-md font-bold text-gray-900 border-b pb-2 flex items-center gap-1.5">
+                <Calendar size={18} className="text-blue-600" />
+                Selecciona Fecha
+              </h3>
+              
+              <div className="flex justify-between items-center bg-gray-50 px-3 py-1.5 rounded-xl">
+                <span className="text-xs font-bold text-gray-800">{monthNames[month]} {year}</span>
+                <div className="flex gap-0.5">
+                  <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-gray-200 rounded text-gray-600"><ChevronLeft size={16}/></button>
+                  <button onClick={() => changeMonth(1)} className="p-1 hover:bg-gray-200 rounded text-gray-600"><ChevronRight size={16}/></button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 text-center font-bold text-gray-400 text-xxs tracking-wider mb-1">
+                <div>D</div><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 flex-1">
+                {Array.from({ length: firstDayIndex }).map((_, i) => (
+                  <div key={`b-${i}`} className="h-8"></div>
+                ))}
+
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const day = i + 1;
+                  const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const hasCitas = monthAppointments.some(a => a.date === dayStr);
+                  const isSelected = newAppointment.date === dayStr;
+
+                  return (
+                    <button 
+                      key={day} 
+                      onClick={() => setNewAppointment({ ...newAppointment, date: dayStr })}
+                      className={`h-8 flex flex-col items-center justify-center rounded-lg text-xxs font-bold relative transition-colors ${
+                        isSelected 
+                          ? 'bg-blue-600 text-white shadow-sm shadow-blue-200' 
+                          : 'hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      {day}
+                      {hasCitas && <div className={`w-1 h-1 rounded-full absolute bottom-1 ${isSelected ? 'bg-white' : 'bg-blue-500'}`}></div>}
+                    </button>
+                  );
+                })}
+              </div>
+              {newAppointment.date && (
+                <p className="text-xxs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-lg">
+                  📅 Seleccionado: {new Date(newAppointment.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                </p>
+              )}
+            </div>
+
+            {/* Columna Derecha: Formulario */}
+            <div className="flex-1 flex flex-col justify-between border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6">
+              <div className="space-y-3">
+                <h3 className="text-md font-bold text-gray-900 border-b pb-2">Detalles de la Cita</h3>
+                
+                <div className="relative">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Paciente</label>
+                  <input 
+                    type="text" 
+                    placeholder="Buscar o escribir nombre..."
+                    value={patientSearch}
+                    onChange={(e) => {
+                       setPatientSearch(e.target.value);
+                       setShowPatientDropdown(true);
+                       if (e.target.value === '') setNewAppointment({ ...newAppointment, patient_id: '' });
+                    }}
+                    onFocus={() => setShowPatientDropdown(true)}
+                    className="w-full bg-white px-3 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
+                  />
+                  {showPatientDropdown && (
+                    <div className="absolute top-14 left-0 w-full bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-40 overflow-y-auto p-1 space-y-0.5">
+                      {patients.filter(p => !patientSearch || p.name?.toLowerCase().includes(patientSearch.toLowerCase())).map(p => (
+                         <div 
+                           key={p.id} 
+                           onClick={() => {
+                              setNewAppointment({ ...newAppointment, patient_id: p.id });
+                              setPatientSearch(p.name);
+                              setShowPatientDropdown(false);
+                           }}
+                           className="px-3 py-1.5 text-xxs hover:bg-gray-50 cursor-pointer rounded-lg text-gray-700 font-bold"
+                         >
+                            {p.name}
+                         </div>
+                      ))}
+                      {patients.filter(p => p.name?.toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && patientSearch.trim() !== '' && (
+                         <div 
+                           onClick={async () => {
+                              const { data, error } = await supabase.from('patients').insert([{ name: patientSearch }]).select('id, name').single();
+                              if(data){
+                                 setPatients([...patients, data]);
+                                 setNewAppointment({...newAppointment, patient_id: data.id});
+                                 setShowPatientDropdown(false);
+                              }
+                           }}
+                           className="px-3 py-1.5 text-xxs hover:bg-blue-50 cursor-pointer rounded-lg text-blue-600 font-black flex items-center gap-1"
+                         >
+                            <PlusCircle size={12}/> Crear "{patientSearch}"
+                         </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Doctor / Médico</label>
+                  <select 
+                    value={newAppointment.doctor_id}
+                    onChange={(e) => setNewAppointment({ ...newAppointment, doctor_id: e.target.value })}
+                    className="w-full bg-white px-3 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
+                  >
+                    <option value="">Selecciona un doctor...</option>
+                    {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1 flex justify-between">
+                    <span>Selecciona Hora</span>
+                    {newAppointment.time && <span className="text-blue-600 font-bold">({newAppointment.time})</span>}
+                  </label>
+                  {!newAppointment.date ? (
+                    <p className="text-xxs text-gray-400">Selecciona una fecha en el calendario.</p>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-1 max-h-40 overflow-y-auto border border-gray-100 rounded-xl p-2 bg-gray-50/20">
+                      {(() => {
+                        const slots = [];
+                        for (let h = 8; h <= 18; h++) {
+                          slots.push(`${String(h).padStart(2, '0')}:00`);
+                          slots.push(`${String(h).padStart(2, '0')}:30`);
+                        }
+                        return slots.map(slot => {
+                          const isTaken = monthAppointments.some(
+                            a => a.date === newAppointment.date && a.time.substring(0, 5) === slot && (!newAppointment.doctor_id || a.doctor_id === newAppointment.doctor_id)
+                          );
+                          const isSelected = newAppointment.time === slot;
+
+                          return (
+                            <button
+                              key={slot}
+                              type="button"
+                              disabled={isTaken}
+                              onClick={() => setNewAppointment({ ...newAppointment, time: slot })}
+                              className={`p-1.5 text-xxs font-bold rounded-lg border text-center transition-colors ${
+                                isSelected 
+                                  ? 'bg-blue-600 border-blue-600 text-white' 
+                                  : isTaken 
+                                    ? 'bg-red-50 border-red-50 text-red-500 cursor-not-allowed line-through' 
+                                    : 'bg-white border-gray-100 hover:bg-gray-50 text-gray-700'
+                              }`}
+                            >
+                              {slot}
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Notas / Motivo</label>
+                  <input 
+                    type="text" 
+                    placeholder="Ej: Consulta general"
+                    value={newAppointment.notes}
+                    onChange={(e) => setNewAppointment({ ...newAppointment, notes: e.target.value })}
+                    className="w-full p-2 border border-gray-100 rounded-lg text-xs focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {modalError && (
+                <div className="bg-red-50 border border-red-100 text-red-600 p-2 rounded-xl text-xxs font-bold text-center mt-2">
+                   {modalError}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4 border-t border-gray-50 mt-4 md:mt-0">
+                <button 
+                  onClick={() => setIsAppointmentModalOpen(false)} 
+                  className="w-full py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-bold"
+                >
+                  Cancelar
+                </button>
+                <button onClick={confirmNewAppointment} className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm">
+                  Agendar Cita
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

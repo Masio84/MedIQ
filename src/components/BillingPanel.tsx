@@ -38,7 +38,49 @@ export default function BillingPanel() {
         <p className="text-sm text-gray-400">No hay registros de facturación aún.</p>
       )}
 
-      <div className="overflow-x-auto">
+      {/* MOBILE CARD VIEW */}
+      <div className="md:hidden space-y-3">
+        {billing.map((b) => {
+          const normal = Number(b.normal_fee);
+          const discount = Number(b.discount || 0);
+          const extra = Number(b.extra_charge || 0);
+          const total = normal + extra - discount;
+
+          return (
+            <div key={b.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100/30 shadow-sm space-y-2">
+              <div className="flex justify-between items-center border-b border-gray-200/40 pb-2">
+                <span className="font-bold text-gray-900 text-sm">{(b.patients as any)?.name || 'N/A'}</span>
+                <span className="text-xxs text-gray-400">{new Date(b.created_at).toLocaleDateString()}</span>
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Base:</span>
+                  <span className="font-medium">${normal.toFixed(2)}</span>
+                </div>
+                {extra > 0 && (
+                  <div className="flex justify-between text-xs text-red-500">
+                    <span>Extra:</span>
+                    <span className="font-medium">+${extra.toFixed(2)}</span>
+                  </div>
+                )}
+                {discount > 0 && (
+                  <div className="flex justify-between text-xs text-green-600">
+                    <span>Descuento:</span>
+                    <span className="font-medium">-${discount.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+              <div className="border-t border-gray-200/40 pt-2 flex justify-between items-center">
+                <span className="text-xs font-bold text-gray-700">Total Final:</span>
+                <span className="font-black text-green-600 text-sm">${total.toFixed(2)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* DESKTOP TABLE VIEW */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left text-sm text-gray-700">
           <thead className="bg-gray-100 text-gray-400 uppercase text-xs">
             <tr>
@@ -72,3 +114,4 @@ export default function BillingPanel() {
     </div>
   );
 }
+

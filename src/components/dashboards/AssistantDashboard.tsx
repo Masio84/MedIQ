@@ -553,11 +553,21 @@ export default function AssistantDashboard() {
                       {patients.filter(p => p.name?.toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && patientSearch.trim() !== '' && (
                          <div 
                            onClick={async () => {
-                              const { data, error } = await supabase.from('patients').insert([{ name: patientSearch }]).select('id, name').single();
-                              if(data){
-                                 setPatients([...patients, data]);
-                                 setNewAppointment({...newAppointment, patient_id: data.id});
-                                 setShowPatientDropdown(false);
+                              try {
+                                const res = await fetch('/api/patients/create', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ name: patientSearch }),
+                                });
+                                const result = await res.json();
+                                if (!res.ok) throw new Error(result?.error || 'No se pudo crear el paciente');
+                                if (result?.data) {
+                                  setPatients([...patients, result.data]);
+                                  setNewAppointment({ ...newAppointment, patient_id: result.data.id });
+                                  setShowPatientDropdown(false);
+                                }
+                              } catch (e: any) {
+                                setModalError(e?.message || 'No se pudo crear el paciente');
                               }
                            }}
                            className="px-3 py-1.5 text-xxs hover:bg-blue-50 cursor-pointer rounded-lg text-blue-600 font-black flex items-center gap-1"

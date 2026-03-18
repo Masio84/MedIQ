@@ -1,6 +1,6 @@
-# Instrucciones de Configuración - AssistMed AI (BETA)
+# Instrucciones de Configuración - MedIQ (BETA)
 
-Este proyecto es el MVP para la plataforma SaaS médica **AssistMed AI** construida con **Next.js 14 (App Router)** y **Supabase**.
+Este proyecto es el MVP para la plataforma SaaS médica **MedIQ** construida con **Next.js 14 (App Router)** y **Supabase**.
 
 ---
 
@@ -11,7 +11,7 @@ Este proyecto es el MVP para la plataforma SaaS médica **AssistMed AI** constru
 ---
 
 ## 🛠️ Paso 1: Configurar Proyecto Supabase
-1. Ingresa a Supabase y crea un nuevo proyecto llamado `AssistMed AI`.
+1. Ingresa a Supabase y crea un nuevo proyecto llamado `MedIQ`.
 2. Dirígete a la pestaña de **SQL Editor** en el panel izquierdo.
 3. Copia y pega el contenido del archivo `supabase/schema.sql` ubicado en este proyecto y haz clic en **Run** (Ejecutar).
    - *Este script creará las tablas, índices, roles, políticas de seguridad (RLS) y disparadores (triggers).*

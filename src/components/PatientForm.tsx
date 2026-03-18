@@ -1,14 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Loader2, ShieldCheck, X } from 'lucide-react';
 
 export default function PatientForm({ onSuccess }: { onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'error' }>({ isOpen: false, title: '', message: '', type: 'success' });
-  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -19,21 +17,21 @@ export default function PatientForm({ onSuccess }: { onSuccess: () => void }) {
     const data = Object.fromEntries(formData.entries());
 
     try {
-      const { error: insertError } = await supabase
-        .from('patients')
-        .insert([
-          {
-            name: data.name,
-            birthdate: data.birthdate || null,
-            phone: data.phone || null,
-            email: data.email || null,
-            address: data.address || null,
-            allergies: data.allergies || null,
-            medical_history: data.medical_history || null,
-          },
-        ]);
-
-      if (insertError) throw insertError;
+      const res = await fetch('/api/patients/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          birthdate: data.birthdate || null,
+          phone: data.phone || null,
+          email: data.email || null,
+          address: data.address || null,
+          allergies: data.allergies || null,
+          medical_history: data.medical_history || null,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result?.error || 'Error al guardar');
 
       setFeedback({ isOpen: true, title: '¡Éxito!', message: 'Paciente registrado exitosamente', type: 'success' });
       e.currentTarget.reset();

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import ConsultationForm from '@/components/ConsultationForm';
@@ -9,6 +10,8 @@ export default function ConsultationsPage() {
   const { role, isLoading } = useRole();
   const [doctorId, setDoctorId] = useState<string | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const searchParams = useSearchParams();
+  const initialPatientId = searchParams.get('patient_id') || undefined;
   const supabase = createClient();
 
   useEffect(() => {
@@ -56,7 +59,7 @@ export default function ConsultationsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <div>
-            {doctorId && <ConsultationForm doctorId={doctorId} />}
+            {doctorId && <ConsultationForm doctorId={doctorId} initialPatientId={initialPatientId} />}
           </div>
 
           <div className="bg-white p-6 rounded-xl border border-gray-100/50 shadow-sm">

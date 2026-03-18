@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AssistMed AI",
-  description: "Plataforma Médica AssistMed AI",
+  title: "MedIQ",
+  description: "Plataforma Médica MedIQ",
   icons: {
     icon: "/logo.png",
   },

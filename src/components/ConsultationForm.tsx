@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
-export default function ConsultationForm({ doctorId }: { doctorId: string }) {
+export default function ConsultationForm({ doctorId, initialPatientId }: { doctorId: string; initialPatientId?: string }) {
   const [patients, setPatients] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +63,11 @@ export default function ConsultationForm({ doctorId }: { doctorId: string }) {
     fetchPatients();
     fetchSettings();
   }, [supabase, doctorId]);
+
+  useEffect(() => {
+    if (!initialPatientId) return;
+    setFormData((prev) => ({ ...prev, patient_id: initialPatientId }));
+  }, [initialPatientId]);
 
   // AI Mock Autocomplete mechanism
   useEffect(() => {

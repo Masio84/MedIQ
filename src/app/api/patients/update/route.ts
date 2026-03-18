@@ -9,10 +9,30 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { id, ...updateData } = await request.json();
+    const { id, ...rawUpdateData } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'Falta campo id' }, { status: 400 });
+    }
+
+    const allowedFields = new Set([
+      'name',
+      'last_name',
+      'birthdate',
+      'phone',
+      'email',
+      'address',
+      'allergies',
+      'medical_history',
+    ]);
+
+    const updateData: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(rawUpdateData ?? {})) {
+      if (allowedFields.has(key)) updateData[key] = value;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'No hay campos permitidos para actualizar' }, { status: 400 });
     }
 
     const { user, profile } = auth as any;

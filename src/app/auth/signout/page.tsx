@@ -31,8 +31,8 @@ export default function SignOutPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-sm w-full text-center space-y-6 flex flex-col items-center">
         <Image 
-          src="/logo.png" 
-          alt="AssistMed AI" 
+          src="/logo_v1.png" 
+          alt="MedIQ" 
           width={120} 
           height={35} 
           className="object-contain"

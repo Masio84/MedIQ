@@ -14,11 +14,19 @@ export async function GET(request: Request) {
   if (!q) return NextResponse.json({ success: true, data: [] });
 
   try {
+    const cleaned = q
+      .trim()
+      .slice(0, 64)
+      // allow letters/numbers/spaces/common name punctuation; block commas/parentheses to reduce PostgREST filter injection
+      .replace(/[^\p{L}\p{N}\s'’-]/gu, '');
+
+    if (!cleaned) return NextResponse.json({ success: true, data: [] });
+
     const { user, profile } = auth as any;
     let query = supabaseAdmin
       .from('patients')
       .select('id, name, last_name')
-      .or(`name.ilike.%${q}%,last_name.ilike.%${q}%`);
+      .or(`name.ilike.%${cleaned}%,last_name.ilike.%${cleaned}%`);
     
     if (profile.role === 'doctor') {
       query = query.eq('doctor_id', user.id);

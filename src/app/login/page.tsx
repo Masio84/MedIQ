@@ -40,8 +40,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-gray-100/50 border border-gray-100 p-8">
         <div className="text-center mb-8">
           <Image 
-            src="/logo.png" 
-            alt="AssistMed AI" 
+            src="/logo_v1.png" 
+            alt="MedIQ" 
             width={160} 
             height={60} 
             className="mx-auto mb-4 object-contain"
@@ -50,7 +50,7 @@ export default function LoginPage() {
             Iniciar Sesión
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            Plataforma Médica AssistMed AI (BETA)
+            Plataforma Médica MedIQ (BETA)
           </p>
         </div>
 

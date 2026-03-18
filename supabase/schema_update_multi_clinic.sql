@@ -53,17 +53,31 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
 ALTER TABLE public.profiles 
   ADD COLUMN IF NOT EXISTS clinic_id UUID REFERENCES public.clinics(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS doctor_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS plan_assigned TEXT DEFAULT 'Beta';
+  ADD COLUMN IF NOT EXISTS plan_assigned TEXT DEFAULT 'Beta',
+  ADD COLUMN IF NOT EXISTS avatar_url TEXT,
+  ADD COLUMN IF NOT EXISTS medical_license TEXT,
+  ADD COLUMN IF NOT EXISTS phone TEXT,
+  ADD COLUMN IF NOT EXISTS consult_schedule TEXT,
+  ADD COLUMN IF NOT EXISTS base_price NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS discount_min NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS discount_max NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS increment_min NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS increment_max NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS pending_payment NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS last_payment_date DATE;
 
 -- 5. Crear tabla de Citas si no existía
 CREATE TABLE IF NOT EXISTS public.appointments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  doctor_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  patient_id UUID REFERENCES public.patients(id) ON DELETE CASCADE NOT NULL,
+  doctor_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  patient_id UUID REFERENCES public.patients(id) ON DELETE CASCADE,
   clinic_id UUID REFERENCES public.clinics(id) ON DELETE CASCADE,
-  title TEXT,
-  date TIMESTAMP WITH TIME ZONE NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  date DATE NOT NULL,
+  time TIME NOT NULL,
+  type TEXT,
+  status TEXT DEFAULT 'scheduled'::text,
+  notes TEXT,
+  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
 );
 
 -- 6. Actualizar otras tablas (Agregar clinic_id)

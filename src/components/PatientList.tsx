@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Calendar, Phone, Mail, FolderOpen } from 'lucide-react';
 
 type Patient = {
@@ -20,15 +19,14 @@ export default function PatientList({ role }: { role: 'admin' | 'doctor' | 'assi
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const supabase = createClient();
 
   const fetchPatients = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('patients')
-      .select('*')
-      .order('name');
-    if (!error && data) setPatients(data);
+    const res = await fetch('/api/patients/list');
+    const result = await res.json();
+    if (result?.success && Array.isArray(result.data)) {
+      setPatients(result.data);
+    }
     setLoading(false);
   };
 

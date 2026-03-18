@@ -43,7 +43,7 @@ export default function AgendaPage() {
   useEffect(() => {
     fetchMonthAppointments();
     fetchPatients();
-    fetchSupportDoctors();
+    if (role === 'admin') fetchSupportDoctors();
   }, [currentDate]);
 
   const fetchSupportDoctors = async () => {
@@ -408,12 +408,22 @@ export default function AgendaPage() {
                     {patients.filter(p => p.name.toLowerCase().includes(quickPatientSearch.toLowerCase())).length === 0 && quickPatientSearch.trim() !== '' && (
                        <div 
                          onClick={async () => {
-                            const { data, error } = await supabase.from('patients').insert([{ name: quickPatientSearch }]).select('id, name').single();
-                            if(data){
-                               setPatients([...patients, data]);
-                               setNewAppointment({...newAppointment, patient_id: data.id});
+                           try {
+                             const res = await fetch('/api/patients/create', {
+                               method: 'POST',
+                               headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify({ name: quickPatientSearch }),
+                             });
+                             const result = await res.json();
+                             if (!res.ok) throw new Error(result?.error || 'No se pudo crear el paciente');
+                             if (result?.data) {
+                               setPatients([...patients, result.data]);
+                               setNewAppointment({ ...newAppointment, patient_id: result.data.id });
                                setQuickPatientDropdown(false);
-                            }
+                             }
+                           } catch (e: any) {
+                             setModalError(e?.message || 'No se pudo crear el paciente');
+                           }
                          }}
                          className="px-3 py-1.5 text-xxs hover:bg-blue-50 cursor-pointer rounded-lg text-blue-600 font-black flex items-center gap-1"
                        >

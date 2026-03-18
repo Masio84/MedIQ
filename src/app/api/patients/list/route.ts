@@ -10,7 +10,12 @@ export async function GET(request: Request) {
 
   try {
     const { user, profile } = auth as any;
-    let query = supabaseAdmin.from('patients').select('*').order('name');
+    const columns =
+      profile.role === 'assistant'
+        ? 'id,name,last_name,birthdate,phone,email,address,created_at,doctor_id,clinic_id'
+        : '*';
+
+    let query = supabaseAdmin.from('patients').select(columns).order('name');
 
     if (profile.role === 'doctor') {
       query = query.eq('doctor_id', user.id);

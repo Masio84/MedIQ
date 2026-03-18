@@ -30,7 +30,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No se ha proporcionado ningún archivo.' }, { status: 400 });
     }
 
-    const fileExt = file.name.split('.').pop();
+    const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    const maxBytes = 2 * 1024 * 1024; // 2MB
+
+    if (!allowedMimeTypes.has(file.type)) {
+      return NextResponse.json({ error: 'Tipo de archivo no permitido.' }, { status: 400 });
+    }
+
+    if (typeof file.size === 'number' && file.size > maxBytes) {
+      return NextResponse.json({ error: 'Archivo demasiado grande (máx 2MB).' }, { status: 400 });
+    }
+
+    const extByType: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+    };
+
+    const fileExt = extByType[file.type] ?? 'bin';
     const filePath = `${user.id}/avatar-${Date.now()}.${fileExt}`;
 
     // 4. Perform upload with Service Role to override client Policy blocks

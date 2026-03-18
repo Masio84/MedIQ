@@ -30,8 +30,8 @@ export default function DashboardShell({
         <div className="p-6 border-b border-gray-100 flex items-center justify-between md:justify-center">
           <Link href="/dashboard" className="flex items-center gap-2">
             <Image 
-              src="/logo.png" 
-              alt="AssistMed AI" 
+              src="/logo_v1.png" 
+              alt="MedIQ" 
               width={140} 
               height={40} 
               className="object-contain"
@@ -112,7 +112,7 @@ export default function DashboardShell({
             >
               <Menu size={22} />
             </button>
-            <h2 className="text-xs font-medium text-gray-400">Sistema Beta AssistMed AI</h2>
+            <h2 className="text-xs font-medium text-gray-400">Sistema Beta MedIQ</h2>
           </div>
           {profile?.avatar_url && (
             <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-100">

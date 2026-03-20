@@ -28,6 +28,7 @@ export default function AgendaPage() {
   const [quickPatientDropdown, setQuickPatientDropdown] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [modalError, setModalError] = useState<string | null>(null);
+  const [calendarView, setCalendarView] = useState<'mes' | 'semana'>('mes');
   const supabase = createClient();
 
   const filteredAppointments = allAppointments.filter(app => {
@@ -126,6 +127,20 @@ export default function AgendaPage() {
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
   ];
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Compute the 7 days of the week containing selectedDateString or today
+  const weekDays = (() => {
+    const anchor = selectedDateString ? new Date(selectedDateString + 'T00:00:00') : new Date();
+    const dow = anchor.getDay();
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(anchor);
+      d.setDate(anchor.getDate() - dow + i);
+      const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return { dayStr: ds, dayNum: d.getDate(), month: d.getMonth() };
+    });
+  })();
+
   const changeMonth = (val: number) => {
     const d = new Date(currentDate);
     d.setMonth(d.getMonth() + val);
@@ -196,89 +211,130 @@ export default function AgendaPage() {
             )}
           </div>
 
-          {/* Doctor Filter for Admin */}
+          {/* Doctor Filter removed — now in sidebar */}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
+
+        {/* ─── LEFT SIDEBAR ─── */}
+        <div className="space-y-4">
+
+          {/* Mini Calendar */}
+          <div className="bg-white rounded-2xl border border-gray-100/50 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-bold text-gray-900">{monthNames[month]} {year}</span>
+              <div className="flex gap-0.5">
+                <button onClick={() => changeMonth(-1)} className="p-1 rounded-lg hover:bg-gray-50 text-gray-500"><ChevronLeft size={15} /></button>
+                <button onClick={() => changeMonth(1)} className="p-1 rounded-lg hover:bg-gray-50 text-gray-500"><ChevronRight size={15} /></button>
+              </div>
+            </div>
+
+            {/* Day headers */}
+            <div className="grid grid-cols-7 text-center mb-1">
+              {['D','L','M','M','J','V','S'].map((d, i) => (
+                <div key={i} className="text-[10px] font-bold text-gray-400">{d}</div>
+              ))}
+            </div>
+
+            {/* Month view */}
+            {calendarView === 'mes' ? (
+              <div className="grid grid-cols-7 gap-0.5">
+                {Array.from({ length: firstDayIndex }).map((_, i) => <div key={`b-${i}`} />)}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const day = i + 1;
+                  const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const hasCitas = filteredAppointments.some(a => a.date === dayStr);
+                  const isToday = dayStr === todayStr;
+                  const isSelected = dayStr === selectedDateString;
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => handleDayClick(day)}
+                      className="h-7 w-full flex flex-col items-center justify-center rounded-lg text-xs font-bold relative transition-all"
+                      style={isToday ? { backgroundColor: '#1A4A8A', color: '#fff' } : isSelected ? { border: '1.5px solid #1A4A8A', color: '#1A4A8A' } : { color: '#374151' }}
+                    >
+                      {day}
+                      {hasCitas && !isToday && (
+                        <div className="w-1 h-1 rounded-full absolute bottom-0.5" style={{ backgroundColor: '#0F6E56' }} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Week view */
+              <div className="grid grid-cols-7 gap-0.5">
+                {weekDays.map(({ dayStr, dayNum }) => {
+                  const hasCitas = filteredAppointments.some(a => a.date === dayStr);
+                  const isToday = dayStr === todayStr;
+                  const isSelected = dayStr === selectedDateString;
+                  return (
+                    <button
+                      key={dayStr}
+                      onClick={() => { setSelectedDateString(dayStr); setSelectedDayAppointments(filteredAppointments.filter(a => a.date === dayStr)); }}
+                      className="h-7 w-full flex flex-col items-center justify-center rounded-lg text-xs font-bold relative transition-all"
+                      style={isToday ? { backgroundColor: '#1A4A8A', color: '#fff' } : isSelected ? { border: '1.5px solid #1A4A8A', color: '#1A4A8A' } : { color: '#374151' }}
+                    >
+                      {dayNum}
+                      {hasCitas && !isToday && (
+                        <div className="w-1 h-1 rounded-full absolute bottom-0.5" style={{ backgroundColor: '#0F6E56' }} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Week / Month Toggle */}
+          <div className="flex rounded-xl border border-gray-200 overflow-hidden bg-white">
+            {(['mes', 'semana'] as const).map(view => (
+              <button
+                key={view}
+                onClick={() => setCalendarView(view)}
+                className="flex-1 py-2 text-xs font-bold transition-colors"
+                style={calendarView === view ? { backgroundColor: '#1A4A8A', color: '#fff' } : { color: '#6b7280' }}
+              >
+                {view === 'mes' ? 'Mes' : 'Semana'}
+              </button>
+            ))}
+          </div>
+
+          {/* Doctor filter (Admin only) */}
           {role === 'admin' && (
-            <div className="w-full md:w-1/3">
-              <select 
-                value={selectedDoctorId} 
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Filtrar por Médico</label>
+              <select
+                value={selectedDoctorId}
                 onChange={(e) => setSelectedDoctorId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 bg-white rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-900 text-sm font-medium text-gray-700 h-full"
+                className="w-full px-3 py-2 border border-gray-200 bg-white rounded-xl text-sm font-medium text-gray-700 focus:outline-none"
               >
                 <option value="todos">Todos los Médicos</option>
                 {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
           )}
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Full Month Calendar View Grid */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100/50 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50">
-            <h2 className="text-lg font-bold text-gray-900">
-              {monthNames[month]} {year}
-            </h2>
-            <div className="flex gap-1">
-              <button onClick={() => changeMonth(-1)} className="p-1.5 hover:bg-gray-50 rounded-lg text-gray-600"><ChevronLeft size={18} /></button>
-              <button onClick={() => changeMonth(1)} className="p-1.5 hover:bg-gray-50 rounded-lg text-gray-600"><ChevronRight size={18} /></button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 text-center font-bold text-gray-400 text-xxs tracking-widest uppercase mb-2">
-            <div>Dom</div><div>Lun</div><div>Mar</div><div>Mie</div><div>Jue</div><div>Vie</div><div>Sab</div>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1">
-            {/* Blank placeholder spaces for starts Index offsets */}
-            {Array.from({ length: firstDayIndex }).map((_, i) => (
-              <div key={`blank-${i}`} className="h-14 md:h-20 bg-gray-50/20 rounded-lg"></div>
+          {/* Color Legend */}
+          <div className="bg-white rounded-2xl border border-gray-100/50 shadow-sm p-4 space-y-2">
+            <p className="text-xs font-bold text-gray-700 mb-2">Leyenda</p>
+            {[
+              { bg: '#E8F0FB', border: '#1A4A8A', label: 'Cita agendada' },
+              { bg: '#E1F5EE', border: '#0F6E56', label: 'Atendida' },
+              { bg: '#FAEEDA', border: '#854F0B', label: 'Seguimiento sugerido' },
+              { bg: '#f3f4f6', border: '#9ca3af', label: 'Disponible' },
+            ].map(item => (
+              <div key={item.label} className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.bg, border: `1.5px solid ${item.border}` }} />
+                <span className="text-xs text-gray-600">{item.label}</span>
+              </div>
             ))}
-
-            {/* Loop Days Calendar index Node Cells */}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-              const dayAppointments = filteredAppointments.filter(app => app.date === dayStr);
-              const hasCitas = dayAppointments.length > 0;
-
-              // Validate highlight for selected searching Patient ID
-              const matchingPatient = selectedPatientId ? dayAppointments.some(app => app.patient_id === selectedPatientId) : false;
-
-              return (
-                <button
-                  key={`day-${day}`}
-                  onClick={() => handleDayClick(day)}
-                  className={`h-14 md:h-20 flex flex-col items-center justify-center rounded-xl transition-all relative border ${
-                    dayStr === selectedDateString 
-                     ? 'border-blue-500 bg-blue-50/40' 
-                     : matchingPatient 
-                        ? 'border-emerald-400 bg-emerald-50/30' 
-                        : hasCitas 
-                           ? 'border-gray-100 hover:bg-gray-50/80 hover:border-gray-200' 
-                           : 'border-transparent hover:bg-gray-50/50 hover:border-gray-100 text-gray-600'
-                  }`}
-                >
-                  <span className={`text-sm font-bold ${dayStr === selectedDateString ? 'text-blue-600' : 'text-gray-900'}`}>{day}</span>
-                  
-                  {matchingPatient ? (
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1"></div>
-                  ) : hasCitas ? (
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1"></div>
-                  ) : null}
-
-                  {/* Bubble Count markers for large screens lists */}
-                  {hasCitas && (
-                    <span className="hidden md:inline-block absolute top-1.5 right-1.5 text-[9px] font-black bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-md">
-                      {dayAppointments.length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
           </div>
+
         </div>
+
+
 
         {/* Side Panel: Selected Day Details */}
         <div className="bg-white rounded-2xl border border-gray-100/50 shadow-sm p-6 flex flex-col h-full max-h-[600px]">

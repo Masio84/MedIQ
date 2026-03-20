@@ -52,7 +52,8 @@ export default function DashboardShell({
 
       const today = new Date();
       const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-      const todayStr = today.toISOString().split('T')[0];
+      const localToday = new Date();
+      const todayStr = `${localToday.getFullYear()}-${String(localToday.getMonth() + 1).padStart(2, '0')}-${String(localToday.getDate()).padStart(2, '0')}`;
 
       try {
         const { data: billings } = await supabase
@@ -68,23 +69,34 @@ export default function DashboardShell({
 
         const filterDoctorId = role === 'doctor' ? profile?.id : profile?.doctor_id;
         
-        let appointmentsQuery = supabase
-          .from('appointments')
-          .select('doctor_id')
-          .eq('date', todayStr);
+        let consultationsQuery = supabase
+          .from('consultations')
+          .select('id')
+          .gte('created_at', startOfToday);
 
         if (filterDoctorId) {
-          appointmentsQuery = appointmentsQuery.eq('doctor_id', filterDoctorId);
+          consultationsQuery = consultationsQuery.eq('doctor_id', filterDoctorId);
         }
 
-        const { data: appointees } = await appointmentsQuery;
-        const totalAppointments = appointees?.length || 0;
+        const { data: consultationsData } = await consultationsQuery;
+        const totalAppointments = consultationsData?.length || 0;
+
+        let appointees = null;
+        if (role === 'admin') {
+          const { data } = await supabase
+            .from('appointments')
+            .select('doctor_id')
+            .eq('date', todayStr);
+          appointees = data;
+        }
 
         // Group appointments breakdown
         const counts: { [key: string]: number } = {};
-        appointees?.forEach((a: any) => {
-          if (a.doctor_id) counts[a.doctor_id] = (counts[a.doctor_id] || 0) + 1;
-        });
+        if (appointees) {
+          appointees.forEach((a: any) => {
+            if (a.doctor_id) counts[a.doctor_id] = (counts[a.doctor_id] || 0) + 1;
+          });
+        }
 
         const doctorIds = Object.keys(counts);
         const breakdown: { name: string; count: number }[] = [];

@@ -1,11 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { useRole } from '@/context/RoleContext';
 import PatientForm from '@/components/PatientForm';
 import PatientList from '@/components/PatientList';
+import { ChevronDown } from 'lucide-react';
 
 export default function PatientsPage() {
   const { role, isLoading } = useRole();
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   if (isLoading) return null;
 
@@ -25,8 +28,19 @@ export default function PatientsPage() {
         </div>
 
         {role === 'doctor' && (
-          <div className="bg-white p-6 rounded-xl border border-gray-100/50 shadow-sm">
-            <PatientForm onSuccess={() => {}} />
+          <div className="bg-white rounded-xl border border-gray-100/50 shadow-sm overflow-hidden">
+            <button 
+              onClick={() => setIsFormOpen(!isFormOpen)}
+              className="w-full p-6 flex justify-between items-center hover:bg-gray-50/50 transition-colors"
+            >
+              <h2 className="text-lg font-bold text-gray-900">Registrar Nuevo Paciente</h2>
+              <ChevronDown className={`transform transition-transform ${isFormOpen ? 'rotate-180' : ''} text-gray-400`} size={20} />
+            </button>
+            {isFormOpen && (
+              <div className="p-6 border-t border-gray-100 bg-gray-50/20">
+                <PatientForm onSuccess={() => setIsFormOpen(false)} />
+              </div>
+            )}
           </div>
         )}
 

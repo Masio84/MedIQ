@@ -17,13 +17,8 @@ export async function GET(request: Request) {
 
     let query = supabaseAdmin.from('patients').select(columns).order('name');
 
-    if (profile.role === 'doctor') {
-      query = query.eq('doctor_id', user.id);
-    } else if (profile.role === 'assistant') {
-      if (!profile.doctor_id) {
-        return NextResponse.json({ error: 'Asistente no vinculado a un doctor' }, { status: 400 });
-      }
-      query = query.eq('doctor_id', profile.doctor_id);
+    if (profile.clinic_id) {
+      query = query.eq('clinic_id', profile.clinic_id);
     }
 
     const { data: patients, error } = await query;

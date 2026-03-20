@@ -19,6 +19,8 @@ export default function PatientList({ role }: { role: 'admin' | 'doctor' | 'assi
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [consultations, setConsultations] = useState<any[]>([]);
+  const [loadingConsultations, setLoadingConsultations] = useState(false);
 
   const fetchPatients = async () => {
     setLoading(true);
@@ -30,8 +32,19 @@ export default function PatientList({ role }: { role: 'admin' | 'doctor' | 'assi
     setLoading(false);
   };
 
+  const fetchConsultations = async () => {
+    setLoadingConsultations(true);
+    const res = await fetch('/api/consultations/list');
+    const result = await res.json();
+    if (result?.success && Array.isArray(result.data)) {
+      setConsultations(result.data);
+    }
+    setLoadingConsultations(false);
+  };
+
   useEffect(() => {
     fetchPatients();
+    fetchConsultations();
   }, []);
 
   return (
@@ -102,6 +115,33 @@ export default function PatientList({ role }: { role: 'admin' | 'doctor' | 'assi
                   <div className="p-3 bg-gray-100 rounded-lg text-sm text-gray-700 mt-1 whitespace-pre-wrap">
                     {selectedPatient.medical_history || 'Sin registros previos.'}
                   </div>
+                </div>
+
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-xs font-medium text-gray-500 mb-2">Historial de Consultas</p>
+                  {loadingConsultations && consultations.length === 0 ? (
+                    <p className="text-xs text-gray-400">Cargando...</p>
+                  ) : (
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {consultations.filter((c: any) => c.patient_id === selectedPatient.id).length === 0 ? (
+                        <p className="text-xs text-gray-400">No hay consultas registradas aún.</p>
+                      ) : (
+                        consultations
+                          .filter((c: any) => c.patient_id === selectedPatient.id)
+                          .map((c: any) => (
+                            <div key={c.id} className="p-3 bg-gray-50 rounded-lg border border-gray-100 text-xs text-gray-700 space-y-1">
+                              <p className="font-bold text-gray-900 border-b border-gray-200 pb-1 flex justify-between">
+                                  <span>Consulta Médica</span>
+                                  <span className="text-[10px] font-normal text-gray-400">{new Date(c.created_at).toLocaleDateString()}</span>
+                              </p>
+                              {c.symptoms && <p><strong>Síntomas:</strong> {c.symptoms}</p>}
+                              {c.diagnosis && <p><strong>Diagnóstico:</strong> {c.diagnosis}</p>}
+                              {c.treatment && <p><strong>Tratamiento:</strong> {c.treatment}</p>}
+                            </div>
+                          ))
+                      )}
+                    </div>
+                  )}
                 </div>
               </>
             )}

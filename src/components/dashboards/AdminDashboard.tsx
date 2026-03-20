@@ -446,93 +446,102 @@ export default function AdminDashboard({ stats }: AdminDashboardProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-             {/* Card 1: Beta */}
+             {/* Card 1: Esencial */}
              <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
                 <div>
-                   <span className="text-xxs font-black text-gray-400 uppercase tracking-widest">Fase Inicial</span>
-                   <h3 className="text-xl font-black text-gray-900 mt-1">Plan Beta</h3>
+                   <div className="flex justify-between items-start">
+                      <span className="text-xxs font-black uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F1EFE8', color: '#5F5E5A' }}>Esencial</span>
+                   </div>
+                   <h3 className="text-xl font-black text-gray-900 mt-2">Plan Esencial</h3>
                    <div className="mt-3">
-                      <span className="text-3xl font-black text-gray-900">$1,600</span>
+                      <span className="text-3xl font-black text-gray-900">$599</span>
                       <span className="text-xs text-gray-400 font-medium"> MXN/mes</span>
                    </div>
-                   <p className="text-xs text-gray-500 mt-1 leading-snug">Ideal para médicos en fase de adopción reducida.</p>
+                   <p className="text-xs text-gray-500 mt-1 leading-snug">Para el médico independiente que quiere digitalizar su consultorio</p>
                    
-                   <button className="w-full mt-5 py-2.5 border border-gray-200 rounded-xl text-xs font-bold text-gray-500 bg-gray-50 cursor-default">Plan Actual</button>
+                   <button className="w-full mt-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-colors">Comenzar</button>
 
                    <div className="border-t border-gray-50 my-5" />
 
                    <ul className="space-y-3 text-sm text-gray-600">
-                      <li className="flex items-center gap-2"><div className="bg-gray-50 p-1 rounded-md"><Users size={14} className="text-gray-500"/></div> Registro de Pacientes</li>
-                      <li className="flex items-center gap-2"><div className="bg-gray-50 p-1 rounded-md"><FileText size={14} className="text-gray-500"/></div> Seguimiento de Consultas</li>
-                      <li className="flex items-center gap-2"><div className="bg-gray-50 p-1 rounded-md"><Activity size={14} className="text-gray-500"/></div> Reportes Básicos</li>
+                      <li className="flex items-center gap-2"><div className="bg-gray-50 p-1 rounded-md"><Activity size={14} className="text-gray-500"/></div> Dashboard del doctor</li>
+                      <li className="flex items-center gap-2"><div className="bg-gray-50 p-1 rounded-md"><Users size={14} className="text-gray-500"/></div> Registro de pacientes</li>
+                      <li className="flex items-center gap-2"><div className="bg-gray-50 p-1 rounded-md"><FileText size={14} className="text-gray-500"/></div> Historial de consultas</li>
+                      <li className="flex items-center gap-2"><div className="bg-gray-50 p-1 rounded-md"><Activity size={14} className="text-gray-500"/></div> Signos vitales por consulta</li>
+                      <li className="flex items-center gap-2"><div className="bg-gray-50 p-1 rounded-md"><FileText size={14} className="text-gray-500"/></div> Agenda médica mensual</li>
+                      <li className="flex items-center gap-2"><div className="bg-gray-50 p-1 rounded-md"><CreditCard size={14} className="text-gray-500"/></div> Facturación básica</li>
+                      <li className="flex items-center gap-2"><div className="bg-gray-50 p-1 rounded-md"><ShieldCheck size={14} className="text-gray-500"/></div> Sugerencia de diagnóstico IA</li>
+                      <li className="flex items-center gap-2"><div className="bg-gray-50 p-1 rounded-md"><ShieldCheck size={14} className="text-gray-500"/></div> Sugerencia de receta IA</li>
+                      <li className="border-t border-gray-50 pt-2 text-xxs text-gray-400 font-medium">Soporte: Email</li>
                    </ul>
                 </div>
              </div>
 
-             {/* Card 2: Básico - DESTACADO */}
-             <div className="bg-white border-2 border-blue-600 shadow-xl rounded-2xl p-6 flex flex-col justify-between relative transform md:scale-105">
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xxs font-black px-3 py-0.5 rounded-full shadow-md uppercase tracking-wide">MÁS POPULAR</span>
+             {/* Card 2: Consultorio - DESTACADO */}
+             <div className="bg-white shadow-xl rounded-2xl p-6 flex flex-col justify-between relative transform md:scale-105" style={{ border: '2px solid #1A4A8A' }}>
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-white text-xxs font-black px-3 py-1 rounded-full shadow-md uppercase tracking-wide" style={{ backgroundColor: '#1A4A8A', color: '#ffffff' }}>Más popular</span>
                 <div>
-                   <span className="text-xxs font-black text-blue-600 uppercase tracking-widest">Profesional</span>
-                   <h3 className="text-xl font-black text-gray-900 mt-1">Plan Básico</h3>
+                   <div className="flex justify-between items-start">
+                      <span className="text-xxs font-black uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ backgroundColor: '#1A4A8A', color: '#ffffff' }}>Consultorio</span>
+                   </div>
+                   <h3 className="text-xl font-black text-gray-900 mt-2">Plan Consultorio</h3>
                    <div className="mt-3">
-                      <span className="text-3xl font-black text-gray-900">$2,500</span>
+                      <span className="text-3xl font-black text-gray-900">$1,299</span>
                       <span className="text-xs text-gray-400 font-medium"> MXN/mes</span>
                    </div>
-                   <p className="text-xs text-gray-500 mt-1 leading-snug">Expedientes clínicos y reportes avanzados.</p>
+                   <p className="text-xxs text-blue-600 font-bold mt-1">Setup: $2,500 MXN pago único</p>
+                   <p className="text-xs text-gray-500 mt-1 leading-snug">Doctor y asistente trabajando en sincronía total</p>
                    
-                   <button className="w-full mt-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors cursor-not-allowed">Cambiar a Básico</button>
+                   <button className="w-full mt-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors">Comenzar</button>
 
                    <div className="border-t border-gray-100 my-5" />
 
                    <ul className="space-y-3 text-sm text-gray-600">
-                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><FileText size={14} className="text-blue-600"/></div> Expedientes completos</li>
-                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><ShieldCheck size={14} className="text-blue-600"/></div> Historial Clínico</li>
-                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><Activity size={14} className="text-blue-600"/></div> Reportes Avanzados</li>
-                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><Users size={14} className="text-blue-600"/></div> Soporte de Asistentes</li>
+                      <li className="font-bold text-gray-900 text-xs">Todo lo del plan Esencial, más:</li>
+                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><Activity size={14} className="text-blue-600"/></div> Dashboard de asistente</li>
+                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><Users size={14} className="text-blue-600"/></div> Chat en tiempo real doctor ↔ asistente</li>
+                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><ShieldCheck size={14} className="text-blue-600"/></div> Notificaciones push</li>
+                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><FileText size={14} className="text-blue-600"/></div> Sugerencia de cita de seguimiento</li>
+                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><Activity size={14} className="text-blue-600"/></div> Agendado automático desde sugerencia</li>
+                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><CreditCard size={14} className="text-blue-600"/></div> Gestión de cobros por asistente</li>
+                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><ShieldCheck size={14} className="text-blue-600"/></div> Validación de pagos</li>
+                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><CreditCard size={14} className="text-blue-600"/></div> Módulo de facturación completo</li>
+                      <li className="flex items-center gap-2"><div className="bg-blue-50 p-1 rounded-md"><ShieldCheck size={14} className="text-blue-600"/></div> Autocompletado de síntomas IA</li>
+                      <li className="border-t border-gray-100 pt-2 text-xxs text-blue-600 font-medium">Soporte: WhatsApp</li>
                    </ul>
                 </div>
              </div>
 
-             {/* Card 3: Premium */}
+             {/* Card 3: Enterprise */}
              <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
                 <div>
-                   <span className="text-xxs font-black text-purple-600 uppercase tracking-widest">Avanzado</span>
-                   <h3 className="text-xl font-black text-gray-900 mt-1">Plan Premium</h3>
-                   <div className="mt-3">
-                      <span className="text-3xl font-black text-gray-900">$3,999</span>
-                      <span className="text-xs text-gray-400 font-medium"> MXN/mes</span>
+                   <div className="flex justify-between items-start">
+                      <span className="text-xxs font-black uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ backgroundColor: '#E1F5EE', color: '#0F6E56' }}>Enterprise</span>
                    </div>
-                   <p className="text-xs text-gray-500 mt-1 leading-snug">IA Médica y Automatización total de agenda.</p>
+                   <h3 className="text-xl font-black text-gray-900 mt-2">Plan Enterprise</h3>
+                   <div className="mt-3">
+                      <span className="text-3xl font-black text-gray-900">Convenio</span>
+                   </div>
+                   <p className="text-xxs text-green-600 font-bold mt-1">Setup: Precio según número de consultorios</p>
+                   <p className="text-xs text-gray-500 mt-1 leading-snug">Para clínicas y hospitales con múltiples consultorios</p>
                    
-                   <button className="w-full mt-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition-colors cursor-not-allowed">Cambiar a Premium</button>
+                   <button className="w-full mt-5 py-2.5 rounded-xl text-xs font-bold transition-colors" style={{ backgroundColor: '#0F6E56', color: '#ffffff' }}>Contactar ventas</button>
 
                    <div className="border-t border-gray-50 my-5" />
 
                    <ul className="space-y-3 text-sm text-gray-600">
-                      <li className="flex items-center gap-2"><div className="bg-purple-50 p-1 rounded-md"><FileText size={14} className="text-purple-600"/></div> Todo lo del Plan Básico</li>
-                      <li className="flex items-center gap-2"><div className="bg-purple-50 p-1 rounded-md"><Users size={14} className="text-purple-600"/></div> Asistencia de IA en Consulta</li>
-                      <li className="flex items-center gap-2"><div className="bg-purple-50 p-1 rounded-md"><ShieldCheck size={14} className="text-purple-600"/></div> Recetas Inteligentes</li>
+                      <li className="font-bold text-gray-900 text-xs">Todo lo del plan Consultorio, más:</li>
+                      <li className="flex items-center gap-2"><div className="bg-green-50 p-1 rounded-md"><Users size={14} className="text-green-600"/></div> Múltiples consultorios</li>
+                      <li className="flex items-center gap-2"><div className="bg-green-50 p-1 rounded-md"><Users size={14} className="text-green-600"/></div> Cuenta por cada doctor</li>
+                      <li className="flex items-center gap-2"><div className="bg-green-50 p-1 rounded-md"><Users size={14} className="text-green-600"/></div> Cuenta por cada recepcionista</li>
+                      <li className="flex items-center gap-2"><div className="bg-green-50 p-1 rounded-md"><Activity size={14} className="text-green-600"/></div> Panel administrativo central</li>
+                      <li className="flex items-center gap-2"><div className="bg-green-50 p-1 rounded-md"><FileText size={14} className="text-green-600"/></div> Reportes globales de la clínica</li>
+                      <li className="flex items-center gap-2"><div className="bg-green-50 p-1 rounded-md"><Activity size={14} className="text-green-600"/></div> Gestión de turnos y horarios</li>
+                      <li className="flex items-center gap-2"><div className="bg-green-50 p-1 rounded-md"><Users size={14} className="text-green-600"/></div> Comunicación entre consultorios</li>
+                      <li className="flex items-center gap-2"><div className="bg-green-50 p-1 rounded-md"><ShieldCheck size={14} className="text-green-600"/></div> Análisis de tendencias clínicas IA</li>
+                      <li className="border-t border-gray-50 pt-2 text-xxs text-green-600 font-medium">Soporte: Dedicado + capacitación + SLA</li>
                    </ul>
                 </div>
-             </div>
-          </div>
-
-          {/* Onboarding Fee Analysis */}
-          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 hover:shadow-md transition-shadow flex flex-col md:flex-row items-center justify-between gap-6 mt-8">
-             <div className="flex flex-col md:flex-row items-start md:items-center gap-4 flex-1">
-                <div className="bg-blue-50 p-3 rounded-2xl flex items-center justify-center shrink-0">
-                   <CreditCard size={24} className="text-blue-600" />
-                </div>
-                <div>
-                   <span className="text-xxs font-black text-blue-600 uppercase tracking-widest">Pago Único</span>
-                   <h3 className="text-lg font-black text-gray-900 mt-1">Cuota de Instalación y Onboarding</h3>
-                   <p className="text-xs text-gray-500 mt-1 leading-snug">Cubre costes de instalación, configuración inicial, capacitación del personal y personalización del consultorio.</p>
-                </div>
-             </div>
-             <div className="text-center md:text-right shrink-0">
-                <div className="text-3xl font-black text-gray-900">$3,000</div>
-                <span className="text-xs text-gray-400 font-medium"> MXN (Cargo único)</span>
              </div>
           </div>
         </div>

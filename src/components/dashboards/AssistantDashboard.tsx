@@ -267,6 +267,23 @@ export default function AssistantDashboard() {
     }
   };
 
+  const handleActOnNotification = async (notif: any) => {
+    if (notif.suggested_date) {
+      await supabase.from('appointments').insert([{
+        patient_id: notif.patient_id,
+        doctor_id: notif.from_user_id,
+        date: notif.suggested_date,
+        time: notif.suggested_time || '09:00',
+        type: 'follow_up',
+        status: 'scheduled',
+        notes: notif.message || 'Seguimiento sugerido por médico',
+      }]);
+    }
+    await supabase.from('notifications').update({ read: true, acted: true }).eq('id', notif.id);
+    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true, acted: true } : n));
+    setNotifCount(prev => Math.max(0, prev - 1));
+  };
+
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -283,7 +300,9 @@ export default function AssistantDashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-6 items-start">
+      {/* ─── LEFT COLUMN ─── */}
+      <div className="space-y-6">
       {/* 3 Metric Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Cobros Pendientes */}
@@ -374,6 +393,76 @@ export default function AssistantDashboard() {
           Agendar cita
         </button>
       </div>
+
+      </div>
+
+      {/* ─── RIGHT COLUMN: Notificaciones ─── */}
+      <div className="bg-white rounded-2xl border border-gray-100/60 shadow-sm p-5 space-y-4 sticky top-6">
+        <div className="flex items-center justify-between border-b border-gray-50 pb-3">
+          <h3 className="text-sm font-bold text-gray-900">Notificaciones</h3>
+          {notifCount > 0 && (
+            <span
+              className="ripple-badge inline-flex items-center justify-center w-5 h-5 rounded-full text-white text-[10px] font-black"
+              style={{ backgroundColor: '#993C1D' }}
+            >
+              {notifCount}
+            </span>
+          )}
+        </div>
+
+        {notifications.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-4">Sin notificaciones pendientes</p>
+        ) : (
+          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+            {notifications.map((notif, idx) => {
+              const borderColor = notif.type === 'seguimiento_sugerido' ? '#993C1D' : '#1A4A8A';
+              const acted = notif.acted;
+              const patientName = notif.message?.match(/para (.+)$/)?.[1] || 'Paciente';
+              return (
+                <div
+                  key={notif.id}
+                  className="notif-slide-in rounded-xl p-3 bg-gray-50/60 border border-gray-100 space-y-2"
+                  style={{ borderLeft: `3px solid ${borderColor}`, animationDelay: `${idx * 60}ms` }}
+                >
+                  <p className="text-xs font-bold text-gray-900 leading-snug">{notif.message}</p>
+                  {notif.suggested_date && (
+                    <p className="text-[10px] text-gray-500">
+                      📅 {notif.suggested_date}{notif.suggested_time ? ` · ${notif.suggested_time.substring(0, 5)}` : ''}
+                    </p>
+                  )}
+                  <div className="flex gap-1.5 pt-1">
+                    {acted ? (
+                      <span
+                        className="flex-1 text-center py-1 rounded-lg text-[10px] font-bold text-white"
+                        style={{ backgroundColor: '#0F6E56' }}
+                      >
+                        Agendado ✓
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleActOnNotification(notif)}
+                        className="flex-1 py-1 rounded-lg text-[10px] font-bold text-white transition-opacity hover:opacity-80"
+                        style={{ backgroundColor: '#1A4A8A' }}
+                      >
+                        Agendar ahora
+                      </button>
+                    )}
+                    {notif.patient_id && (
+                      <a
+                        href={`/dashboard/patients?patient_id=${notif.patient_id}`}
+                        className="flex-1 py-1 rounded-lg text-[10px] font-bold text-center text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                      >
+                        Ver detalles
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
 
       {/* Modal Confirmar Pago y Agendar */}
       {isPayModalOpen && (

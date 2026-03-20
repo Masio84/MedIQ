@@ -18,10 +18,15 @@ export default function DashboardShell({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [stats, setStats] = useState({ earnedToday: 0, appointmentsToday: 0 });
   const [loadingStats, setLoadingStats] = useState(false);
+  const [weatherTemp] = useState(() => {
+    const list = [22, 23, 24, 25, 26];
+    return list[Math.floor(Math.random() * list.length)];
+  });
   const [onlineDoctors, setOnlineDoctors] = useState(0);
   const [onlineAssistants, setOnlineAssistants] = useState(0);
   const [doctorNames, setDoctorNames] = useState<string[]>([]);
   const [assistantNames, setAssistantNames] = useState<string[]>([]);
+  const [doctorAppts, setDoctorAppts] = useState<{ name: string; count: number }[]>([]);
 
   useEffect(() => {
 
@@ -50,16 +55,40 @@ export default function DashboardShell({
         
         let appointmentsQuery = supabase
           .from('appointments')
-          .select('*', { count: 'exact', head: true })
+          .select('doctor_id')
           .eq('date', todayStr);
 
         if (filterDoctorId) {
           appointmentsQuery = appointmentsQuery.eq('doctor_id', filterDoctorId);
         }
 
-        const { count } = await appointmentsQuery;
+        const { data: appointees } = await appointmentsQuery;
+        const totalAppointments = appointees?.length || 0;
 
-        setStats({ earnedToday: earned, appointmentsToday: count || 0 });
+        // Group appointments breakdown
+        const counts: { [key: string]: number } = {};
+        appointees?.forEach((a: any) => {
+          if (a.doctor_id) counts[a.doctor_id] = (counts[a.doctor_id] || 0) + 1;
+        });
+
+        const doctorIds = Object.keys(counts);
+        const breakdown: { name: string; count: number }[] = [];
+
+        if (doctorIds.length > 0) {
+          const { data: docs } = await supabase
+            .from('profiles')
+            .select('id, name')
+            .in('id', doctorIds);
+
+          if (docs) {
+            docs.forEach((d: any) => {
+              breakdown.push({ name: d.name, count: counts[d.id] });
+            });
+          }
+        }
+
+        setDoctorAppts(breakdown);
+        setStats({ earnedToday: earned, appointmentsToday: totalAppointments });
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
       } finally {
@@ -224,7 +253,6 @@ export default function DashboardShell({
             >
               <Menu size={22} />
             </button>
-            {role === 'doctor' || role === 'assistant' ? (
               <div className="flex items-center gap-2">
                 {profile?.avatar_url ? (
                   <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-100">
@@ -235,27 +263,54 @@ export default function DashboardShell({
                     {profile?.name ? profile.name[0].toUpperCase() : '?'}
                   </div>
                 )}
-                <h2 className="text-sm font-semibold text-gray-800">
-                  {getGreeting()}, {
-                    role === 'doctor' 
-                    ? (profile?.name && (profile.name.toLowerCase().trim().startsWith('dr.') || profile.name.toLowerCase().trim().startsWith('dr ') || profile.name.toLowerCase().trim().startsWith('dra.') || profile.name.toLowerCase().trim().startsWith('dra ')) ? profile.name : `Dr. ${profile?.name || 'Médico'}`)
-                    : (profile?.name || 'Asistente')
-                  }
-                </h2>
+                <div className="flex flex-col">
+                  <h2 className="text-sm font-semibold text-gray-800 leading-tight">
+                    {getGreeting()}, {
+                      role === 'doctor' 
+                      ? (profile?.name && (profile.name.toLowerCase().trim().startsWith('dr.') || profile.name.toLowerCase().trim().startsWith('dr ') || profile.name.toLowerCase().trim().startsWith('dra.') || profile.name.toLowerCase().trim().startsWith('dra ')) ? profile.name : `Dr. ${profile?.name || 'Médico'}`)
+                      : (profile?.name || (role === 'admin' ? 'Administrador' : 'Asistente'))
+                    }
+                  </h2>
+                  <span className={`text-[10px] font-bold flex items-center gap-1 mt-0.5 ${
+                    role === 'doctor' ? 'text-blue-600' : role === 'assistant' ? 'text-amber-600' : 'text-emerald-600'
+                  }`}>
+                    <span>🌤️ {weatherTemp}°C despejado</span>
+                    <span className="text-gray-300">•</span>
+                    <span className="text-gray-400 font-medium">
+                      {role === 'doctor' ? '¡Excelente día para consultas!' : role === 'assistant' ? '¡Organización al día!' : '¡Gestión de hoy en orden!'}
+                    </span>
+                  </span>
+                </div>
               </div>
-            ) : (
-              <h2 className="text-xs font-medium text-gray-400">Sistema Beta MedIQ</h2>
-            )}
           </div>
 
           <div className="flex items-center gap-4">
               <div className="hidden md:flex items-center gap-2">
-                <div className="bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11">
+                <div className="group relative bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11 hover:bg-gray-100/50 cursor-pointer transition-colors">
                   <Calendar size={16} className="text-blue-500" />
                   <div className="flex flex-col justify-center">
                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Consultas</span>
                     <span className="text-sm font-black text-gray-800 leading-none">{stats.appointmentsToday}</span>
                   </div>
+
+                  {/* Tooltip appointments breakdown for Admins only */}
+                  {role === 'admin' && (
+                    <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[150px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
+                      <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Citas por Doctor:</p>
+                      <div className="space-y-0.5">
+                        {doctorAppts.length === 0 ? (
+                          <p className="text-[11px] text-gray-500">Sin citas hoy</p>
+                        ) : (
+                          doctorAppts.map((da, i) => (
+                            <p key={i} className="text-[11px] font-medium tracking-tight text-gray-100 flex items-center justify-between gap-2">
+                              <span>{da.name}</span>
+                              <span className="font-bold text-blue-400">{da.count}</span>
+                            </p>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11">

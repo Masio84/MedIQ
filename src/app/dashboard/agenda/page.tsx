@@ -145,7 +145,15 @@ export default function AgendaPage() {
     const d = new Date(currentDate);
     d.setMonth(d.getMonth() + val);
     setCurrentDate(d);
-    setSelectedDateString(null); // Clear selected
+    setSelectedDateString(null);
+  };
+
+  const changeWeek = (val: number) => {
+    const anchor = selectedDateString ? new Date(selectedDateString + 'T00:00:00') : new Date();
+    anchor.setDate(anchor.getDate() + val * 7);
+    const ds = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}-${String(anchor.getDate()).padStart(2, '0')}`;
+    setSelectedDateString(ds);
+    setCurrentDate(anchor);
   };
 
   const handleDayClick = (day: number) => {
@@ -336,96 +344,190 @@ export default function AgendaPage() {
 
 
 
-        {/* Side Panel: Selected Day Details */}
-        <div className="bg-white rounded-2xl border border-gray-100/50 shadow-sm p-6 flex flex-col h-full max-h-[600px]">
-          <div className="pb-4 border-b border-gray-50 h-max">
-            <h3 className="text-md font-bold text-gray-900 flex items-center gap-1.5">
-              <Calendar size={18} className="text-blue-500" />
-              Horarios {selectedDateString && new Date(selectedDateString + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
-            </h3>
+        {/* RIGHT PANEL */}
+        {calendarView === 'semana' ? (
+
+          /* ─── WEEKLY GRID VIEW ─── */
+          <div className="bg-white rounded-2xl border border-gray-100/50 shadow-sm overflow-hidden">
+            {/* Week header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <button onClick={() => changeWeek(-1)} className="p-1.5 rounded-lg hover:bg-gray-50 text-gray-500"><ChevronLeft size={16} /></button>
+              <span className="text-sm font-bold text-gray-900">
+                {weekDays[0] && new Date(weekDays[0].dayStr + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                {' – '}
+                {weekDays[6] && new Date(weekDays[6].dayStr + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </span>
+              <button onClick={() => changeWeek(1)} className="p-1.5 rounded-lg hover:bg-gray-50 text-gray-500"><ChevronRight size={16} /></button>
+            </div>
+
+            {/* Grid */}
+            <div className="overflow-auto max-h-[600px]">
+              {(() => {
+                const dayLabels = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                const slots: string[] = [];
+                for (let h = 9; h <= 18; h++) {
+                  slots.push(`${String(h).padStart(2, '0')}:00`);
+                  if (h < 18) slots.push(`${String(h).padStart(2, '0')}:30`);
+                }
+
+                const getApptStyle = (status: string) => {
+                  if (status === 'attended') return { bg: '#E1F5EE', border: '#0F6E56', text: '#0F6E56' };
+                  if (status === 'follow_up') return { bg: '#FAEEDA', border: '#854F0B', text: '#854F0B' };
+                  return { bg: '#E8F0FB', border: '#1A4A8A', text: '#1A4A8A' };
+                };
+
+                return (
+                  <table className="w-full text-xs border-collapse" style={{ minWidth: '600px' }}>
+                    <thead>
+                      <tr>
+                        <th className="w-14 py-2 border-b border-gray-100 bg-gray-50/50 text-gray-400 font-medium text-[10px]">Hora</th>
+                        {weekDays.map(({ dayStr, dayNum, month: dm }) => {
+                          const isToday = dayStr === todayStr;
+                          return (
+                            <th
+                              key={dayStr}
+                              className="py-2 border-b border-l border-gray-100 text-[11px] font-bold text-center"
+                              style={isToday ? { color: '#1A4A8A', backgroundColor: '#EEF4FF' } : { color: '#374151', backgroundColor: '#f9fafb' }}
+                            >
+                              <div>{dayLabels[weekDays.indexOf({ dayStr, dayNum, month: dm })] ?? dayLabels[new Date(dayStr + 'T00:00:00').getDay()]}</div>
+                              <div className="text-base font-black">{dayNum}</div>
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {slots.map(slot => (
+                        <tr key={slot} className="border-b border-gray-50">
+                          <td className="py-1 px-2 text-[9px] font-bold text-gray-400 text-right align-top border-r border-gray-100 w-14 whitespace-nowrap">
+                            {slot}
+                          </td>
+                          {weekDays.map(({ dayStr }) => {
+                            const appt = filteredAppointments.find(
+                              a => a.date === dayStr && a.time?.substring(0, 5) === slot
+                            );
+                            const style = appt ? getApptStyle(appt.status || appt.type) : null;
+                            return (
+                              <td
+                                key={dayStr}
+                                className="border-l border-gray-50 align-top p-0.5"
+                                onClick={() => {
+                                  if (!appt) {
+                                    setNewAppointment({
+                                      patient_id: '',
+                                      doctor_id: role === 'doctor' ? currentUserId : '',
+                                      date: dayStr,
+                                      time: slot,
+                                      notes: ''
+                                    });
+                                    setIsModalOpen(true);
+                                  }
+                                }}
+                              >
+                                {appt ? (
+                                  <div
+                                    className="rounded px-1 py-0.5 text-[9px] font-bold leading-tight cursor-default"
+                                    style={{ backgroundColor: style!.bg, borderLeft: `2px solid ${style!.border}`, color: style!.text }}
+                                  >
+                                    <div className="truncate">{appt.patients?.name || 'Paciente'}</div>
+                                    <div className="font-normal opacity-70 truncate">{appt.type === 'follow_up' ? 'Seguimiento' : 'Consulta'}</div>
+                                  </div>
+                                ) : (
+                                  <div className="h-6 rounded hover:bg-blue-50/50 cursor-pointer transition-colors" />
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
           </div>
 
-          <div className="flex-1 mt-4 overflow-y-auto space-y-2 pr-1">
-            {!selectedDateString ? (
-              <div className="flex h-full items-center justify-center text-gray-400 text-xs text-center p-4">
-                💡 Selecciona un día del calendario para ver o agendar horarios.
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {(() => {
-                  const slots = [];
-                  for (let h = 7; h <= 21; h++) {
-                    slots.push(`${String(h).padStart(2, '0')}:00`);
-                    if (h < 21) slots.push(`${String(h).padStart(2, '0')}:30`);
-                  }
+        ) : (
 
-                  const dayAppointments = filteredAppointments.filter(app => app.date === selectedDateString);
+          /* ─── DAY SLOTS VIEW (mes) ─── */
+          <div className="bg-white rounded-2xl border border-gray-100/50 shadow-sm p-6 flex flex-col h-full max-h-[600px]">
+            <div className="pb-4 border-b border-gray-50 h-max">
+              <h3 className="text-md font-bold text-gray-900 flex items-center gap-1.5">
+                <Calendar size={18} className="text-blue-500" />
+                Horarios {selectedDateString && new Date(selectedDateString + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+              </h3>
+            </div>
 
-                  return slots.map(slot => {
-                    const appointment = dayAppointments.find(
-                      (app) => app.time.substring(0, 5) === slot
-                    );
-
-                    return (
-                      <div 
-                        key={slot} 
-                        onClick={() => {
-                          if (!appointment) {
-                            setNewAppointment({
-                              patient_id: '',
-                              doctor_id: role === 'doctor' ? currentUserId : '',
-                              date: selectedDateString || '',
-                              time: slot,
-                              notes: ''
-                            });
-                            setIsModalOpen(true);
-                          }
-                        }}
-                        className={`p-2 rounded-xl flex items-center justify-between border transition-all ${
-                          appointment 
-                            ? 'bg-amber-50/70 border-amber-100 shadow-sm' 
-                            : 'bg-white border-gray-50/80 hover:bg-gray-50/50 cursor-pointer'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xxs font-black px-1.5 py-0.5 rounded-lg flex items-center gap-1 ${
-                            appointment ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
-                          }`}>
-                            <Clock size={10} />
-                            {slot}
-                          </span>
-
-                          {appointment ? (
-                            <div>
-                              <h4 className="font-bold text-gray-900 text-xxs flex items-center gap-1">
-                                <User size={11} className="text-gray-400" />
-                                {appointment.patients?.name || 'Paciente'}
-                              </h4>
-                              <p className="text-[9px] text-gray-400">Dr: {appointment.profiles?.name || 'Médico'}</p>
-                            </div>
-                          ) : (
-                            <span className="text-xxs text-gray-300 font-medium">Disponible</span>
+            <div className="flex-1 mt-4 overflow-y-auto space-y-2 pr-1">
+              {!selectedDateString ? (
+                <div className="flex h-full items-center justify-center text-gray-400 text-xs text-center p-4">
+                  💡 Selecciona un día del calendario para ver o agendar horarios.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {(() => {
+                    const slots: string[] = [];
+                    for (let h = 7; h <= 21; h++) {
+                      slots.push(`${String(h).padStart(2, '0')}:00`);
+                      if (h < 21) slots.push(`${String(h).padStart(2, '0')}:30`);
+                    }
+                    const dayAppointments = filteredAppointments.filter(app => app.date === selectedDateString);
+                    return slots.map(slot => {
+                      const appointment = dayAppointments.find((app) => app.time.substring(0, 5) === slot);
+                      return (
+                        <div
+                          key={slot}
+                          onClick={() => {
+                            if (!appointment) {
+                              setNewAppointment({
+                                patient_id: '',
+                                doctor_id: role === 'doctor' ? currentUserId : '',
+                                date: selectedDateString || '',
+                                time: slot,
+                                notes: ''
+                              });
+                              setIsModalOpen(true);
+                            }
+                          }}
+                          className={`p-2 rounded-xl flex items-center justify-between border transition-all ${
+                            appointment
+                              ? 'bg-amber-50/70 border-amber-100 shadow-sm'
+                              : 'bg-white border-gray-50/80 hover:bg-gray-50/50 cursor-pointer'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xxs font-black px-1.5 py-0.5 rounded-lg flex items-center gap-1 ${appointment ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                              <Clock size={10} />
+                              {slot}
+                            </span>
+                            {appointment ? (
+                              <div>
+                                <h4 className="font-bold text-gray-900 text-xxs flex items-center gap-1">
+                                  <User size={11} className="text-gray-400" />
+                                  {appointment.patients?.name || 'Paciente'}
+                                </h4>
+                                <p className="text-[9px] text-gray-400">Dr: {appointment.profiles?.name || 'Médico'}</p>
+                              </div>
+                            ) : (
+                              <span className="text-xxs text-gray-300 font-medium">Disponible</span>
+                            )}
+                          </div>
+                          {!appointment && (
+                            <span className="text-[10px] font-bold text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg">+ Agendar</span>
+                          )}
+                          {appointment && appointment.notes && (
+                            <span className="text-[9px] text-gray-400 italic max-w-[100px] truncate" title={appointment.notes}>"{appointment.notes}"</span>
                           )}
                         </div>
-
-                        {!appointment && (
-                          <span className="text-[10px] font-bold text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg">
-                            + Agendar
-                          </span>
-                        )}
-                        {appointment && appointment.notes && (
-                          <span className="text-[9px] text-gray-400 italic max-w-[100px] truncate" title={appointment.notes}>
-                            "{appointment.notes}"
-                          </span>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            )}
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+
+        )}
 
       </div>
       {/* Modal Quick Appointment Agenda */}

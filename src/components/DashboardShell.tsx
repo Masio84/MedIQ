@@ -18,6 +18,10 @@ export default function DashboardShell({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [stats, setStats] = useState({ earnedToday: 0, appointmentsToday: 0 });
   const [loadingStats, setLoadingStats] = useState(false);
+  const [onlineDoctors, setOnlineDoctors] = useState(0);
+  const [onlineAssistants, setOnlineAssistants] = useState(0);
+  const [doctorNames, setDoctorNames] = useState<string[]>([]);
+  const [assistantNames, setAssistantNames] = useState<string[]>([]);
 
   useEffect(() => {
 
@@ -65,6 +69,70 @@ export default function DashboardShell({
 
     fetchStats();
   }, [role, profile?.id]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    let channel: any;
+
+    const setupPresence = async () => {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+
+      channel = supabase.channel('online-users', {
+        config: { presence: { key: profile.id } }
+      });
+
+      channel
+        .on('presence', { event: 'sync' }, () => {
+          const state = channel.presenceState();
+          let dCount = 0;
+          let aCount = 0;
+          const dNames: string[] = [];
+          const aNames: string[] = [];
+          
+          Object.values(state).forEach((presenceEvents: any) => {
+            const p = presenceEvents?.[0];
+            if (p?.role === 'doctor') {
+              dCount++;
+              if (p.name) dNames.push(p.name);
+            }
+            if (p?.role === 'assistant') {
+              aCount++;
+              if (p.name) aNames.push(p.name);
+            }
+          });
+
+          setOnlineDoctors(dCount);
+          setOnlineAssistants(aCount);
+          setDoctorNames(dNames);
+          setAssistantNames(aNames);
+        })
+        .subscribe(async (status: any) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.track({
+              id: profile.id,
+              role: role,
+              name: profile.name
+            });
+          }
+        });
+    };
+
+    setupPresence();
+
+    return () => {
+      if (channel) {
+        // Safe channel removal
+        const remove = async () => {
+          const { createClient } = await import('@/lib/supabase/client');
+          const supabase = createClient();
+          supabase.removeChannel(channel);
+        };
+        remove();
+      }
+    };
+  }, [profile?.id, role, profile?.name]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -208,6 +276,60 @@ export default function DashboardShell({
                       <span className="text-sm font-black text-gray-900 leading-none">${stats.earnedToday.toFixed(2)}</span>
                     </div>
                   </div>
+                )}
+
+                {role === 'admin' && (
+                  <>
+                    <div className="group relative bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11 hover:bg-gray-100/50 cursor-pointer transition-colors">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <div className="flex flex-col justify-center">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Doctores en línea</span>
+                        <span className="text-sm font-black text-gray-800 leading-none">{onlineDoctors}</span>
+                      </div>
+                      
+                      {/* Tooltip list names on hover */}
+                      <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[120px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
+                        <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Doctores Conectados:</p>
+                        <div className="space-y-0.5">
+                          {doctorNames.length === 0 ? (
+                            <p className="text-[11px] text-gray-500">Sin usuarios</p>
+                          ) : (
+                            doctorNames.map((name, i) => (
+                              <p key={i} className="text-[11px] font-medium tracking-tight text-gray-100 flex items-center gap-1">
+                                <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                                {name}
+                              </p>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="group relative bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11 hover:bg-gray-100/50 cursor-pointer transition-colors">
+                      <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                      <div className="flex flex-col justify-center">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Asistentes en línea</span>
+                        <span className="text-sm font-black text-gray-800 leading-none">{onlineAssistants}</span>
+                      </div>
+
+                      {/* Tooltip list names on hover */}
+                      <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[120px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
+                        <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Asistentes Conectados:</p>
+                        <div className="space-y-0.5">
+                          {assistantNames.length === 0 ? (
+                            <p className="text-[11px] text-gray-500">Sin usuarios</p>
+                          ) : (
+                            assistantNames.map((name, i) => (
+                              <p key={i} className="text-[11px] font-medium tracking-tight text-gray-100 flex items-center gap-1">
+                                <span className="w-1 h-1 rounded-full bg-blue-400" />
+                                {name}
+                              </p>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
 

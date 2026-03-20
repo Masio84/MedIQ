@@ -6,7 +6,11 @@ import { useRole } from '@/context/RoleContext';
 export default function BillingPage() {
   const { role, isLoading } = useRole();
 
-  if (isLoading) return null;
+  if (isLoading) return (
+    <div className="flex justify-center items-center h-40">
+      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400" />
+    </div>
+  );
 
   if (role !== 'assistant' && role !== 'admin') {
     return (

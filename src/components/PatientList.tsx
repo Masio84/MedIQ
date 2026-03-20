@@ -15,7 +15,7 @@ type Patient = {
   created_at: string;
 };
 
-export default function PatientList({ role }: { role: 'admin' | 'doctor' | 'assistant' }) {
+export default function PatientList({ role }: { role: 'admin' | 'doctor' | 'assistant' | undefined }) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);

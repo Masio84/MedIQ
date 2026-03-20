@@ -26,6 +26,7 @@ export default function AgendaPage() {
   const [newAppointment, setNewAppointment] = useState({ patient_id: '', doctor_id: '', date: '', time: '', notes: '' });
   const [quickPatientSearch, setQuickPatientSearch] = useState('');
   const [quickPatientDropdown, setQuickPatientDropdown] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
   const [modalError, setModalError] = useState<string | null>(null);
   const supabase = createClient();
 
@@ -44,7 +45,12 @@ export default function AgendaPage() {
     fetchMonthAppointments();
     fetchPatients();
     if (role === 'admin') fetchSupportDoctors();
-  }, [currentDate]);
+    if (role === 'doctor') {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) setCurrentUserId(user.id);
+      });
+    }
+  }, [currentDate, role]);
 
   const fetchSupportDoctors = async () => {
     try {
@@ -155,6 +161,7 @@ export default function AgendaPage() {
               placeholder="Filtrar por Paciente..."
               value={searchTerm}
               onFocus={() => setShowPatientDropdown(true)}
+              onBlur={() => setTimeout(() => setShowPatientDropdown(false), 150)}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-10 py-2 border border-gray-200 bg-white rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-900 text-sm"
             />
@@ -291,9 +298,9 @@ export default function AgendaPage() {
               <div className="space-y-1">
                 {(() => {
                   const slots = [];
-                  for (let h = 0; h <= 23; h++) {
+                  for (let h = 7; h <= 21; h++) {
                     slots.push(`${String(h).padStart(2, '0')}:00`);
-                    slots.push(`${String(h).padStart(2, '0')}:30`);
+                    if (h < 21) slots.push(`${String(h).padStart(2, '0')}:30`);
                   }
 
                   const dayAppointments = filteredAppointments.filter(app => app.date === selectedDateString);
@@ -310,7 +317,7 @@ export default function AgendaPage() {
                           if (!appointment) {
                             setNewAppointment({
                               patient_id: '',
-                              doctor_id: '',
+                              doctor_id: role === 'doctor' ? currentUserId : '',
                               date: selectedDateString || '',
                               time: slot,
                               notes: ''

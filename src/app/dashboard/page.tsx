@@ -18,7 +18,15 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single();
 
-  const role = profile?.role || 'assistant';
+  const role = profile?.role;
+
+  if (!role) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-gray-500 text-sm">No se encontró un perfil asociado a tu cuenta. Contacta al administrador.</p>
+      </div>
+    );
+  }
 
   let doctorsCount = 0;
   let assistantsCount = 0;

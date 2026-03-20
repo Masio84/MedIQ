@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Menu, X, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Menu, X, LogOut, Calendar, Clock, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import SidebarLinks from '@/components/SidebarLinks';
@@ -16,6 +16,78 @@ export default function DashboardShell({
   role: string;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [stats, setStats] = useState({ earnedToday: 0, appointmentsToday: 0 });
+  const [loadingStats, setLoadingStats] = useState(false);
+
+  useEffect(() => {
+
+    const fetchStats = async () => {
+      setLoadingStats(true);
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+
+      const today = new Date();
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+      const todayStr = today.toISOString().split('T')[0];
+
+      try {
+        const { data: billings } = await supabase
+          .from('billing')
+          .select('normal_fee, discount, extra_charge')
+          .eq('paid', true)
+          .gte('created_at', startOfToday);
+
+        const earned = billings?.reduce(
+          (acc: number, b: any) => acc + (Number(b.normal_fee) + Number(b.extra_charge) - Number(b.discount)),
+          0
+        ) || 0;
+
+        const filterDoctorId = role === 'doctor' ? profile?.id : profile?.doctor_id;
+        
+        let appointmentsQuery = supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .eq('date', todayStr);
+
+        if (filterDoctorId) {
+          appointmentsQuery = appointmentsQuery.eq('doctor_id', filterDoctorId);
+        }
+
+        const { count } = await appointmentsQuery;
+
+        setStats({ earnedToday: earned, appointmentsToday: count || 0 });
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, [role, profile?.id]);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 6 && hour < 12) return 'Buenos días';
+    if (hour >= 12 && hour < 19) return 'Buenas tardes';
+    return 'Buenas noches';
+  };
+
+  const getFormattedDate = () => {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const today = new Date();
+    return `${days[today.getDay()]}, ${today.getDate()} ${months[today.getMonth()]}`;
+  };
+
+  const getFormattedTime = () => {
+    const today = new Date();
+    const hour24 = today.getHours();
+    const min = String(today.getMinutes()).padStart(2, '0');
+    const ampm = hour24 >= 12 ? 'P.M.' : 'A.M.';
+    const hour12 = hour24 % 12 || 12;
+    return `${hour12}:${min} ${ampm}`;
+  };
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -44,34 +116,6 @@ export default function DashboardShell({
           >
             <X size={20} />
           </button>
-        </div>
-
-        <div className="p-5 border-b border-gray-100 bg-gray-50/20 flex flex-col items-center text-center space-y-3 relative group">
-          {profile?.avatar_url ? (
-            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md ring-2 ring-gray-100/50 transition-transform duration-300 group-hover:scale-105">
-              <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-            </div>
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-black text-xl shadow-inner border border-gray-100">
-              {profile?.name ? profile.name[0].toUpperCase() : '?'}
-            </div>
-          )}
-
-          <div className="space-y-1">
-            <p className="text-sm font-bold text-gray-900 bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent tracking-tight">
-              {profile?.name || 'Usuario'}
-            </p>
-            
-            <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50/80 px-2 py-0.5 rounded-full inline-block">
-              {role === 'admin' ? 'Administrador' : role === 'doctor' ? 'Doctor' : 'Asistente'}
-            </span>
-
-            {profile?.medical_license && (
-              <p className="text-[10px] text-gray-400 mt-0.5 font-medium">
-                Cédula: <span className="text-gray-600 font-semibold">{profile.medical_license}</span>
-              </p>
-            )}
-          </div>
         </div>
 
         {/* Sidebar Navigation */}
@@ -112,13 +156,67 @@ export default function DashboardShell({
             >
               <Menu size={22} />
             </button>
-            <h2 className="text-xs font-medium text-gray-400">Sistema Beta MedIQ</h2>
+            {role === 'doctor' || role === 'assistant' ? (
+              <div className="flex items-center gap-2">
+                {profile?.avatar_url ? (
+                  <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-100">
+                    <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-xs border border-gray-100">
+                    {profile?.name ? profile.name[0].toUpperCase() : '?'}
+                  </div>
+                )}
+                <h2 className="text-sm font-semibold text-gray-800">
+                  {getGreeting()}, {
+                    role === 'doctor' 
+                    ? (profile?.name && (profile.name.toLowerCase().trim().startsWith('dr.') || profile.name.toLowerCase().trim().startsWith('dr ') || profile.name.toLowerCase().trim().startsWith('dra.') || profile.name.toLowerCase().trim().startsWith('dra ')) ? profile.name : `Dr. ${profile?.name || 'Médico'}`)
+                    : (profile?.name || 'Asistente')
+                  }
+                </h2>
+              </div>
+            ) : (
+              <h2 className="text-xs font-medium text-gray-400">Sistema Beta MedIQ</h2>
+            )}
           </div>
-          {profile?.avatar_url && (
-            <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-100">
-              <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-            </div>
-          )}
+
+          <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-2">
+                <div className="bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11">
+                  <Calendar size={16} className="text-blue-500" />
+                  <div className="flex flex-col justify-center">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Consultas</span>
+                    <span className="text-sm font-black text-gray-800 leading-none">{stats.appointmentsToday}</span>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11">
+                  <Clock size={16} className="text-emerald-500" />
+                  <div className="flex flex-col justify-center">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Hoy</span>
+                    <span className="text-sm font-black text-gray-800 leading-none">
+                      {getFormattedDate()} {getFormattedTime()}
+                    </span>
+                  </div>
+                </div>
+
+                {role !== 'admin' && (
+                  <div className="bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11">
+                    <DollarSign size={16} className="text-amber-500" />
+                    <div className="flex flex-col justify-center">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Recaudado</span>
+                      <span className="text-sm font-black text-gray-900 leading-none">${stats.earnedToday.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            {profile?.avatar_url && role !== 'doctor' && role !== 'assistant' && (
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-100">
+                <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+              </div>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-8">

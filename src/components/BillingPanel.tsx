@@ -1,33 +1,30 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
 
 export default function BillingPanel() {
   const [billing, setBilling] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
   useEffect(() => {
     const fetchBilling = async () => {
-      const { data, error } = await supabase
-        .from('billing')
-        .select(`
-          id,
-          normal_fee,
-          discount,
-          extra_charge,
-          created_at,
-          patients ( name )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (data) setBilling(data);
-      setLoading(false);
+      setLoading(true);
+      try {
+        const res = await fetch('/api/billing/list');
+        const result = await res.json();
+        
+        if (result.success && result.data) {
+          setBilling(result.data);
+        }
+      } catch (error) {
+        console.error("Error fetching billing:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchBilling();
-  }, [supabase]);
+  }, []);
 
   return (
     <div className="bg-white p-6 rounded-xl border border-gray-100/50 shadow-sm">
@@ -50,8 +47,10 @@ export default function BillingPanel() {
             return (
               <div key={b.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100/30 shadow-sm space-y-2">
                 <div className="flex justify-between items-center border-b border-gray-200/40 pb-2">
-                  <span className="font-bold text-gray-900 text-sm">{(b.patients as any)?.name || 'N/A'}</span>
-                  <span className="text-xxs text-gray-400" suppressHydrationWarning>{new Date(b.created_at).toLocaleDateString()}</span>
+                  <span className="font-bold text-gray-900 text-sm">{b.patientName || 'N/A'}</span>
+                  <span className="text-xxs text-gray-400" suppressHydrationWarning>
+                    {new Date(b.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(b.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs text-gray-600">
@@ -96,7 +95,7 @@ export default function BillingPanel() {
               <th className="px-4 py-3">Paciente</th>
               <th className="px-4 py-3">Fecha</th>
               <th className="px-4 py-3">Tarifa Normal</th>
-              <th className="px-4 py-3">Descuento</th>
+              <th className="px-4 py-3">Ajuste / Descuento</th>
               <th className="px-4 py-3">Total Final</th>
             </tr>
           </thead>
@@ -110,10 +109,16 @@ export default function BillingPanel() {
 
                 return (
                   <tr key={b.id} className="hover:bg-gray-100/50 transition-colors">
-                    <td className="px-4 py-4 font-medium text-gray-900">{(b.patients as any)?.name || 'N/A'}</td>
-                    <td className="px-4 py-4 text-xs text-gray-400" suppressHydrationWarning>{new Date(b.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-4 font-medium text-gray-900">
+                      {b.patientName || 'N/A'}
+                    </td>
+                    <td className="px-4 py-4 text-xs text-gray-400" suppressHydrationWarning>
+                      {new Date(b.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(b.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                    </td>
                     <td className="px-4 py-4">${normal.toFixed(2)}</td>
-                    <td className="px-4 py-4 text-red-500">-${discount.toFixed(2)}</td>
+                    <td className={`px-4 py-4 font-semibold ${extra > 0 ? 'text-red-500' : discount > 0 ? 'text-emerald-600' : 'text-gray-400'}`}>
+                      {extra > 0 ? `+ $${extra.toFixed(2)}` : discount > 0 ? `- $${discount.toFixed(2)}` : `$0.00`}
+                    </td>
                     <td className="px-4 py-4 font-bold text-green-600">${total.toFixed(2)}</td>
                   </tr>
                 );

@@ -69,16 +69,17 @@ export default function DashboardShell({
 
         const filterDoctorId = role === 'doctor' ? profile?.id : profile?.doctor_id;
         
-        let consultationsQuery = supabase
-          .from('consultations')
-          .select('id')
-          .gte('created_at', startOfToday);
-
-        if (filterDoctorId) {
-          consultationsQuery = consultationsQuery.eq('doctor_id', filterDoctorId);
+        let consultationsData: any[] = [];
+        try {
+          const res = await fetch('/api/consultations/list');
+          const result = await res.json();
+          if (result?.success && Array.isArray(result.data)) {
+             consultationsData = result.data.filter((c: any) => c.created_at >= startOfToday);
+          }
+        } catch (e) {
+          console.error('Error fetching consultations for header:', e);
         }
-
-        const { data: consultationsData } = await consultationsQuery;
+        
         const totalAppointments = consultationsData?.length || 0;
 
         let appointees = null;

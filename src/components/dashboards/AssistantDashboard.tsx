@@ -81,7 +81,12 @@ export default function AssistantDashboard() {
 
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const { count } = await supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('date', todayStr);
+    const { count } = await supabase
+      .from('appointments')
+      .select('*', { count: 'exact', head: true })
+      .eq('date', todayStr)
+      .eq('status', 'scheduled');
+    
     if (count !== null) setAppointmentsToday(count);
   };
 
@@ -254,7 +259,7 @@ export default function AssistantDashboard() {
         </div>
         {/* Citas Hoy */}
         <div className="bg-white border-[0.5px] border-black/8 rounded-xl p-6 shadow-sm flex flex-col justify-center">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Citas hoy</span>
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Citas pendientes hoy</span>
           <span className="text-3xl font-medium text-gray-900">{appointmentsToday}</span>
         </div>
       </div>

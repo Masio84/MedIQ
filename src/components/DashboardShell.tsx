@@ -21,8 +21,21 @@ export default function DashboardShell({
   const [loadingStats, setLoadingStats] = useState(false);
 
   useEffect(() => {
-    const list = [22, 23, 24, 25, 26];
-    setWeatherTemp(list[Math.floor(Math.random() * list.length)]);
+    const fetchWeather = async () => {
+      try {
+        // Coordenadas para Aguascalientes, México (basado en prefijos) o CDMX
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=21.8853&longitude=-102.2916&current_weather=true');
+        const data = await res.json();
+        if (data?.current_weather?.temperature) {
+          setWeatherTemp(Math.round(data.current_weather.temperature));
+        } else {
+          setWeatherTemp(24); // Fallback discreto
+        }
+      } catch (error) {
+        setWeatherTemp(24);
+      }
+    };
+    fetchWeather();
   }, []);
   const [onlineDoctors, setOnlineDoctors] = useState(0);
   const [onlineAssistants, setOnlineAssistants] = useState(0);

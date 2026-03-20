@@ -237,12 +237,49 @@ export default function ConsultationForm({ doctorId, initialPatientId }: { docto
 
       if (billingError) throw billingError;
 
+      // 3. Insert follow-up notification if needed
+      if ((formData as any).needs_follow_up && (formData as any).follow_up_date) {
+        // Find assistant linked to this doctor
+        const { data: doctorProfile } = await supabase
+          .from('profiles')
+          .select('name, doctor_id, clinic_id')
+          .eq('id', doctorId)
+          .single();
+
+        // Look for an assistant linked to this doctor
+        const { data: assistants } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'assistant')
+          .eq('doctor_id', doctorId)
+          .limit(1);
+
+        const assistantUserId = assistants?.[0]?.id;
+        const patientName = patients.find(p => p.id === formData.patient_id)?.name || 'Paciente';
+        const doctorName = doctorProfile?.name || 'el médico';
+
+        if (assistantUserId) {
+          await supabase.from('notifications').insert([{
+            from_user_id: doctorId,
+            to_user_id: assistantUserId,
+            type: 'seguimiento_sugerido',
+            patient_id: formData.patient_id,
+            suggested_date: (formData as any).follow_up_date,
+            suggested_time: (formData as any).follow_up_time || null,
+            message: `El Dr. ${doctorName} sugiere seguimiento para ${patientName}`,
+            read: false,
+            acted: false,
+          }]);
+        }
+      }
+
       setFeedback({ isOpen: true, title: '¡Éxito!', message: 'Consulta guardada y enviada a facturación.', type: 'success' });
       setIsModalOpen(false);
       setFormData({
         patient_id: '', weight: '', blood_pressure: '', temperature: '',
-        symptoms: '', diagnosis: '', treatment: '', notes: ''
-      });
+        symptoms: '', diagnosis: '', treatment: '', notes: '',
+        needs_follow_up: false, follow_up_date: '', follow_up_time: '',
+      } as any);
     } catch (err: any) {
       setError(err.message || 'Error al guardar la consulta');
     } finally {
@@ -408,12 +445,11 @@ export default function ConsultationForm({ doctorId, initialPatientId }: { docto
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Indicaciones (Para Asistente)</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Hora Sugerida</label>
                 <input 
-                  type="text" 
-                  name="follow_up_notes"
-                  placeholder="Ej: Revisión de estudios"
-                  value={(formData as any).follow_up_notes || ''}
+                  type="time" 
+                  name="follow_up_time"
+                  value={(formData as any).follow_up_time || ''}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
                 />

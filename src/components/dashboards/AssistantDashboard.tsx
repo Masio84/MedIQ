@@ -30,11 +30,15 @@ export default function AssistantDashboard() {
   const [selectedBilling, setSelectedBilling] = useState<any>(null);
   const [followUpInfo, setFollowUpInfo] = useState<{ date: string; notes: string } | null>(null);
   
-  // Agenda states
   const [agendaData, setAgendaData] = useState({ date: '', time: '', notes: '' });
   const [modalError, setModalError] = useState<string | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifCount, setNotifCount] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
 
   const supabase = createClient();
 
@@ -42,6 +46,40 @@ export default function AssistantDashboard() {
     fetchPendingBillings();
     fetchSupportData();
   }, []);
+
+  // Load unread notifications on mount
+  useEffect(() => {
+    if (!currentUserId) return;
+    const loadNotifications = async () => {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('to_user_id', currentUserId)
+        .eq('read', false)
+        .order('created_at', { ascending: false });
+      setNotifications(data || []);
+      setNotifCount(data?.length || 0);
+    };
+    loadNotifications();
+  }, [currentUserId]);
+
+  // Realtime listener for new notifications
+  useEffect(() => {
+    if (!currentUserId) return;
+    const channel = supabase
+      .channel('notifications-channel')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `to_user_id=eq.${currentUserId}`,
+      }, (payload) => {
+        setNotifications(prev => [payload.new, ...prev]);
+        setNotifCount(prev => prev + 1);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [currentUserId]);
 
   useEffect(() => {
     if (isAppointmentModalOpen) fetchMonthAppointments();
@@ -64,6 +102,7 @@ export default function AssistantDashboard() {
     // 1. Obtener perfil del usuario para el doctor vinculado
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      setCurrentUserId(user.id);
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single();
       if (prof) {
         setCurrentProfile(prof);

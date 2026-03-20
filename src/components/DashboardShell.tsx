@@ -17,11 +17,13 @@ export default function DashboardShell({
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [stats, setStats] = useState({ earnedToday: 0, appointmentsToday: 0 });
+  const [weatherTemp, setWeatherTemp] = useState<number | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
-  const [weatherTemp] = useState(() => {
+
+  useEffect(() => {
     const list = [22, 23, 24, 25, 26];
-    return list[Math.floor(Math.random() * list.length)];
-  });
+    setWeatherTemp(list[Math.floor(Math.random() * list.length)]);
+  }, []);
   const [onlineDoctors, setOnlineDoctors] = useState(0);
   const [onlineAssistants, setOnlineAssistants] = useState(0);
   const [doctorNames, setDoctorNames] = useState<string[]>([]);
@@ -274,7 +276,7 @@ export default function DashboardShell({
                   <span className={`text-[10px] font-bold flex items-center gap-1 mt-0.5 ${
                     role === 'doctor' ? 'text-blue-600' : role === 'assistant' ? 'text-amber-600' : 'text-emerald-600'
                   }`}>
-                    <span>🌤️ {weatherTemp}°C despejado</span>
+                    <span>🌤️ {weatherTemp || '--'}°C despejado</span>
                     <span className="text-gray-300">•</span>
                     <span className="text-gray-400 font-medium">
                       {role === 'doctor' ? '¡Excelente día para consultas!' : role === 'assistant' ? '¡Organización al día!' : '¡Gestión de hoy en orden!'}

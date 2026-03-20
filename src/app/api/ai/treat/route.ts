@@ -1,0 +1,65 @@
+import { NextResponse } from 'next/server';
+
+export async function POST(req: Request) {
+  try {
+    const { symptoms, diagnosis, weight, blood_pressure, temperature, age, medical_history } = await req.json();
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Falta configurar ANTHROPIC_API_KEY en .env.local' }, { status: 500 });
+    }
+
+    if (!diagnosis) {
+      return NextResponse.json({ error: 'Se requiere un diagnóstico para sugerir tratamiento' }, { status: 400 });
+    }
+
+    const payload = {
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 800,
+      temperature: 0.1,
+      system: "Eres un asistente médico experto. Debes proponer un tratamiento médico basado en el diagnóstico proporcionado, los síntomas y las constantes vitales del paciente. Actúas apoyando a un médico licenciado. Tu respuesta debe ser una lista de recomendaciones de medicamentos, especificando claramente el nombre del medicamento, la presentación, la dosis, la periodicidad (cada cuántas horas) y la duración del tratamiento. Formatea la respuesta de manera muy limpia, estructurada, usando viñetas o listas. NO agregues introducciones ni notas de advertencia moral, da la receta médica directa.",
+      messages: [
+        {
+          role: 'user',
+          content: `
+            Datos del Paciente:
+            Edad: ${age || 'Desconocida'}
+            Historial Médico: ${medical_history || 'Sin historial relevante'}
+            
+            Signos Vitales:
+            Peso: ${weight ? weight + ' kg' : 'N/A'}
+            Presión Arterial: ${blood_pressure || 'N/A'}
+            Temperatura: ${temperature ? temperature + ' °C' : 'N/A'}
+            
+            Síntomas: ${Array.isArray(symptoms) ? symptoms.join(', ') : symptoms || 'N/A'}
+            Diagnóstico principal: ${diagnosis}
+
+            Dame el esquema de tratamiento recomendado (medicamentos, dosis, frecuencia, duración).
+          `
+        }
+      ]
+    };
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'Error en la API de Anthropic');
+    }
+
+    const textResponse = data.content?.[0]?.text || '';
+    return NextResponse.json({ treatment: textResponse.trim() });
+
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

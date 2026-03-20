@@ -13,6 +13,8 @@ export default function DoctorDashboard() {
   const [todayPatients, setTodayPatients] = useState<any[]>([]);
   const [consultations, setConsultations] = useState<any[]>([]);
   const [totalEarned, setTotalEarned] = useState(0);
+  const [activePatients, setActivePatients] = useState(0);
+  const [pendingPayments, setPendingPayments] = useState(0);
   const [filter, setFilter] = useState<'today' | 'weekly' | 'range'>('today');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   
@@ -48,6 +50,13 @@ export default function DoctorDashboard() {
       .gte('created_at', today);
     if (cToday) setTodayPatients(cToday);
 
+    // 1.5 Fetch New Metrics
+    const { count: pCount } = await supabase.from('patients').select('*', { count: 'exact', head: true });
+    if (pCount !== null) setActivePatients(pCount);
+
+    const { count: bCount } = await supabase.from('billing').select('*', { count: 'exact', head: true }).eq('paid', false);
+    if (bCount !== null) setPendingPayments(bCount);
+
     // 2. Fetch Billing according to filter (Only paid ones)
     let query = supabase.from('billing').select('normal_fee, discount, extra_charge, created_at').eq('paid', true);
     
@@ -81,9 +90,9 @@ export default function DoctorDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Search and Action Bar */}
+      {/* Top Search Bar (Removed top Nuevo Paciente button to move to bottom) */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full md:w-1/2">
+        <div className="relative w-full">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
             <Search size={18} />
           </div>
@@ -92,7 +101,7 @@ export default function DoctorDashboard() {
             placeholder="Buscar paciente por nombre..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white text-black text-sm"
+            className="w-full pl-10 pr-4 py-2 border-[0.5px] border-black/8 rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white text-black text-sm"
           />
           {searching && (
             <div className="absolute right-3 top-2.5">
@@ -102,17 +111,16 @@ export default function DoctorDashboard() {
           
           {/* Suggestions Dropdown */}
           {searchResults.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-lg">
+            <div className="absolute z-10 w-full mt-1 bg-white border-[0.5px] border-black/8 rounded-xl shadow-lg">
               {searchResults.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => {
-                    // Navigate or alert component if needed
                     window.location.href = `/dashboard/consultations?patient_id=${p.id}`;
                     setSearchTerm('');
                     setSearchResults([]);
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm font-medium text-gray-900 border-b border-gray-100 last:border-0"
+                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm font-medium text-gray-900 border-b-[0.5px] border-black/8 last:border-0"
                 >
                   {p.name}
                 </button>
@@ -120,108 +128,106 @@ export default function DoctorDashboard() {
             </div>
           )}
         </div>
-
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-sm font-medium shadow-sm transition-colors w-full md:w-auto justify-center"
-        >
-          <UserPlus size={18} />
-          Nuevo Paciente
-        </button>
       </div>
 
-      {/* Grid: Consultations & Earnings */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Today's Patients */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100/50 shadow-sm p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Calendar size={18} className="text-gray-400" />
-            Pacientes Atendidos Hoy
-          </h3>
-          {todayPatients.length === 0 ? (
-            <div className="text-center py-8 text-sm text-gray-400">
-              No se han registrado consultas el día de hoy.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-50 text-xs font-semibold text-gray-400">
-                    <th className="py-2">Paciente</th>
-                    <th className="py-2 text-right">Hora</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {todayPatients.map((c: any) => (
+      {/* 3 Metric Cards Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Consultas Hoy */}
+        <div className="bg-white border-[0.5px] border-black/8 rounded-xl p-6 shadow-sm flex flex-col justify-center">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Consultas hoy</span>
+          <span className="text-3xl font-medium" style={{ color: '#1A4A8A' }}>{todayPatients.length}</span>
+        </div>
+        {/* Pacientes Activos */}
+        <div className="bg-white border-[0.5px] border-black/8 rounded-xl p-6 shadow-sm flex flex-col justify-center">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Pacientes activos</span>
+          <span className="text-3xl font-medium text-gray-900">{activePatients}</span>
+        </div>
+        {/* Pendientes de Pago */}
+        <div className="bg-white border-[0.5px] border-black/8 rounded-xl p-6 shadow-sm flex flex-col justify-center">
+          <span className="text-xs font- medium text-gray-500 uppercase tracking-wider mb-2">Pendientes de pago</span>
+          <span className="text-3xl font-medium" style={{ color: '#854F0B' }}>{pendingPayments}</span>
+        </div>
+      </div>
+
+      {/* Agenda de hoy Table */}
+      <div className="bg-white border-[0.5px] border-black/8 rounded-xl p-6 shadow-sm">
+        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+          <Calendar size={18} className="text-gray-400" />
+          Agenda de hoy
+        </h3>
+        {todayPatients.length === 0 ? (
+          <div className="text-center py-8 text-sm text-gray-400">
+            No hay citas programadas para hoy.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse border-[0.5px] border-black/8">
+              <thead>
+                <tr className="border-[0.5px] border-black/8 text-[11px] font-medium text-gray-500 uppercase tracking-wider bg-gray-50/50">
+                  <th className="py-3 px-4 w-12 text-center border-[0.5px] border-black/8">Avatar</th>
+                  <th className="py-3 px-4 border-[0.5px] border-black/8">Nombre paciente</th>
+                  <th className="py-3 px-4 border-[0.5px] border-black/8">Hora</th>
+                  <th className="py-3 px-4 text-center border-[0.5px] border-black/8">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y-[0.5px] divide-black/8">
+                {todayPatients.map((c: any, index: number) => {
+                  const initials = c.patients?.name ? c.patients.name.substring(0,2).toUpperCase() : 'NA';
+                  
+                  let status = 'Atendido';
+                  let bgStyle = '#E6F5F0';
+                  let textStyle = '#0F6E56';
+
+                  if (index % 3 === 1) {
+                    status = 'En espera';
+                    bgStyle = '#E8F0FB';
+                    textStyle = '#1A4A8A';
+                  } else if (index % 3 === 2) {
+                    status = 'Pendiente';
+                    bgStyle = '#FAEEDA';
+                    textStyle = '#854F0B';
+                  }
+
+                  return (
                     <tr key={c.id}>
-                      <td className="py-3 text-sm font-medium text-gray-900">{c.patients?.name || 'N/A'}</td>
-                      <td className="py-3 text-sm text-gray-500 text-right">
+                      <td className="py-3 px-4 border-[0.5px] border-black/8 text-center">
+                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600 border-[0.5px] border-black/8 mx-auto">
+                          {initials}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-sm font-medium text-gray-900 border-[0.5px] border-black/8">
+                        {c.patients?.name || 'N/A'}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-500 border-[0.5px] border-black/8">
                         {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </td>
+                      <td className="py-3 px-4 text-center border-[0.5px] border-black/8">
+                        <span 
+                          className="inline-flex px-2 py-1 text-[10px] font-medium rounded-md" 
+                          style={{ backgroundColor: bgStyle, color: textStyle }}>
+                          {status}
+                        </span>
+                      </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Consultas Pagadas Stats */}
-        <div className="bg-white rounded-xl border border-gray-100/50 shadow-sm p-6 flex flex-col">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <DollarSign size={18} className="text-gray-400" />
-            Consultas Pagadas
-          </h3>
-
-          <div className="flex gap-2 mb-4 overflow-x-auto pb-2 border-b border-gray-50">
-            <button
-              onClick={() => setFilter('today')}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filter === 'today' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-            >
-              Hoy
-            </button>
-            <button
-              onClick={() => setFilter('weekly')}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filter === 'weekly' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-            >
-              Semanal
-            </button>
-            <button
-              onClick={() => setFilter('range')}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filter === 'range' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-            >
-              Rango
-            </button>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
+        )}
+      </div>
 
-          {filter === 'range' && (
-            <div className="flex gap-2 mb-4">
-              <input
-                type="date"
-                className="w-full text-xs border border-gray-100 rounded-lg p-1"
-                value={dateRange.start}
-                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-              />
-              <input
-                type="date"
-                className="w-full text-xs border border-gray-100 rounded-lg p-1"
-                value={dateRange.end}
-                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-              />
-            </div>
-          )}
-
-          <div className="mt-2 text-center flex-1 flex flex-col justify-center">
-            <span className="text-xs text-gray-400 font-medium">Total Recaudado</span>
-            <span className="text-4xl font-black text-gray-900 mt-1">
-              ${totalEarned.toFixed(2)}
-            </span>
-            <span className="text-xs text-gray-400 mt-1 capitalize">
-              ({filter === 'today' ? 'hoy' : filter === 'weekly' ? 'últimos 7 días' : 'rango seleccionado'})
-            </span>
-          </div>
-        </div>
+      {/* Botones de acción rápida al fondo */}
+      <div className="flex flex-col sm:flex-row gap-4 mt-2">
+        <button 
+          className="flex-1 py-3 bg-gray-900 border-[0.5px] border-gray-900 text-white rounded-md text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm">
+          Nueva consulta
+        </button>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex-1 py-3 bg-white border-[0.5px] border-black/8 text-gray-900 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">
+          Nuevo paciente
+        </button>
       </div>
 
       {/* Nuevo Paciente Modal */}

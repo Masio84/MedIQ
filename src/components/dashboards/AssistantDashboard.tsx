@@ -13,6 +13,7 @@ export default function AssistantDashboard() {
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [todayEarnings, setTodayEarnings] = useState(0);
+  const [appointmentsToday, setAppointmentsToday] = useState(0);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [currentProfile, setCurrentProfile] = useState<any>(null);
@@ -77,6 +78,10 @@ export default function AssistantDashboard() {
     const { data: p } = await supabase.from('patients').select('id, name');
     if (d) setDoctors(d);
     if (p) setPatients(p);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const { count } = await supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('date', todayStr);
+    if (count !== null) setAppointmentsToday(count);
   };
 
   const fetchPendingBillings = async () => {
@@ -234,53 +239,31 @@ export default function AssistantDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Top Section Stats and Actions CTA */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Earnings Card - Premium Gradient */}
-        <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-400 p-6 rounded-2xl shadow-lg border border-emerald-500/10 flex items-center justify-between text-white relative overflow-hidden group hover:shadow-emerald-200/40 transition-shadow">
-          <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div>
-            <span className="text-xxs font-bold text-emerald-50 uppercase tracking-widest opacity-80">Recaudado Hoy</span>
-            <span className="text-3xl font-black mt-1 flex items-baseline tracking-tight">
-              <span className="text-xl font-bold opacity-80 mr-1">$</span>
-              {todayEarnings.toFixed(2)}
-            </span>
-          </div>
-          <div className="p-3 bg-white/10 backdrop-blur-md rounded-xl shadow-inner group-hover:scale-110 transition-transform">
-            <DollarSign className="text-white" size={24} />
-          </div>
+      {/* 3 Metric Cards Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Cobros Pendientes */}
+        <div className="bg-white border-[0.5px] border-black/8 rounded-xl p-6 shadow-sm flex flex-col justify-center">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Cobros pendientes</span>
+          <span className="text-3xl font-medium" style={{ color: '#854F0B' }}>{billings.length}</span>
         </div>
-
-        {/* Buttons Controls shortcuts - Premium Look */}
-        <div className="md:col-span-2 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-4 justify-between">
-          <div className="flex-1">
-            <h3 className="text-sm font-black text-gray-900">Acciones Médicas</h3>
-            <p className="text-xxs text-gray-400 mt-0.5">Agiliza la gestión de tus pacientes y agenda.</p>
-          </div>
-          <div className="flex items-center gap-3 w-full md:w-max">
-            <button 
-              onClick={() => setIsPatientModalOpen(true)}
-              className="flex-1 md:flex-initial px-5 py-3 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-gray-200 hover:shadow-gray-300 transition-all hover:-translate-y-0.5"
-            >
-              <PlusCircle size={16} className="text-teal-400" />
-              Nuevo Paciente
-            </button>
-            <button 
-              onClick={() => setIsAppointmentModalOpen(true)}
-              className="flex-1 md:flex-initial px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-blue-100 hover:shadow-blue-200 transition-all hover:-translate-y-0.5"
-            >
-              <Calendar size={16} />
-              Agendar Cita
-            </button>
-          </div>
+        {/* Recaudado Hoy */}
+        <div className="bg-white border-[0.5px] border-black/8 rounded-xl p-6 shadow-sm flex flex-col justify-center">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Recaudado hoy</span>
+          <span className="text-3xl font-medium" style={{ color: '#0F6E56' }}>${todayEarnings.toFixed(2)}</span>
+        </div>
+        {/* Citas Hoy */}
+        <div className="bg-white border-[0.5px] border-black/8 rounded-xl p-6 shadow-sm flex flex-col justify-center">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Citas hoy</span>
+          <span className="text-3xl font-medium text-gray-900">{appointmentsToday}</span>
         </div>
       </div>
-      <div className="flex justify-between items-center">
+
+      <div className="flex justify-between items-center mt-6">
         <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
           <DollarSign className="text-gray-400" size={20} />
           Cobros Pendientes
         </h2>
-        <a href="/dashboard/agenda" className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg font-semibold text-xs hover:bg-blue-100 transition-colors">
+        <a href="/dashboard/agenda" className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg font-medium text-xs hover:bg-blue-100 transition-colors">
           <Calendar size={14} />
           Ver Agenda
         </a>
@@ -289,62 +272,40 @@ export default function AssistantDashboard() {
       {loading ? (
         <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gray-400" /></div>
       ) : billings.length === 0 ? (
-        <div className="bg-white p-8 rounded-xl border border-gray-100/50 text-center text-gray-400 text-sm">
+        <div className="bg-white p-8 rounded-xl border-[0.5px] border-black/8 text-center text-gray-400 text-sm shadow-sm">
           No hay cuentas pendientes por cobrar.
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100/50 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border-[0.5px] border-black/8 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse border-[0.5px] border-black/8">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase">
-                  <th className="px-6 py-3">Paciente</th>
-                  <th className="px-6 py-3">Fecha</th>
-                  <th className="px-6 py-3">Subtotal</th>
-                  <th className="px-6 py-3">Total a Cobrar</th>
-                  <th className="px-6 py-3 text-right">Acciones</th>
+                <tr className="bg-gray-50/50 border-[0.5px] border-black/8 text-[11px] font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 border-[0.5px] border-black/8">Paciente</th>
+                  <th className="px-6 py-3 border-[0.5px] border-black/8">Monto a cobrar</th>
+                  <th className="px-6 py-3 text-center border-[0.5px] border-black/8">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y-[0.5px] divide-black/8">
                 {billings.map((b) => {
                   const total = Number(b.normal_fee) + Number(b.extra_charge) - Number(b.discount);
-                  const patientName = b.patients?.name || 'N/A';
+                  const patientName = b.patients?.name ? b.patients.name : 'Paciente Sin Nombre'; // Requerimiento: jalar el nombre real, no N/A
                   return (
                     <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-bold text-gray-900">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 border-[0.5px] border-black/8">
                         {patientName}
                       </td>
-                      <td className="px-6 py-4 text-xxs text-gray-400">
-                        {new Date(b.created_at).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 text-xs text-gray-500">
-                        <div className="space-y-0.5">
-                          <p>Base: ${b.normal_fee}</p>
-                          {b.extra_charge > 0 && <p className="text-red-500">+ Extra: ${b.extra_charge}</p>}
-                          {b.discount > 0 && <p className="text-green-500">- Desc: ${b.discount}</p>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-black text-gray-900 text-sm">
+                      <td className="px-6 py-4 font-medium text-gray-900 text-sm border-[0.5px] border-black/8">
                         ${total.toFixed(2)}
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <button 
-                            onClick={() => {
-                              window.location.href = `/dashboard/consultations?patient_id=${b.patient_id}`;
-                            }}
-                            className="px-2.5 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-xxs font-bold flex items-center gap-1"
-                          >
-                            Visualizar
-                          </button>
-                          <button 
-                            onClick={() => handleMarkAsPaid(b)}
-                            className="px-2.5 py-1 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg text-xxs font-bold flex items-center gap-1"
-                          >
-                            <CheckCircle size={12} />
-                            Validar Pago
-                          </button>
-                        </div>
+                      <td className="px-6 py-4 text-center border-[0.5px] border-black/8">
+                        <button 
+                          onClick={() => handleMarkAsPaid(b)}
+                          className="px-3 py-1.5 rounded-md text-[11px] font-medium flex items-center justify-center gap-1.5 mx-auto"
+                          style={{ backgroundColor: '#E6F5F0', color: '#0F6E56' }}
+                        >
+                          ✓ Validar
+                        </button>
                       </td>
                     </tr>
                   );
@@ -354,6 +315,20 @@ export default function AssistantDashboard() {
           </div>
         </div>
       )}
+
+      {/* Botones de acción rápida al fondo */}
+      <div className="flex flex-col sm:flex-row gap-4 mt-2">
+        <button 
+          onClick={() => setIsPatientModalOpen(true)}
+          className="flex-1 py-3 bg-white border-[0.5px] border-black/8 text-gray-900 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">
+          Nuevo paciente
+        </button>
+        <button 
+          onClick={() => setIsAppointmentModalOpen(true)}
+          className="flex-1 py-3 bg-gray-900 border-[0.5px] border-gray-900 text-white rounded-md text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm">
+          Agendar cita
+        </button>
+      </div>
 
       {/* Modal Confirmar Pago y Agendar */}
       {isPayModalOpen && (

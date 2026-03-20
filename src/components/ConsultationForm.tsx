@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, Sparkles, X, Plus } from 'lucide-react';
 
 export default function ConsultationForm({ doctorId, initialPatientId }: { doctorId: string; initialPatientId?: string }) {
   const [patients, setPatients] = useState<any[]>([]);
@@ -28,6 +28,13 @@ export default function ConsultationForm({ doctorId, initialPatientId }: { docto
     diagnosis: string[];
     treatment: string[];
   }>({ symptoms: [], diagnosis: [], treatment: [] });
+
+  // AI Integration States
+  const [symptomsList, setSymptomsList] = useState<string[]>([]);
+  const [symptomInput, setSymptomInput] = useState('');
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [isTreating, setIsTreating] = useState(false);
+  const [patientContext, setPatientContext] = useState<any>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -69,18 +76,100 @@ export default function ConsultationForm({ doctorId, initialPatientId }: { docto
     setFormData((prev) => ({ ...prev, patient_id: initialPatientId }));
   }, [initialPatientId]);
 
-  // AI Mock Autocomplete mechanism
   useEffect(() => {
-    const mockAiSytmpoms = ['Fiebre', 'Dolor de cabeza', 'Tos seca', 'Dolor de garganta', 'Congestión nasal'];
-    const mockAiDiag = ['Rinofaringitis aguda (Resfriado común)', 'Gastroenteritis viral', 'Faringoamigdalitis', 'Infección urinaria'];
-    const mockAiTreat = ['Paracetamol 500mg cada 8 horas', 'Reposo e hidratación abundante', 'Amoxicilina 500mg (según criterio)', 'Antigripal descongestivo'];
+    if (!formData.patient_id) {
+      setPatientContext(null);
+      return;
+    }
+    const fetchPatientData = async () => {
+      const { data } = await supabase.from('patients').select('*').eq('id', formData.patient_id).single();
+      if (data) setPatientContext(data);
+    };
+    fetchPatientData();
+  }, [formData.patient_id, supabase]);
 
+  const mockAiSytmpoms = ['Fiebre', 'Dolor de cabeza', 'Tos seca', 'Dolor de garganta', 'Congestión nasal', 'Fatiga', 'Náuseas'];
+
+  useEffect(() => {
     setAiSuggestions({
-      symptoms: mockAiSytmpoms.filter(s => formData.symptoms && s.toLowerCase().includes(formData.symptoms.toLowerCase())),
-      diagnosis: mockAiDiag.filter(s => formData.diagnosis && s.toLowerCase().includes(formData.diagnosis.toLowerCase())),
-      treatment: mockAiTreat.filter(s => formData.treatment && s.toLowerCase().includes(formData.treatment.toLowerCase())),
+      symptoms: mockAiSytmpoms.filter(s => symptomInput && s.toLowerCase().includes(symptomInput.toLowerCase()) && !symptomsList.includes(s)),
+      diagnosis: [],
+      treatment: []
     });
-  }, [formData.symptoms, formData.diagnosis, formData.treatment]);
+  }, [symptomInput, symptomsList]);
+
+  const handleAddSymptom = (s: string) => {
+    if (!s.trim()) return;
+    if (!symptomsList.includes(s.trim())) {
+      setSymptomsList([...symptomsList, s.trim()]);
+    }
+    setSymptomInput('');
+  };
+
+  const generateDiagnosis = async (retry = false) => {
+    if (symptomsList.length === 0 && !formData.symptoms) {
+      setFeedback({ isOpen: true, title: 'Atención', message: 'Agrega síntomas primero', type: 'error' });
+      return;
+    }
+    setIsDiagnosing(true);
+    try {
+      const res = await fetch('/api/ai/diagnose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symptoms: symptomsList.length > 0 ? symptomsList : [formData.symptoms],
+          weight: formData.weight,
+          blood_pressure: formData.blood_pressure,
+          temperature: formData.temperature,
+          age: patientContext?.dob ? Math.floor((new Date().getTime() - new Date(patientContext.dob).getTime()) / 31557600000) : null,
+          medical_history: patientContext?.medical_history || ''
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      
+      if (retry) {
+        setFormData(prev => ({ ...prev, diagnosis: prev.diagnosis + '\n\nOtra opción IA:\n' + data.diagnosis }));
+      } else {
+        setFormData(prev => ({ ...prev, diagnosis: data.diagnosis }));
+      }
+    } catch (err: any) {
+      setFeedback({ isOpen: true, title: 'Error IA', message: err.message, type: 'error' });
+    } finally {
+      setIsDiagnosing(false);
+    }
+  };
+
+  const generateTreatment = async () => {
+    if (!formData.diagnosis) {
+      setFeedback({ isOpen: true, title: 'Atención', message: 'Genera o escribe un diagnóstico primero', type: 'error' });
+      return;
+    }
+    setIsTreating(true);
+    try {
+      const res = await fetch('/api/ai/treat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symptoms: symptomsList.length > 0 ? symptomsList : [formData.symptoms],
+          diagnosis: formData.diagnosis,
+          weight: formData.weight,
+          blood_pressure: formData.blood_pressure,
+          temperature: formData.temperature,
+          age: patientContext?.dob ? Math.floor((new Date().getTime() - new Date(patientContext.dob).getTime()) / 31557600000) : null,
+          medical_history: patientContext?.medical_history || ''
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setFormData(prev => ({ ...prev, treatment: data.treatment }));
+    } catch (err: any) {
+      setFeedback({ isOpen: true, title: 'Error IA', message: err.message, type: 'error' });
+    } finally {
+      setIsTreating(false);
+    }
+  };
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -113,7 +202,7 @@ export default function ConsultationForm({ doctorId, initialPatientId }: { docto
           {
             patient_id: formData.patient_id,
             doctor_id: doctorId,
-            symptoms: formData.symptoms || null,
+            symptoms: symptomsList.length > 0 ? symptomsList.join(', ') : (formData.symptoms || null),
             diagnosis: formData.diagnosis || null,
             treatment: formData.treatment || null,
             weight: formData.weight ? parseFloat(formData.weight) : null,
@@ -188,7 +277,7 @@ export default function ConsultationForm({ doctorId, initialPatientId }: { docto
           </select>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Peso (kg)</label>
             <input type="number" step="0.1" name="weight" value={formData.weight} onChange={handleInputChange} className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none" />
@@ -203,79 +292,92 @@ export default function ConsultationForm({ doctorId, initialPatientId }: { docto
           </div>
         </div>
 
-        {/* Symptoms filed with AI Autocomplete */}
-        <div className="relative">
-          <label className="block text-xs font-medium text-gray-500 mb-1">Síntomas</label>
-          <textarea
-            name="symptoms"
-            rows={2}
-            value={formData.symptoms}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
-            placeholder="El paciente presenta..."
-          />
-          {aiSuggestions.symptoms.length > 0 && (
-            <div className="absolute z-10 w-full bg-white border border-gray-50 shadow-sm rounded-lg mt-1 p-2">
-              <span className="text-xs text-gray-400 font-semibold mb-1 block">Sugerencias IA:</span>
-              <div className="flex flex-wrap gap-1">
-                {aiSuggestions.symptoms.map(s => (
-                  <button key={s} type="button" onClick={() => applySuggestion('symptoms', s)} className="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded hover:bg-gray-100">{s}</button>
-                ))}
+        {/* Symptoms (Capsules) */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Síntomas *</label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {symptomsList.map(s => (
+              <span key={s} className="inline-flex items-center gap-1 bg-gray-100 border-[0.5px] border-black/8 text-gray-800 px-2 py-1 rounded-md text-xs font-medium">
+                {s}
+                <button type="button" onClick={() => setSymptomsList(symptomsList.filter(item => item !== s))} className="text-gray-400 hover:text-red-500"><X size={12}/></button>
+              </span>
+            ))}
+          </div>
+          <div className="relative flex gap-2">
+            <input
+              type="text"
+              value={symptomInput}
+              onChange={(e) => setSymptomInput(e.target.value)}
+              onKeyDown={(e) => { if(e.key === 'Enter'){ e.preventDefault(); handleAddSymptom(symptomInput); } }}
+              className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900"
+              placeholder="Escribe síntoma y presiona Enter..."
+            />
+            <button type="button" onClick={() => handleAddSymptom(symptomInput)} className="px-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-600">
+              <Plus size={16}/>
+            </button>
+            {aiSuggestions.symptoms.length > 0 && (
+              <div className="absolute top-full z-10 w-full shadow-lg rounded-xl mt-1 p-3 bg-[#F8F9FA] border border-gray-100 border-l-[2px] border-l-[#1A4A8A]">
+                <div className="mb-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold" style={{ backgroundColor: '#E8F0FB', color: '#1A4A8A' }}>
+                    ✦ Sugerencias IA
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {aiSuggestions.symptoms.map(s => (
+                    <button key={s} type="button" onClick={() => handleAddSymptom(s)} className="text-xs bg-white border-[0.5px] border-black/8 text-gray-700 px-2.5 py-1.5 rounded-md hover:bg-gray-50 transition-colors shadow-sm">{s}</button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Diagnosis with AI Autocomplete */}
-        <div className="relative">
-          <label className="block text-xs font-medium text-gray-500 mb-1">Diagnóstico</label>
+        {/* Diagnosis */}
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <label className="block text-xs font-medium text-gray-500">Diagnóstico</label>
+            <div className="flex gap-2">
+              {formData.diagnosis && (
+                 <button type="button" onClick={() => generateDiagnosis(true)} disabled={isDiagnosing} className="text-[10px] font-bold px-2 py-1 rounded-md bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 transition-colors disabled:opacity-50">
+                    Sugerir otro
+                 </button>
+              )}
+              <button type="button" onClick={() => generateDiagnosis(false)} disabled={isDiagnosing} className="flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md transition-colors disabled:opacity-50" style={{ backgroundColor: '#E8F0FB', color: '#1A4A8A' }}>
+                {isDiagnosing ? <Loader2 size={12} className="animate-spin"/> : <Sparkles size={12} />} Sugerencia IA
+              </button>
+            </div>
+          </div>
           <textarea
             name="diagnosis"
-            rows={2}
+            rows={3}
             value={formData.diagnosis}
             onChange={handleInputChange}
-            className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
+            className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900"
             placeholder="Ej: Rinofaringitis aguda..."
           />
-          {aiSuggestions.diagnosis.length > 0 && (
-            <div className="absolute z-10 w-full bg-white border border-gray-50 shadow-sm rounded-lg mt-1 p-2">
-              <span className="text-xs text-gray-400 font-semibold mb-1 block">Sugerencias IA:</span>
-              <div className="flex flex-wrap gap-1">
-                {aiSuggestions.diagnosis.map(d => (
-                  <button key={d} type="button" onClick={() => applySuggestion('diagnosis', d)} className="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded hover:bg-gray-100">{d}</button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Treatment with AI Autocomplete */}
-        <div className="relative">
-          <label className="block text-xs font-medium text-gray-500 mb-1">Tratamiento / Receta</label>
+        {/* Treatment */}
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <label className="block text-xs font-medium text-gray-500">Tratamiento / Receta</label>
+            <button type="button" onClick={generateTreatment} disabled={isTreating} className="flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md transition-colors disabled:opacity-50" style={{ backgroundColor: '#E8F0FB', color: '#1A4A8A' }}>
+              {isTreating ? <Loader2 size={12} className="animate-spin"/> : <Sparkles size={12} />} Sugerir Tratamiento IA
+            </button>
+          </div>
           <textarea
             name="treatment"
-            rows={3}
+            rows={4}
             value={formData.treatment}
             onChange={handleInputChange}
-            className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
+            className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900"
             placeholder="Prescribir medicamentos y dosis..."
           />
-          {aiSuggestions.treatment.length > 0 && (
-            <div className="absolute z-10 w-full bg-white border border-gray-50 shadow-sm rounded-lg mt-1 p-2">
-              <span className="text-xs text-gray-400 font-semibold mb-1 block">Sugerencias IA:</span>
-              <div className="flex flex-wrap gap-1">
-                {aiSuggestions.treatment.map(t => (
-                  <button key={t} type="button" onClick={() => applySuggestion('treatment', t)} className="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded hover:bg-gray-100">{t}</button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* AI Warning Footer */}
-        <div className="p-3 bg-amber-50 rounded-lg flex items-start gap-2 border border-amber-100">
-          <AlertTriangle className="text-amber-500 flex-shrink-0" size={16} />
-          <p className="text-xs text-amber-700">
+        <div className="p-3 bg-[#F8F9FA] rounded-xl flex items-start gap-2 border border-gray-100 border-l-[3px] border-l-[#854F0B]">
+          <p className="text-xs text-gray-600 font-medium leading-relaxed">
             Las sugerencias generadas por IA NO constituyen un diagnóstico médico. Son únicamente recomendaciones basadas en los síntomas registrados. La responsabilidad final recae en el médico tratante.
           </p>
         </div>

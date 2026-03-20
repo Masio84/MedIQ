@@ -279,14 +279,22 @@ export default function DashboardShell({
                   </div>
                 )}
                 <div className="flex flex-col">
-                  <h2 className="text-sm font-semibold text-gray-800 leading-tight">
-                    {getGreeting()}, {
-                      role === 'doctor' 
-                      ? (profile?.name && (profile.name.toLowerCase().trim().startsWith('dr.') || profile.name.toLowerCase().trim().startsWith('dr ') || profile.name.toLowerCase().trim().startsWith('dra.') || profile.name.toLowerCase().trim().startsWith('dra ')) ? profile.name : `Dr. ${profile?.name || 'Médico'}`)
-                      : (profile?.name || (role === 'admin' ? 'Administrador' : 'Asistente'))
-                    }
-                  </h2>
-                  <span className={`text-[10px] font-bold flex items-center gap-1 mt-0.5 ${
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-medium text-gray-800 leading-tight">
+                      {getGreeting()}, {
+                        role === 'doctor' 
+                        ? (profile?.name && (profile.name.toLowerCase().trim().startsWith('dr.') || profile.name.toLowerCase().trim().startsWith('dr ') || profile.name.toLowerCase().trim().startsWith('dra.') || profile.name.toLowerCase().trim().startsWith('dra ')) ? profile.name : `Dr. ${profile?.name || 'Médico'}`)
+                        : (profile?.name || (role === 'admin' ? 'Administrador' : 'Asistente'))
+                      }
+                    </h2>
+                    {role === 'doctor' && (
+                      <span className="text-[10px] font-medium px-2 py-0.5" style={{ backgroundColor: '#E8F0FB', color: '#1A4A8A', borderRadius: '6px' }}>Doctor</span>
+                    )}
+                    {role === 'assistant' && (
+                      <span className="text-[10px] font-medium px-2 py-0.5" style={{ backgroundColor: '#E6F5F0', color: '#0F6E56', borderRadius: '6px' }}>Asistente</span>
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-medium flex items-center gap-1 mt-0.5 ${
                     role === 'doctor' ? 'text-blue-600' : role === 'assistant' ? 'text-amber-600' : 'text-emerald-600'
                   }`}>
                     <span>🌤️ {weatherTemp || '--'}°C despejado</span>

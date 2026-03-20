@@ -10,6 +10,7 @@ export async function GET() {
         normal_fee,
         discount,
         extra_charge,
+        paid,
         created_at,
         patient_id,
         patients ( name ),
@@ -38,6 +39,7 @@ export async function GET() {
         normal_fee: b.normal_fee,
         discount: b.discount,
         extra_charge: b.extra_charge,
+        paid: b.paid,
         created_at: b.created_at,
         patient_id: b.patient_id,
         patientName

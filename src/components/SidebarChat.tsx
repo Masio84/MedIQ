@@ -11,6 +11,8 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
   const [showMention, setShowMention] = useState(false);
   const [filteredPatients, setFilteredPatients] = useState<any[]>([]);
   const [targetProfileName, setTargetProfileName] = useState<string>('');
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
@@ -38,7 +40,8 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
         .from('chat_messages')
         .select('*')
         .eq('doctor_id', targetDoctorId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(25);
 
       if (error) {
          console.error("Error fetching messages:", error);
@@ -46,11 +49,13 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
       }
 
       if (data) {
-         const enriched = await Promise.all(data.map(async (m) => {
+         const inverted = [...data].reverse();
+         const enriched = await Promise.all(inverted.map(async (m) => {
             const { data: sender } = await supabase.from('profiles').select('name, avatar_url').eq('id', m.from_user_id).single();
             return { ...m, profiles: sender };
          }));
          setMessages(enriched);
+         if (data.length < 25) setHasMore(false);
       }
     };
 
@@ -94,11 +99,47 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
     };
   }, [profile?.id, targetDoctorId]);
 
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current && messages.length > 0) {
+       if (isInitialLoad) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+          setIsInitialLoad(false);
+       } else {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+       }
     }
   }, [messages]);
+
+  const fetchOlderMessages = async () => {
+    if (!hasMore || loadingMore || messages.length === 0) return;
+    setLoadingMore(true);
+
+    const oldest = messages.find(m => !m.isOptimistic); // Evitar optimistas
+    if (!oldest) { setLoadingMore(false); return; }
+
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('doctor_id', targetDoctorId)
+      .lt('created_at', oldest.created_at)
+      .order('created_at', { ascending: false })
+      .limit(25);
+
+    if (data && data.length > 0) {
+       const inverted = [...data].reverse();
+       const enriched = await Promise.all(inverted.map(async (m) => {
+          const { data: sender } = await supabase.from('profiles').select('name, avatar_url').eq('id', m.from_user_id).single();
+          return { ...m, profiles: sender };
+       }));
+       setMessages(prev => [...enriched, ...prev]);
+       if (data.length < 25) setHasMore(false);
+    } else {
+       setHasMore(false);
+    }
+    setLoadingMore(false);
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || !targetDoctorId) return;
@@ -157,7 +198,10 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
 
   useEffect(() => {
     isOpenRef.current = isOpen;
-    if (isOpen) setUnreadCount(0);
+    if (isOpen) {
+       setUnreadCount(0);
+       setIsInitialLoad(true); // Forzar scroll a abajo al reabrir el panel
+    }
   }, [isOpen]);
 
   // El chat flotará en la esquina inferior derecha para no saturar el sidebar en laptops de 13"
@@ -191,7 +235,15 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
           </div>
 
           {/* Messages List Area */}
-          <div className="flex-1 overflow-y-auto space-y-3 p-3 flex flex-col scrollbar-thin bg-gray-50/50">
+          <div 
+            onScroll={(e) => {
+               if (e.currentTarget.scrollTop === 0) {
+                  fetchOlderMessages();
+               }
+            }}
+            className="flex-1 overflow-y-auto space-y-3 p-3 flex flex-col scrollbar-thin bg-gray-50/50"
+          >
+            {loadingMore && <div className="text-center text-[10px] text-gray-400">Cargando anteriores...</div>}
             {messages.map((m, i) => {
               const isMe = m.from_user_id === profile?.id;
               const avatar = m.profiles?.avatar_url;

@@ -188,7 +188,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || !targetDoctorId) return;
+    if (!input.trim() || !selectedUserId) return;
 
     const msgText = input;
     setInput(''); // Limpiar caja instantáneamente
@@ -196,7 +196,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
     // Respuesta Optimista
     const tempMessage = {
       id: Math.random().toString(),
-      doctor_id: targetDoctorId,
+      doctor_id: selectedUserId,
       from_user_id: profile.id,
       message: msgText,
       created_at: new Date().toISOString(),
@@ -215,6 +215,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
 
     if (error) {
        console.error("Error sending message:", error);
+       alert("Error al enviar mensaje (posible restricción RLS): " + (error.message || "Insert fallido"));
        setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
     }
   };

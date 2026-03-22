@@ -100,9 +100,11 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
   }, [profile?.id, targetDoctorId]);
 
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const isPrependRef = useRef(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (loadingMore) return; // No auto-scroll si estamos paginando hacia atrás
+    if (isPrependRef.current) return;
 
     if (messagesEndRef.current && messages.length > 0) {
        const timer = setTimeout(() => {
@@ -110,17 +112,17 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
              messagesEndRef.current.scrollIntoView({ behavior: isInitialLoad ? 'auto' : 'smooth' });
              if (isInitialLoad) setIsInitialLoad(false);
           }
-       }, 150); // Tiempo suficiente para el render de la caja fija
+       }, 150);
        
        return () => clearTimeout(timer);
     }
-  }, [messages, isInitialLoad, loadingMore]);
+  }, [messages, isInitialLoad]);
 
   const fetchOlderMessages = async () => {
     if (!hasMore || loadingMore || messages.length === 0) return;
     setLoadingMore(true);
 
-    const oldest = messages.find(m => !m.isOptimistic); // Evitar optimistas
+    const oldest = messages.find(m => !m.isOptimistic);
     if (!oldest) { setLoadingMore(false); return; }
 
     const { data } = await supabase
@@ -137,7 +139,22 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
           const { data: sender } = await supabase.from('profiles').select('name, avatar_url').eq('id', m.from_user_id).single();
           return { ...m, profiles: sender };
        }));
+       
+       const container = scrollContainerRef.current;
+       const currentScrollHeight = container ? container.scrollHeight : 0;
+       
+       isPrependRef.current = true;
        setMessages(prev => [...enriched, ...prev]);
+
+       // Restaurar la posición del scroll exactamente donde estaba
+       setTimeout(() => {
+          if (container) {
+             const newScrollHeight = container.scrollHeight;
+             container.scrollTop = newScrollHeight - currentScrollHeight;
+          }
+          isPrependRef.current = false;
+       }, 50);
+
        if (data.length < 25) setHasMore(false);
     } else {
        setHasMore(false);
@@ -240,6 +257,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
 
           {/* Messages List Area */}
           <div 
+            ref={scrollContainerRef}
             onScroll={(e) => {
                if (e.currentTarget.scrollTop === 0) {
                   fetchOlderMessages();

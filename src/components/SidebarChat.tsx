@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Send, Smile, Paperclip, MessageSquare } from 'lucide-react';
+import { Send, Smile, Paperclip, MessageSquare, ChevronDown } from 'lucide-react';
 
 export default function SidebarChat({ profile, role }: { profile: any; role: string }) {
   const [messages, setMessages] = useState<any[]>([]);
@@ -10,6 +10,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
   const [patients, setPatients] = useState<any[]>([]);
   const [showMention, setShowMention] = useState(false);
   const [filteredPatients, setFilteredPatients] = useState<any[]>([]);
+  const [targetProfileName, setTargetProfileName] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
@@ -17,6 +18,20 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
 
   useEffect(() => {
     if (!profile?.id || !targetDoctorId) return;
+
+    // Fetch target profile name (Only needed if Assistant chatting with Doctor, Wait, Doctor chatting with Assistant wants assistant name too!)
+    const fetchTarget = async () => {
+       if (role === 'doctor') {
+          // Si soy Doctor, busco los asistentes vinculados a mi id
+          const { data } = await supabase.from('profiles').select('name').eq('doctor_id', profile.id).eq('role', 'assistant').limit(1).single();
+          if (data) setTargetProfileName(data.name);
+       } else {
+          // Si soy Asistente, busco el doctor vinculado
+          const { data } = await supabase.from('profiles').select('name').eq('id', targetDoctorId).single();
+          if (data) setTargetProfileName(data.name);
+       }
+    };
+    fetchTarget();
 
     const fetchMessages = async () => {
       const { data } = await supabase
@@ -154,11 +169,13 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
         <div className="fixed bottom-6 right-6 bg-white rounded-2xl border border-gray-100 shadow-2xl h-[420px] w-[340px] flex flex-col overflow-hidden z-50 animate-in slide-in-from-bottom-6 fade-in-20 duration-200">
           {/* Header */}
           <div className="px-3.5 py-3 border-b border-gray-50 flex justify-between items-center bg-[#1A4A8A] text-white">
-            <span className="text-[11px] font-bold flex items-center gap-1.5">
+            <span className="text-xs font-bold flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              {role === 'doctor' ? 'Chat con Asistente' : 'Chat con Dr.'}
+              {targetProfileName ? `${targetProfileName}` : (role === 'doctor' ? 'Chat con Asistente' : 'Chat con Dr.')}
             </span>
-            <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white text-xs font-black">Esc</button>
+            <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white transition-transform active:scale-95">
+              <ChevronDown size={18} />
+            </button>
           </div>
 
           {/* Messages List Area */}
@@ -174,14 +191,14 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
                     avatar ? (
                       <img src={avatar} className="w-6 h-6 rounded-full border border-gray-200 object-cover flex-shrink-0" />
                     ) : (
-                      <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center font-bold text-[#1A4A8A] text-[9px] flex-shrink-0 border border-blue-200/50">
+                      <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center font-bold text-[#1A4A8A] text-[10px] flex-shrink-0 border border-blue-200/50">
                         {nameInitial}
                       </div>
                     )
                   )}
                   <div className={`p-2.5 rounded-2xl max-w-[80%] shadow-sm text-balance ${isMe ? 'bg-[#0084FF] text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'}`}>
-                    {!isMe && <span className="block text-[7px] font-bold opacity-60 mb-0.5">{m.profiles?.name || 'Usuario'}</span>}
-                    <p className="text-[11px] leading-snug break-words">{m.message}</p>
+                    {!isMe && <span className="block text-[8px] font-bold opacity-60 mb-0.5">{m.profiles?.name || 'Usuario'}</span>}
+                    <p className="text-xs leading-snug break-words">{m.message}</p>
                   </div>
                 </div>
               );
@@ -194,7 +211,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
             {showMention && filteredPatients.length > 0 && (
               <div className="absolute bottom-full left-2 right-2 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-24 overflow-y-auto divide-y divide-gray-50 flex flex-col animate-in slide-in-from-bottom-2 duration-150">
                 {filteredPatients.map((p) => (
-                  <button key={p.id} onClick={() => selectMention(p.name)} className="w-full text-left px-2 py-1.5 text-xxs hover:bg-[#F4F7FB] text-gray-700 transition-colors flex items-center gap-1">
+                  <button key={p.id} onClick={() => selectMention(p.name)} className="w-full text-left px-2 py-1.5 text-xs hover:bg-[#F4F7FB] text-gray-700 transition-colors flex items-center gap-1">
                     <span className="font-bold text-blue-500">@</span>{p.name}
                   </button>
                 ))}
@@ -210,12 +227,12 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
                  value={input}
                  onChange={handleInputChange}
                  placeholder="Escribe un mensaje... (@)" 
-                 className="w-full bg-transparent text-[11px] focus:outline-none placeholder-gray-400 text-gray-800"
+                 className="w-full bg-transparent text-xs focus:outline-none placeholder-gray-400 text-gray-800"
                  onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                />
             </div>
             <button onClick={sendMessage} className="p-2 bg-[#0084FF] hover:bg-[#0073E6] text-white rounded-xl flex-shrink-0 shadow-md transition-transform active:scale-95 flex items-center justify-center">
-              <Send size={14} className="transform -rotate-12" />
+              <Send size={15} className="transform -rotate-12" />
             </button>
           </div>
         </div>

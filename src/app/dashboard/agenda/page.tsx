@@ -761,7 +761,7 @@ export default function AgendaPage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                  {role !== 'assistant' && (
+                  {role !== 'assistant' && role !== 'admin' && (
                   <button onClick={async () => {
                      let pId = selectedAppt.patient_id;
                      if (!pId) {

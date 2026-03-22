@@ -50,8 +50,9 @@ export default function AgendaPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const startCount = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
-    const endCount = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
+    // Expandir rango para cubrir días remanentes de semanas que tocan otros meses
+    const startCount = new Date(currentDate.getFullYear(), currentDate.getMonth(), -7).toISOString().split('T')[0];
+    const endCount = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 7).toISOString().split('T')[0];
 
     try {
       const [apptsRes, blocksRes, waitRes] = await Promise.all([
@@ -284,7 +285,7 @@ export default function AgendaPage() {
                  return (
                    <button
                      key={day}
-                     onClick={() => { setSelectedDateString(dayStr); setCalendarView('dia'); }}
+                     onClick={() => setSelectedDateString(dayStr)}
                      className="h-8 w-full flex flex-col items-center justify-center rounded-lg text-xs font-bold relative transition-all"
                      style={isToday ? { backgroundColor: '#1A4A8A', color: '#fff' } : isSelected ? { border: '1.5px solid #1A4A8A', color: '#1A4A8A' } : { color: '#374151' }}
                    >

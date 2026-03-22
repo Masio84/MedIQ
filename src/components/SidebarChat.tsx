@@ -307,7 +307,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
                     <div className={`p-2.5 rounded-2xl max-w-[80%] shadow-sm text-balance ${isMe ? 'bg-[#0084FF] text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'}`}>
                       {!isMe && <span className="block text-[10px] font-bold text-gray-400 mb-0.5">{m.profiles?.name || 'Usuario'}</span>}
                       <p className="text-sm leading-snug break-words">{m.message}</p>
-                      <span className={`block text-[8px] mt-0.5 ${isMe ? 'text-white/60 text-right' : 'text-gray-400 text-left'}`}>
+                      <span className={`block text-[9px] mt-0.5 ${isMe ? 'text-white/70 text-right' : 'text-gray-400 text-left'}`}>
                         {formattedTime}
                       </span>
                     </div>

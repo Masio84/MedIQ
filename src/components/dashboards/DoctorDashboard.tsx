@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Search, UserPlus, Users, Calendar, DollarSign, Loader2 } from 'lucide-react';
 import PatientForm from '@/components/PatientForm';
@@ -18,7 +18,7 @@ export default function DoctorDashboard() {
   const [filter, setFilter] = useState<'today' | 'weekly' | 'range'>('today');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   // Search autocomplete
   useEffect(() => {
@@ -41,21 +41,8 @@ export default function DoctorDashboard() {
   }, [searchTerm, supabase]);
 
   // Fetch data
-  const fetchData = async () => {
-    // 1. Fetch Today's consultations
+  const fetchData = useCallback(async () => {
     const today = new Date().toISOString().split('T')[0];
-    const { data: cToday } = await supabase
-      .from('consultations')
-      .select('id, patient_id, created_at, patients(name)')
-      .gte('created_at', today);
-    if (cToday) setTodayPatients(cToday);
-
-    // 1.5 Fetch New Metrics
-    const { count: pCount } = await supabase.from('patients').select('*', { count: 'exact', head: true });
-    if (pCount !== null) setActivePatients(pCount);
-
-    const { count: bCount } = await supabase.from('billing').select('*', { count: 'exact', head: true }).eq('paid', false);
-    if (bCount !== null) setPendingPayments(bCount);
 
     // 2. Fetch Billing according to filter (Only paid ones)
     let query = supabase.from('billing').select('normal_fee, discount, extra_charge, created_at').eq('paid', true);
@@ -73,20 +60,30 @@ export default function DoctorDashboard() {
       query = query.gte('created_at', dateRange.start).lte('created_at', dateRange.end);
     }
 
-    const { data: billings } = await query;
-    if (billings) {
-      const total = billings.reduce(
+    const [todayResult, pCountResult, bCountResult, billingsResult] = await Promise.all([
+      supabase.from('consultations').select('id, patient_id, created_at, status, patients(name)').gte('created_at', today),
+      supabase.from('patients').select('*', { count: 'exact', head: true }),
+      supabase.from('billing').select('*', { count: 'exact', head: true }).eq('paid', false),
+      query
+    ]);
+
+    if (todayResult.data) setTodayPatients(todayResult.data);
+    if (pCountResult.count !== null) setActivePatients(pCountResult.count);
+    if (bCountResult.count !== null) setPendingPayments(bCountResult.count);
+    
+    if (billingsResult.data) {
+      const total = billingsResult.data.reduce(
         (acc: number, b: any) => acc + (Number(b.normal_fee) + Number(b.extra_charge) - Number(b.discount)),
         0
       );
       setTotalEarned(total);
-      setConsultations(billings);
+      setConsultations(billingsResult.data);
     }
-  };
+  }, [filter, dateRange, supabase]);
 
   useEffect(() => {
     fetchData();
-  }, [filter, dateRange, supabase]);
+  }, [fetchData]);
 
   return (
     <div className="space-y-6">
@@ -174,19 +171,12 @@ export default function DoctorDashboard() {
                 {todayPatients.map((c: any, index: number) => {
                   const initials = c.patients?.name ? c.patients.name.substring(0,2).toUpperCase() : 'NA';
                   
-                  let status = 'Atendido';
-                  let bgStyle = '#E6F5F0';
-                  let textStyle = '#0F6E56';
-
-                  if (index % 3 === 1) {
-                    status = 'En espera';
-                    bgStyle = '#E8F0FB';
-                    textStyle = '#1A4A8A';
-                  } else if (index % 3 === 2) {
-                    status = 'Pendiente';
-                    bgStyle = '#FAEEDA';
-                    textStyle = '#854F0B';
-                  }
+                  const statusMap = {
+                    completed: { label: 'Atendido', bg: '#E6F5F0', color: '#0F6E56' },
+                    in_progress: { label: 'En consulta', bg: '#E8F0FB', color: '#1A4A8A' },
+                    pending: { label: 'Pendiente', bg: '#FAEEDA', color: '#854F0B' },
+                  };
+                  const s = statusMap[c.status as keyof typeof statusMap] ?? statusMap.pending;
 
                   return (
                     <tr key={c.id}>
@@ -204,8 +194,8 @@ export default function DoctorDashboard() {
                       <td className="py-3 px-4 text-center border-[0.5px] border-black/8">
                         <span 
                           className="inline-flex px-2 py-1 text-[10px] font-medium rounded-md" 
-                          style={{ backgroundColor: bgStyle, color: textStyle }}>
-                          {status}
+                          style={{ backgroundColor: s.bg, color: s.color }}>
+                          {s.label}
                         </span>
                       </td>
                     </tr>

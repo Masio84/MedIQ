@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import ConsultationForm from '@/components/ConsultationForm';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { Sparkles, Activity, Calendar as CalendarIcon, Heart } from 'lucide-react';
 
 export default function ConsultationsPage() {
   const { role, isLoading } = useRole();
@@ -17,6 +19,11 @@ export default function ConsultationsPage() {
   const [selectedPatientId, setSelectedPatientId] = useState<string | undefined>(initialPatientId);
   const [patientRecord, setPatientRecord] = useState<any>(null);
   const [loadingRecord, setLoadingRecord] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const initialSymptoms = searchParams.get('symptoms') || undefined;
   const initialWeight = searchParams.get('weight') || undefined;
@@ -72,7 +79,27 @@ export default function ConsultationsPage() {
             .order('date', { ascending: false })
             .order('start_time', { ascending: false });
 
-          setPatientRecord({ consultations: cData || [], appointments: aData || [] });
+          const fullRecord = { consultations: cData || [], appointments: aData || [] };
+          setPatientRecord(fullRecord);
+
+          if (cData && cData.length > 0) {
+             setLoadingSummary(true);
+             try {
+                const resAI = await fetch('/api/ai/summarize-patient', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify(fullRecord)
+                });
+                const summaryData = await resAI.json();
+                if (summaryData.summary) setAiSummary(summaryData.summary);
+             } catch (e) {
+                console.error('Error summaries AI:', e);
+             } finally {
+                setLoadingSummary(false);
+             }
+          } else {
+             setAiSummary(null);
+          }
        } catch (err) {
           console.error(err);
        } finally {
@@ -123,6 +150,65 @@ export default function ConsultationsPage() {
 
             {selectedPatientId && patientRecord ? (
                 <div className="space-y-4 overflow-y-auto max-h-[600px] pr-2">
+                   
+                   {/* ✨ AI SUMMARY */}
+                   {loadingSummary && (
+                      <div className="p-4 bg-blue-50/50 rounded-xl text-xs font-bold text-blue-800 animate-pulse border border-blue-100 flex items-center gap-1.5 shadow-sm">
+                         <Sparkles size={14} className="animate-spin text-blue-600"/> Generando Resumen Médico Inteligente...
+                      </div>
+                   )}
+                   {aiSummary && !loadingSummary && (
+                      <div className="bg-gradient-to-br from-blue-50/70 to-indigo-50/30 p-4 rounded-xl border border-blue-100 shadow-sm mb-1">
+                         <div className="flex items-center gap-1 mb-2">
+                            <Sparkles size={15} className="text-blue-600 animate-pulse" />
+                            <h4 className="text-xs font-black text-blue-900 uppercase">Resumen Ejecutivo de Expediente</h4>
+                         </div>
+                         <div className="text-[11px] text-blue-950 leading-relaxed font-medium space-y-1 prose prose-sm max-w-none">
+                            {aiSummary.split('\n').map((line, ix) => (
+                               <p key={ix} className="mb-1">{line}</p>
+                            ))}
+                         </div>
+                      </div>
+                   )}
+
+                   {/* 📈 GRÁFICAS */}
+                   {mounted && patientRecord.consultations?.length > 1 && (
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                         <div className="bg-gray-50/80 p-3 rounded-xl border-[0.5px] border-black/5">
+                            <span className="text-[10px] font-black text-gray-500 flex items-center gap-1"><Activity size={12}/> Monitoreo Peso</span>
+                            <div className="h-24 mt-2">
+                               <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart data={patientRecord.consultations?.filter((c: any) => c.weight).map((c: any) => ({ date: new Date(c.created_at).toLocaleDateString([], {day: 'numeric', month: 'short'}), peso: Number(c.weight) })).reverse()}>
+                                     <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1}/>
+                                     <XAxis dataKey="date" fontSize={7} tickLine={false} />
+                                     <YAxis fontSize={7} width={12} tickLine={false} />
+                                     <Tooltip contentStyle={{ fontSize: '9px', borderRadius: '6px' }}/>
+                                     <Line type="monotone" dataKey="peso" stroke="#1A4A8A" strokeWidth={2} dot={{ r: 1.5 }} />
+                                  </LineChart>
+                               </ResponsiveContainer>
+                            </div>
+                         </div>
+                         <div className="bg-gray-50/80 p-3 rounded-xl border-[0.5px] border-black/5">
+                            <span className="text-[10px] font-black text-gray-500 flex items-center gap-1"><Heart size={12}/> Presión Arterial</span>
+                            <div className="h-24 mt-2">
+                               <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart data={patientRecord.consultations?.filter((c: any) => c.blood_pressure && c.blood_pressure.includes('/')).map((c: any) => {
+                                     const parts = c.blood_pressure.split('/');
+                                     return { date: new Date(c.created_at).toLocaleDateString([], {day: 'numeric', month: 'short'}), sys: Number(parts[0]), dia: Number(parts[1]) };
+                                  }).reverse()}>
+                                     <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1}/>
+                                     <XAxis dataKey="date" fontSize={7} tickLine={false}/>
+                                     <YAxis fontSize={7} width={12} tickLine={false}/>
+                                     <Tooltip contentStyle={{ fontSize: '9px' }}/>
+                                     <Line type="monotone" dataKey="sys" stroke="#EF4444" strokeWidth={1.5} dot={{ r: 1.5 }} />
+                                     <Line type="monotone" dataKey="dia" stroke="#3B82F6" strokeWidth={1.5} dot={{ r: 1.5 }} />
+                                  </LineChart>
+                               </ResponsiveContainer>
+                            </div>
+                         </div>
+                      </div>
+                   )}
+
                    {patientRecord.consultations?.length === 0 && patientRecord.appointments?.length === 0 && (
                       <p className="text-sm text-gray-400">Sin historial registrado para este paciente.</p>
                    )}
@@ -130,27 +216,26 @@ export default function ConsultationsPage() {
                    {/* Consultas */}
                    {patientRecord.consultations?.length > 0 && (
                       <div>
-                         <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider mb-2">Diagnósticos y Tratamientos</h4>
+                         <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider mb-2 flex items-center gap-1"><Activity size={12}/> Diagnósticos Recientes</h4>
                          <div className="space-y-3">
                             {patientRecord.consultations.map((c: any) => (
-                               <div key={c.id} className="p-4 bg-gray-50 border-[0.5px] border-black/5 rounded-xl text-sm relative">
-                                  <div className="flex justify-between items-center border-b border-black/5 pb-1.5 mb-2">
+                               <div key={c.id} className="p-3.5 bg-gray-50 border-[0.5px] border-black/5 rounded-xl text-sm relative">
+                                  <div className="flex justify-between items-center border-b border-black/5 pb-1.5 mb-1.5">
                                      <span className="text-xs font-bold text-gray-400">{new Date(c.created_at).toLocaleDateString()}</span>
                                   </div>
-                                  <div className="space-y-1.5">
+                                  <div className="space-y-1">
                                      <p className="text-xs text-gray-600"><span className="font-bold text-gray-900">Síntomas:</span> {c.symptoms || '-'}</p>
                                      <p className="text-xs text-gray-600"><span className="font-bold text-gray-900">Diagnóstico:</span> {c.diagnosis || '-'}</p>
                                      <p className="text-xs text-gray-600"><span className="font-bold text-gray-900">Tratamiento:</span> {c.treatment || '-'}</p>
                                      {(c.weight || c.blood_pressure || c.temperature) && (
-                                        <p className="text-[10px] text-gray-500 italic mt-1 border-t border-black/5 pt-1">
-                                           <span className="font-bold text-gray-700">Signos: </span>
-                                           {c.weight ? `Peso: ${c.weight}kg ` : ''} 
-                                           {c.blood_pressure ? `P.A: ${c.blood_pressure} ` : ''} 
-                                           {c.temperature ? `Temp: ${c.temperature}℃` : ''}
+                                        <p className="text-[10px] text-gray-500 italic mt-1 border-t border-black/5 pt-1 flex gap-2">
+                                           {c.weight && <span><b>Peso:</b> {c.weight}kg</span>} 
+                                           {c.blood_pressure && <span><b>P.A:</b> {c.blood_pressure}</span>} 
+                                           {c.temperature && <span><b>Temp:</b> {c.temperature}℃</span>}
                                         </p>
                                      )}
                                   </div>
-                               </div>
+                                </div>
                             ))}
                          </div>
                       </div>
@@ -158,16 +243,16 @@ export default function ConsultationsPage() {
 
                    {/* Agenda */}
                    {patientRecord.appointments?.length > 0 && (
-                      <div className="mt-5 border-t border-black/5 pt-4">
-                         <h4 className="text-xs font-black text-orange-800 uppercase tracking-wider mb-2">Citas en Agenda</h4>
+                      <div className="mt-4 border-t border-black/5 pt-3">
+                         <h4 className="text-xs font-black text-orange-800 uppercase tracking-wider mb-2 flex items-center gap-1"><CalendarIcon size={12}/> Citas en Agenda</h4>
                          <div className="space-y-2">
                             {patientRecord.appointments.map((a: any) => (
-                               <div key={a.id} className="p-3 bg-orange-50/50 border-[0.5px] border-orange-100 rounded-xl flex justify-between items-center">
+                               <div key={a.id} className="p-2.5 bg-orange-50/30 border-[0.5px] border-orange-100/50 rounded-xl flex justify-between items-center">
                                   <div>
                                      <span className="text-xs font-bold text-gray-800">{a.date} ({a.start_time?.substring(0, 5)})</span>
                                      {a.reason && <p className="text-[10px] text-gray-500 line-clamp-1">{a.reason}</p>}
                                   </div>
-                                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md capitalize ${
                                      a.status === 'attended' || a.status === 'confirmed' ? 'bg-green-100 text-green-800' : 
                                      a.status === 'cancelled' || a.status === 'no_show' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
                                   }`}>

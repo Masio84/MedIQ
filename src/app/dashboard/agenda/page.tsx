@@ -760,6 +760,7 @@ export default function AgendaPage() {
               </div>
 
               <div className="flex flex-col gap-2">
+                  {role !== 'assistant' && (
                   <button onClick={async () => {
                      let pId = selectedAppt.patient_id;
                      if (!pId) {
@@ -783,6 +784,7 @@ export default function AgendaPage() {
                         alert('No se pudo crear el registro del paciente para la consulta.');
                      }
                   }} className="w-full py-2.5 bg-[#1A4A8A] text-white font-bold text-xs rounded-xl">Ir a Consulta Médica</button>
+                  )}
                  <button onClick={() => openEditAppt(selectedAppt)} className="w-full py-2.5 bg-white border-[0.5px] border-black/8 text-gray-900 font-bold text-xs rounded-xl hover:bg-gray-50">Editar Fecha/Detalles</button>
               </div>
            </div>

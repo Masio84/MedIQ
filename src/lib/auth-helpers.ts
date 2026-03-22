@@ -11,7 +11,7 @@ export async function authorizeUser(allowedRoles: string[]) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, doctor_id')
+    .select('role, doctor_id, clinic_id')
     .eq('id', user.id)
     .single();
 

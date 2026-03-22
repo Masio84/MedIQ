@@ -1,11 +1,9 @@
 'use client';
-
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Eye, EyeOff } from 'lucide-react';
-
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,18 +13,19 @@ export default function LoginPage() {
   
   const router = useRouter();
   const supabase = createClient();
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
     try {
+      // Forzar cierre de sesión anterior antes de nuevo login
+      await supabase.auth.signOut();
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (signInError) throw signInError;
+      router.refresh();
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error inesperado');
@@ -34,7 +33,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-gray-100/50 border border-gray-100 p-8">
@@ -53,13 +51,11 @@ export default function LoginPage() {
             Plataforma Médica MedIQ (BETA)
           </p>
         </div>
-
         {error && (
           <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
             {error}
           </div>
         )}
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
@@ -72,7 +68,6 @@ export default function LoginPage() {
               placeholder="correo@ejemplo.com"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
             <div className="relative">
@@ -93,7 +88,6 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-
           <button
             type="submit"
             disabled={loading}
@@ -106,4 +100,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

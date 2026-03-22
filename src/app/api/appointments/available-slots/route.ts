@@ -12,15 +12,22 @@ export async function GET(request: Request) {
     }
 
     const { data: schedule } = await supabaseAdmin.from('doctor_schedule').select('*').eq('doctor_id', doctor_id).single();
+    const { data: profile } = await supabaseAdmin.from('profiles').select('name, role').eq('id', doctor_id).single();
+
+    const resultHeader = { 
+      doctor: profile ? { name: profile.name, role: profile.role } : null,
+      schedule: schedule ? { slot_interval: schedule.slot_interval_minutes } : null 
+    };
+
     if (!schedule) return NextResponse.json({ success: false, error: 'Horario no configurado' }, { status: 404 });
 
     const jsDate = new Date(date + 'T00:00:00');
-    const dow = jsDate.getDay(); // 0 Dom, 1 Lun...
+    const dow = jsDate.getDay(); 
     const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const prefix = dayMap[dow];
 
     const active = schedule[`${prefix}_active`];
-    if (!active) return NextResponse.json({ success: true, data: [] });
+    if (!active) return NextResponse.json({ success: true, data: [], ...resultHeader });
 
     const start_timeStr: string = schedule[`${prefix}_start`];
     const end_timeStr: string = schedule[`${prefix}_end`];
@@ -79,7 +86,7 @@ export async function GET(request: Request) {
         if (isBlockedByAppt || isBlockedBySlot) slot.available = false;
     });
 
-    return NextResponse.json({ success: true, data: possibleSlots });
+    return NextResponse.json({ success: true, data: possibleSlots, ...resultHeader });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

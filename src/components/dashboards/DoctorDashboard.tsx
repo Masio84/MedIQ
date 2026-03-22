@@ -116,13 +116,13 @@ export default function DoctorDashboard() {
       supabase.from('patients').select('*', { count: 'exact', head: true }),
       supabase.from('billing').select('*', { count: 'exact', head: true }).eq('paid', false),
       query,
-      supabase.from('appointments').select('*, patients(name)').gte('date', startCount).lte('date', endCount)
+      fetch(`/api/appointments/list?date_from=${startCount}&date_to=${endCount}`).then(res => res.json())
     ]);
 
     if (todayResult.data) setTodayPatients(todayResult.data);
     if (pCountResult.count !== null) setActivePatients(pCountResult.count);
     if (bCountResult.count !== null) setPendingPayments(bCountResult.count);
-    if (apptsResult.data) setWeekAppointments(apptsResult.data);
+    if (apptsResult.success && apptsResult.data) setWeekAppointments(apptsResult.data);
     
     if (billingsResult.data) {
       const total = billingsResult.data.reduce(
@@ -366,7 +366,28 @@ export default function DoctorDashboard() {
                                     className="rounded-md px-2 py-1 h-full flex flex-col justify-center text-[10px] font-medium cursor-default shadow-sm border-l-2"
                                     style={{ backgroundColor: style!.bg, borderColor: style!.border, color: style!.text }}
                                   >
-                                    <div className="truncate font-bold">{appt.patients?.name || 'Paciente'}</div>
+                                    <div className="flex items-center justify-between gap-1 overflow-hidden">
+                                      <div className="truncate font-bold flex-1">{appt.patients?.name || appt.patient_name || 'Paciente'}</div>
+                                      <select 
+                                        value={appt.status} 
+                                        onChange={async (e) => {
+                                           const res = await fetch('/api/appointments/update', {
+                                              method: 'PATCH',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ id: appt.id, status: e.target.value })
+                                           });
+                                           if (res.ok) fetchData();
+                                        }}
+                                        onClick={e => e.stopPropagation()}
+                                        className="text-[8px] bg-white/80 border-[0.5px] border-black/10 rounded px-1 py-0.5 cursor-pointer font-bold outline-none"
+                                      >
+                                         <option value="scheduled">Agendada</option>
+                                         <option value="confirmed">Confirmada</option>
+                                         <option value="attended">Atendida</option>
+                                         <option value="no_show">No se presentó</option>
+                                         <option value="cancelled">Cancelada</option>
+                                      </select>
+                                    </div>
                                     <div className="font-normal opacity-70 truncate italic">{appt.notes || 'Consulta'}</div>
                                   </div>
                                 ) : (
@@ -424,10 +445,29 @@ export default function DoctorDashboard() {
                               {slot}
                             </span>
                             {appointment ? (
-                              <div>
-                                <h4 className="font-bold text-gray-900 text-xs flex items-center gap-1">
-                                  {appointment.patients?.name || 'Paciente'}
+                              <div className="flex-1 flex items-center justify-between gap-1 overflow-hidden">
+                                <h4 className="font-bold text-gray-900 text-xs truncate flex-1">
+                                  {appointment.patients?.name || appointment.patient_name || 'Paciente'}
                                 </h4>
+                                <select 
+                                  value={appointment.status} 
+                                  onChange={async (e) => {
+                                     const res = await fetch('/api/appointments/update', {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ id: appointment.id, status: e.target.value })
+                                     });
+                                     if (res.ok) fetchData();
+                                  }}
+                                  onClick={e => e.stopPropagation()}
+                                  className="text-[9px] bg-white border-[0.5px] border-black/10 rounded-md px-1 py-0.5 cursor-pointer font-bold outline-none"
+                                >
+                                   <option value="scheduled">Agendada</option>
+                                   <option value="confirmed">Confirmada</option>
+                                   <option value="attended">Atendida</option>
+                                   <option value="no_show">No se presentó</option>
+                                   <option value="cancelled">Cancelada</option>
+                                </select>
                               </div>
                             ) : (
                               <span className="text-xs text-gray-300 font-medium">Disponible</span>

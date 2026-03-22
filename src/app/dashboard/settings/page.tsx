@@ -23,6 +23,17 @@ export default function SettingsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [schedule, setSchedule] = useState<any>({
+    monday_active: true, monday_start: '09:00', monday_end: '18:00',
+    tuesday_active: true, tuesday_start: '09:00', tuesday_end: '18:00',
+    wednesday_active: true, wednesday_start: '09:00', wednesday_end: '18:00',
+    thursday_active: true, thursday_start: '09:00', thursday_end: '18:00',
+    friday_active: true, friday_start: '09:00', friday_end: '18:00',
+    saturday_active: false, saturday_start: '09:00', saturday_end: '14:00',
+    sunday_active: false, sunday_start: '09:00', sunday_end: '14:00',
+    slot_interval_minutes: 30, default_duration_minutes: 30
+  });
+
   const [feedback, setFeedback] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'error' }>({ isOpen: false, title: '', message: '', type: 'success' });
 
   const supabase = createClient();
@@ -48,6 +59,12 @@ export default function SettingsPage() {
           increment_max: Number(data.increment_max || 0),
         });
         if (data.avatar_url) setPreview(data.avatar_url);
+
+        if (data.role === 'doctor') {
+           const res = await fetch('/api/appointments/schedule');
+           const scheduleData = await res.json();
+           if (scheduleData.success && scheduleData.data) setSchedule(scheduleData.data);
+        }
       }
       setFetching(false);
     };
@@ -117,6 +134,17 @@ export default function SettingsPage() {
         .eq('id', userId);
 
       if (updateError) throw updateError;
+
+      if (profile.role === 'doctor') {
+        const scheduleRes = await fetch('/api/appointments/schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(schedule)
+        });
+        const scheduleResult = await scheduleRes.json();
+        if (!scheduleResult.success) throw new Error(scheduleResult.error);
+      }
+
       setFeedback({ isOpen: true, title: '¡Éxito!', message: 'Configuración guardada exitosamente.', type: 'success' });
     } catch (err: any) {
       setError(err.message || 'Error al guardar configuración');
@@ -297,6 +325,46 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
+            </div>
+            
+            {/* Horarios de Atención Matrix Section */}
+            <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4 pt-4 border-t border-gray-50 mt-4">
+               <h2 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2">Horarios de Atención</h2>
+               <div className="space-y-3">
+                 {[
+                   { id: 'monday', name: 'Lunes' },
+                   { id: 'tuesday', name: 'Martes' },
+                   { id: 'wednesday', name: 'Miércoles' },
+                   { id: 'thursday', name: 'Jueves' },
+                   { id: 'friday', name: 'Viernes' },
+                   { id: 'saturday', name: 'Sábado' },
+                   { id: 'sunday', name: 'Domingo' }
+                 ].map(day => (
+                   <div key={day.id} className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-gray-50 last:border-0 pb-2">
+                     <div className="flex items-center gap-2 w-32">
+                        <input type="checkbox" checked={schedule[`${day.id}_active`]} onChange={e => setSchedule({ ...schedule, [`${day.id}_active`]: e.target.checked })} className="rounded border-gray-200 text-blue-600 focus:ring-blue-500" />
+                        <span className="text-xs font-bold text-gray-800">{day.name}</span>
+                     </div>
+                     {schedule[`${day.id}_active`] ? (
+                        <div className="flex items-center gap-2">
+                          <input type="time" value={schedule[`${day.id}_start`] || '09:00'} onChange={e => setSchedule({ ...schedule, [`${day.id}_start`]: e.target.value })} className="px-2 py-1 text-xs border border-gray-200 rounded-md bg-white" />
+                          <span className="text-gray-400 text-xs">-</span>
+                          <input type="time" value={schedule[`${day.id}_end`] || '18:00'} onChange={e => setSchedule({ ...schedule, [`${day.id}_end`]: e.target.value })} className="px-2 py-1 text-xs border border-gray-200 rounded-md bg-white" />
+                        </div>
+                     ) : <span className="text-xs text-gray-400 italic">No Laboral</span>}
+                   </div>
+                 ))}
+               </div>
+            </div>
+
+            {/* Public Booking Link Card */}
+            <div className="bg-blue-50/50 p-6 rounded-xl border border-blue-100/40 shadow-sm space-y-2 mt-4">
+               <h3 className="text-sm font-black text-blue-800">Enlace de reserva pública</h3>
+               <p className="text-xs text-blue-600">Comparte este enlace con tus pacientes para que agenden citas de forma autónoma.</p>
+               <div className="flex gap-2 mt-2">
+                  <input type="text" readOnly value={`${typeof window !== 'undefined' ? window.location.origin : ''}/book/${profile.id}`} className="flex-1 bg-white px-3 py-1.5 text-xs border border-blue-100 rounded-lg outline-none text-blue-900 font-bold" />
+                  <button type="button" onClick={() => { const url = window.location.origin + '/book/' + profile.id; navigator.clipboard.writeText(url); alert('¡Enlace copiado!'); }} className="px-3 py-1.5 bg-[#1A4A8A] text-white text-xs font-bold rounded-lg hover:bg-[#1A4A8A]/90">Copiar</button>
+               </div>
             </div>
           </div>
         )}

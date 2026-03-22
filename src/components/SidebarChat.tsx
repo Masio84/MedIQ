@@ -16,30 +16,61 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [showUsersDropdown, setShowUsersDropdown] = useState(false);
+
   const targetDoctorId = role === 'doctor' ? profile?.id : profile?.doctor_id;
 
+  // 1. Cargar usuarios del sistema y listado para menciones
   useEffect(() => {
-    if (!profile?.id || !targetDoctorId) return;
-
-    // Fetch target profile name (Only needed if Assistant chatting with Doctor, Wait, Doctor chatting with Assistant wants assistant name too!)
-    const fetchTarget = async () => {
-       if (role === 'doctor') {
-          // Si soy Doctor, busco los asistentes vinculados a mi id
-          const { data } = await supabase.from('profiles').select('name').eq('doctor_id', profile.id).eq('role', 'assistant').limit(1).single();
-          if (data) setTargetProfileName(data.name);
-       } else {
-          // Si soy Asistente, busco el doctor vinculado
-          const { data } = await supabase.from('profiles').select('name').eq('id', targetDoctorId).single();
-          if (data) setTargetProfileName(data.name);
-       }
+    if (!profile?.id) return;
+    
+    const fetchUsers = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, name, role')
+        .neq('id', profile.id); // Excluirme a mí mismo
+      
+      if (data && data.length > 0) {
+         setUsers(data);
+         // Seleccionar el primero por defecto o al doctor vinculado
+         const defaultTarget = targetDoctorId && targetDoctorId !== profile.id 
+           ? data.find(u => u.id === targetDoctorId) 
+           : (data.find(u => u.role === 'doctor') || data[0]);
+           
+         if (defaultTarget) {
+            setSelectedUserId(defaultTarget.id);
+            setTargetProfileName(defaultTarget.name);
+         }
+      }
     };
-    fetchTarget();
+    fetchUsers();
+
+    const fetchPatients = async () => {
+      const { data } = await supabase.from('patients').select('id, name').limit(50);
+      if (data) setPatients(data);
+    };
+    fetchPatients();
+  }, [profile?.id, targetDoctorId]);
+
+  // 2. Cargar mensajes y suscribirse cuando cambia selectedUserId
+  useEffect(() => {
+    if (!profile?.id || !selectedUserId) return;
+
+    // Actualizar nombre del perfil seleccionado
+    const userObj = users.find(u => u.id === selectedUserId);
+    if (userObj) setTargetProfileName(userObj.name);
+
+    setMessages([]); // Limpiar mensajes al cambiar de chat
+    setIsInitialLoad(true);
+    setHasMore(true);
 
     const fetchMessages = async () => {
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
-        .eq('doctor_id', targetDoctorId)
+        .or(`and(from_user_id.eq.${profile.id},doctor_id.eq.${selectedUserId}),and(from_user_id.eq.${selectedUserId},doctor_id.eq.${profile.id})`)
         .order('created_at', { ascending: false })
         .limit(25);
 
@@ -58,46 +89,39 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
          if (data.length < 25) setHasMore(false);
       }
     };
-
     fetchMessages();
 
-    // Subscribe to realtime Chat Messages
+    // Suscribirse a mensajes de este chat específico
     const channel = supabase
-      .channel('public:chat_messages')
+      .channel(`public:chat_messages:${selectedUserId}`)
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'chat_messages'
       }, async (payload) => {
-        if (payload.new.doctor_id !== targetDoctorId) return; // Filtrar por médico
+        const isFromTarget = payload.new.from_user_id === selectedUserId && payload.new.doctor_id === profile.id;
+        const isFromMe = payload.new.from_user_id === profile.id && payload.new.doctor_id === selectedUserId;
 
-        if (payload.new.from_user_id !== profile.id && !isOpenRef.current) {
+        if (!isFromTarget && !isFromMe) return;
+
+        if (isFromTarget && !isOpenRef.current) {
            setUnreadCount(prev => prev + 1);
         }
 
-        // Fetch sender name
         const { data: sender } = await supabase.from('profiles').select('name, avatar_url').eq('id', payload.new.from_user_id).single();
         
         setMessages((prev) => {
-           // Intercambiar mensaje optimístico por el real
-           const base = prev.filter(m => !(m.isOptimistic && m.message === payload.new.message && m.from_user_id === payload.new.from_user_id));
-           if (base.some(m => m.id === payload.new.id)) return prev; // ya existe
+           const base = prev.filter(m => !(m.isOptimistic && m.message === payload.new.message));
+           if (base.some(m => m.id === payload.new.id)) return prev;
            return [...base, { ...payload.new, profiles: sender }];
         });
       })
       .subscribe();
 
-    // Fetch patients for mentions
-    const fetchPatients = async () => {
-      const { data } = await supabase.from('patients').select('id, name').limit(50);
-      if (data) setPatients(data);
-    };
-    fetchPatients();
-
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.id, targetDoctorId]);
+  }, [profile?.id, selectedUserId]);
 
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const isPrependRef = useRef(false);
@@ -115,6 +139,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
        }, 150);
        
        return () => clearTimeout(timer);
+
     }
   }, [messages, isInitialLoad]);
 
@@ -128,7 +153,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
     const { data } = await supabase
       .from('chat_messages')
       .select('*')
-      .eq('doctor_id', targetDoctorId)
+      .or(`and(from_user_id.eq.${profile.id},doctor_id.eq.${selectedUserId}),and(from_user_id.eq.${selectedUserId},doctor_id.eq.${profile.id})`)
       .lt('created_at', oldest.created_at)
       .order('created_at', { ascending: false })
       .limit(25);
@@ -182,8 +207,8 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
     setMessages((prev) => [...prev, tempMessage]);
 
     const { error } = await supabase.from('chat_messages').insert([{
-      doctor_id: targetDoctorId,
-      clinic_id: profile.clinic_id, // Añadir clinic_id para persistencia segura
+      doctor_id: selectedUserId,
+      clinic_id: profile.clinic_id, 
       from_user_id: profile.id,
       message: msgText,
     }]);
@@ -253,11 +278,39 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
       {isOpen && (
         <div className="fixed bottom-6 right-6 bg-white rounded-2xl border border-gray-100 shadow-2xl h-[420px] w-[340px] flex flex-col overflow-hidden z-50 animate-in slide-in-from-bottom-6 fade-in-20 duration-200">
           {/* Header */}
-          <div className="px-3.5 py-3 border-b border-gray-50 flex justify-between items-center bg-[#1A4A8A] text-white">
-            <span className="text-xs font-bold flex items-center gap-1.5">
+          <div className="px-3.5 py-3 border-b border-gray-50 flex justify-between items-center bg-[#1A4A8A] text-white relative">
+            <div 
+              className="flex items-center gap-1.5 cursor-pointer hover:bg-white/10 px-1.5 py-1 rounded-lg transition-colors"
+              onClick={() => setShowUsersDropdown(!showUsersDropdown)}
+            >
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              {targetProfileName ? `${targetProfileName}` : (role === 'doctor' ? 'Chat con Asistente' : 'Chat con Dr.')}
-            </span>
+              <span className="text-xs font-bold flex items-center gap-1">
+                {targetProfileName || 'Seleccionar Usuario'}
+                <ChevronDown size={14} className={`transition-transform ${showUsersDropdown ? 'rotate-180' : ''}`} />
+              </span>
+            </div>
+
+            {/* Users Dropdown */}
+            {showUsersDropdown && (
+              <div className="absolute top-11 left-2 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-100 z-50 w-60 max-h-48 overflow-y-auto divide-y divide-gray-50 flex flex-col animate-in fade-in-0 zoom-in-95 duration-150">
+                {users.map((u) => (
+                  <button 
+                    key={u.id} 
+                    onClick={() => {
+                      setSelectedUserId(u.id);
+                      setShowUsersDropdown(false);
+                    }} 
+                    className={`w-full text-left px-3 py-2 text-xs hover:bg-[#F4F7FB] flex items-center justify-between transition-colors ${selectedUserId === u.id ? 'bg-blue-50/70 font-bold text-[#1A4A8A]' : 'text-gray-700'}`}
+                  >
+                    <span>{u.name}</span>
+                    <span className="text-[9px] uppercase font-bold text-gray-400">
+                      {u.role === 'doctor' ? 'Doc' : u.role === 'assistant' ? 'Asis' : u.role}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white transition-transform active:scale-95">
               <ChevronDown size={18} />
             </button>

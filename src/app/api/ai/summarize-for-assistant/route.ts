@@ -1,0 +1,58 @@
+import { NextResponse } from 'next/server';
+
+export async function POST(request: Request) {
+  try {
+    const { diagnosis, symptoms, notes } = await request.json();
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ success: false, error: 'API Key no configurada' }, { status: 500 });
+    }
+
+    const prompt = `Considere el siguiente diagnóstico Médico y notas:
+DIAGNÓSTICO: ${diagnosis || 'No especificado'}
+SÍNTOMAS: ${symptoms || 'No especificado'}
+NOTAS: ${notes || 'No especificado'}
+
+Tu tarea es actuar como un gestor de citas administrativo. Sugiere una nota corta (máximo 4 palabras) para agendar la siguiente cita. 
+Debe ser entendible por personal de recepción (asistencia), y NO debe revelar datos médicos sensibles que expongan la privacidad del paciente (ej: no uses nombres de enfermedades graves o detalles íntimos).
+
+Ejemplos de salidas válidas:
+- Cita de control
+- Revisión de analgésicos
+- Entrega de resultados
+- Curación de heridas
+- Seguimiento general
+
+Devuelve ÚNICAMENTE las palabras de la nota sugerida, sin comillas, sin introducciones ni saludos.`;
+
+    const payload = {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 50,
+      temperature: 0.3,
+      messages: [
+        { role: 'user', content: prompt }
+      ]
+    };
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const anthropicData = await res.json();
+    if (res.status !== 200) throw new Error(anthropicData.error?.message || 'Error AI Anthropic');
+
+    let summary = anthropicData.content?.[0]?.text?.trim() || 'Cita de control';
+    summary = summary.replace(/^"|"$/g, ''); // Quitar comillas si las puso
+
+    return NextResponse.json({ success: true, summary });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

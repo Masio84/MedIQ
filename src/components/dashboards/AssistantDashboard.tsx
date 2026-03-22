@@ -175,7 +175,30 @@ export default function AssistantDashboard() {
       });
     } else {
       setFollowUpInfo(null);
-      setAgendaData({ date: '', time: '', notes: '' });
+      setAgendaData({ date: '', time: '', notes: 'Generando sugerencia del sistema...' });
+
+      // Cargar sugerencia vía IA
+      if (consultation) {
+         fetch('/api/ai/summarize-for-assistant', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               diagnosis: consultation.diagnosis,
+               symptoms: consultation.symptoms,
+               notes: consultation.notes
+            })
+         }).then(res => res.json()).then(aiData => {
+            if (aiData.success) {
+               setAgendaData(prev => ({ ...prev, notes: aiData.summary }));
+            } else {
+               setAgendaData(prev => ({ ...prev, notes: 'Cita de control' }));
+            }
+         }).catch(() => {
+            setAgendaData(prev => ({ ...prev, notes: 'Cita de control' }));
+         });
+      } else {
+         setAgendaData({ date: '', time: '', notes: 'Cita de control' });
+      }
     }
 
     setIsPayModalOpen(true);

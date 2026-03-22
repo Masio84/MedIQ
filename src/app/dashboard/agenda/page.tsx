@@ -738,7 +738,30 @@ export default function AgendaPage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                 <button onClick={() => { setIsDetailModalOpen(false); window.location.href = `/dashboard/consultations?patient_id=${selectedAppt.patient_id}`; }} className="w-full py-2.5 bg-[#1A4A8A] text-white font-bold text-xs rounded-xl">Ir a Consulta Médica</button>
+                  <button onClick={async () => {
+                     let pId = selectedAppt.patient_id;
+                     if (!pId) {
+                        // Crear paciente para poder registrar la consulta
+                        const { data: newP } = await supabase.from('patients').insert({
+                           name: selectedAppt.patient_name || selectedAppt.patients?.name || 'Paciente Nuevo',
+                           phone: selectedAppt.patient_phone || selectedAppt.patients?.phone || '',
+                           email: selectedAppt.patient_email || selectedAppt.patients?.email || '',
+                           doctor_id: selectedAppt.doctor_id,
+                           clinic_id: selectedAppt.clinic_id
+                        }).select('id').single();
+                        
+                        if (newP) {
+                           pId = newP.id;
+                           await supabase.from('appointments').update({ patient_id: pId }).eq('id', selectedAppt.id);
+                        }
+                     }
+                     if (pId) {
+                        setIsDetailModalOpen(false); 
+                        window.location.href = `/dashboard/consultations?patient_id=${pId}`;
+                     } else {
+                        alert('No se pudo crear el registro del paciente para la consulta.');
+                     }
+                  }} className="w-full py-2.5 bg-[#1A4A8A] text-white font-bold text-xs rounded-xl">Ir a Consulta Médica</button>
                  <button onClick={() => openEditAppt(selectedAppt)} className="w-full py-2.5 bg-white border-[0.5px] border-black/8 text-gray-900 font-bold text-xs rounded-xl hover:bg-gray-50">Editar Fecha/Detalles</button>
               </div>
            </div>

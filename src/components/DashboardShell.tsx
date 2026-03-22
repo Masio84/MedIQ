@@ -5,6 +5,7 @@ import { Menu, X, LogOut, Calendar, Clock, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import SidebarLinks from '@/components/SidebarLinks';
+import SidebarChat from '@/components/SidebarChat';
 
 export default function DashboardShell({
   children,
@@ -245,6 +246,9 @@ export default function DashboardShell({
 
         {/* Sidebar Navigation */}
         <SidebarLinks />
+
+        {/* Dynamic Chat de Comunicación */}
+        <SidebarChat profile={profile} role={role} />
 
         {/* Footer/Aviso Legal */}
         <div className="p-4 border-t border-gray-50 text-center mt-auto">

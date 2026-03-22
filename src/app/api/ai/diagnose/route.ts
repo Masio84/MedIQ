@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     }
 
     const payload = {
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 500,
       temperature: 0.3,
       system: "Eres un asistente médico experto. Se te proporcionarán los datos de un paciente (constantes vitales, edad, historial clínico) y sus síntomas actuales. Tu única tarea es sugerir un diagnóstico principal muy conciso y directo (o un par si hay mucha incertidumbre). No incluyas advertencias, notas preámbulo, ni explicaciones largas. Sólo da el diagnóstico o sugerencia diagnóstica clara de la manera más profesional posible, como un médico lo anotaría en un expediente.",

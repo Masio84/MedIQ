@@ -239,21 +239,25 @@ export default function AgendaPage() {
                className="w-full pl-10 pr-4 py-2 border-[0.5px] border-black/8 bg-white rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-900 text-sm shadow-sm"
              />
           </div>
-          <button 
-            onClick={() => {
-              setBlockForm({ date: selectedDateString || todayStr, start_time: '09:00', end_time: '10:00', reason: '', is_full_day: false, recurring: 'none' });
-              setIsBlockModalOpen(true);
-            }}
-            className="px-4 py-2 bg-white border-[0.5px] border-black/8 text-gray-700 font-bold rounded-xl text-sm hover:bg-gray-50 shadow-sm"
-          >
-            Bloquear Horario
-          </button>
-          <button 
-            onClick={() => openNewAppt(selectedDateString || todayStr, '09:00')}
-            className="px-4 py-2 bg-[#1A4A8A] text-white font-bold rounded-xl text-sm flex items-center gap-2 hover:bg-[#1A4A8A]/90 shadow-sm"
-          >
-            + Nueva Cita
-          </button>
+          {role !== 'admin' && (
+            <>
+              <button 
+                onClick={() => {
+                  setBlockForm({ date: selectedDateString || todayStr, start_time: '09:00', end_time: '10:00', reason: '', is_full_day: false, recurring: 'none' });
+                  setIsBlockModalOpen(true);
+                }}
+                className="px-4 py-2 bg-white border-[0.5px] border-black/8 text-gray-700 font-bold rounded-xl text-sm hover:bg-gray-50 shadow-sm"
+              >
+                Bloquear Horario
+              </button>
+              <button 
+                onClick={() => openNewAppt(selectedDateString || todayStr, '09:00')}
+                className="px-4 py-2 bg-[#1A4A8A] text-white font-bold rounded-xl text-sm flex items-center gap-2 hover:bg-[#1A4A8A]/90 shadow-sm"
+              >
+                + Nueva Cita
+              </button>
+            </>
+          )}
         </div>
       </div>
 

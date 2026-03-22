@@ -4,6 +4,8 @@ import { useState, useEffect, use } from 'react';
 import { Calendar as CalendarIcon, Clock, User, Phone, Mail, FileText, CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, Loader } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import Image from 'next/image';
+
 export default function BookPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
 
@@ -121,7 +123,14 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+       
+       {/* System Logo & Header Title */}
+       <div className="flex flex-col items-center mb-6 space-y-2">
+          <Image src="/Logo_MedIQ_Transp.png" alt="MedIQ Logo" width={140} height={45} className="object-contain" />
+          <p className="text-xs font-black text-gray-500 tracking-wide uppercase">Reserva tu cita de forma rápida y segura</p>
+       </div>
+
        <div className="w-full max-w-xl bg-white rounded-3xl shadow-xl overflow-hidden border-[0.5px] border-black/5 flex flex-col">
           
           {/* Header Banner */}

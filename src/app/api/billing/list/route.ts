@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { authorizeUser } from '@/lib/auth-helpers';
 
 export async function GET() {
   try {
+    const auth = await authorizeUser(['admin', 'doctor', 'assistant']);
+    if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
     const { data: billings, error } = await supabaseAdmin
       .from('billing')
       .select(`

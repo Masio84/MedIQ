@@ -279,20 +279,38 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
               const avatar = m.profiles?.avatar_url;
               const nameInitial = m.profiles?.name ? m.profiles.name[0].toUpperCase() : '?';
 
+              const prevMsg = messages[i - 1];
+              const showDateDivider = !prevMsg || new Date(m.created_at).toDateString() !== new Date(prevMsg.created_at).toDateString();
+              const formattedDate = new Date(m.created_at).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+              const formattedTime = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
               return (
-                <div key={i} className={`flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                  {!isMe && (
-                    avatar ? (
-                      <img src={avatar} className="w-6 h-6 rounded-full border border-gray-200 object-cover flex-shrink-0" />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center font-bold text-[#1A4A8A] text-[10px] flex-shrink-0 border border-blue-200/50">
-                        {nameInitial}
-                      </div>
-                    )
+                <div key={m.id || i} className="flex flex-col">
+                  {showDateDivider && (
+                    <div className="flex justify-center my-2">
+                      <span className="bg-gray-200/60 text-gray-500 text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                        {formattedDate}
+                      </span>
+                    </div>
                   )}
-                  <div className={`p-2.5 rounded-2xl max-w-[80%] shadow-sm text-balance ${isMe ? 'bg-[#0084FF] text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'}`}>
-                    {!isMe && <span className="block text-[10px] font-bold text-gray-400 mb-0.5">{m.profiles?.name || 'Usuario'}</span>}
-                    <p className="text-sm leading-snug break-words">{m.message}</p>
+
+                  <div className={`flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                    {!isMe && (
+                      avatar ? (
+                        <img src={avatar} className="w-6 h-6 rounded-full border border-gray-200 object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center font-bold text-[#1A4A8A] text-[10px] flex-shrink-0 border border-blue-200/50">
+                          {nameInitial}
+                        </div>
+                      )
+                    )}
+                    <div className={`p-2.5 rounded-2xl max-w-[80%] shadow-sm text-balance ${isMe ? 'bg-[#0084FF] text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'}`}>
+                      {!isMe && <span className="block text-[10px] font-bold text-gray-400 mb-0.5">{m.profiles?.name || 'Usuario'}</span>}
+                      <p className="text-sm leading-snug break-words">{m.message}</p>
+                      <span className={`block text-[8px] mt-0.5 ${isMe ? 'text-white/60 text-right' : 'text-gray-400 text-left'}`}>
+                        {formattedTime}
+                      </span>
+                    </div>
                   </div>
                 </div>
               );

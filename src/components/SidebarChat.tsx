@@ -352,6 +352,11 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
               <span className="text-xs font-bold flex items-center gap-1">
                 {targetProfileName || 'Seleccionar Usuario'}
+                {unreadCount > 0 && (
+                  <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse shadow-sm">
+                    {unreadCount}
+                  </span>
+                )}
                 <ChevronDown size={14} className={`transition-transform ${showUsersDropdown ? 'rotate-180' : ''}`} />
               </span>
             </div>

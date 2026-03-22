@@ -32,15 +32,17 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
 
     // Subscribe to realtime Chat Messages
     const channel = supabase
-      .channel(`chat_messages:${targetDoctorId}`)
+      .channel('public:chat_messages')
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
-        table: 'chat_messages',
-        filter: `doctor_id=eq.${targetDoctorId}`
+        table: 'chat_messages'
       }, async (payload) => {
+        if (payload.new.doctor_id !== targetDoctorId) return; // Filtrar por médico
+
         // Fetch sender name to avoid missing profile.name
         const { data: sender } = await supabase.from('profiles').select('name').eq('id', payload.new.from_user_id).single();
+        
         setMessages((prev) => {
            if (prev.some(m => m.id === payload.new.id || (m.from_user_id === payload.new.from_user_id && m.message === payload.new.message && Math.abs(new Date(m.created_at).getTime() - new Date(payload.new.created_at).getTime()) < 3000))) {
               return prev; // evitar duplicados optimistas

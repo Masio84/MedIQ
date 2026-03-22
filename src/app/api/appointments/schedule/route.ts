@@ -1,0 +1,48 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { authorizeUser } from '@/lib/auth-helpers';
+
+export async function GET(request: Request) {
+  try {
+    const auth = await authorizeUser(['doctor', 'assistant']);
+    if ('error' in auth) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase.from('profiles').select('role, doctor_id').eq('id', user!.id).single();
+
+    const targetDoctor = profile?.role === 'assistant' ? profile.doctor_id : user!.id;
+
+    if (!targetDoctor) return NextResponse.json({ success: false, error: 'No se encontró doctor asociado' }, { status: 404 });
+
+    const { data, error } = await supabase.from('doctor_schedule').select('*').eq('doctor_id', targetDoctor).single();
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is not found, which is fine
+
+    return NextResponse.json({ success: true, data: data || null });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const auth = await authorizeUser(['doctor']);
+    if ('error' in auth) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase.from('profiles').select('clinic_id').eq('id', user!.id).single();
+    
+    const body = await request.json();
+    body.doctor_id = user!.id;
+    body.clinic_id = profile?.clinic_id;
+
+    const { data, error } = await supabase.from('doctor_schedule').upsert(body, { onConflict: 'doctor_id' }).select().single();
+
+    if (error) throw error;
+    
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

@@ -1,135 +1,185 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Calendar, Clock, User, FileText, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { Calendar, Clock, User, FileText, ChevronLeft, ChevronRight, Search, X, Users, AlertCircle, Ban } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 
 export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [allAppointments, setAllAppointments] = useState<any[]>([]);
-  const [selectedDayAppointments, setSelectedDayAppointments] = useState<any[]>([]);
+  const [blockedSlots, setBlockedSlots] = useState<any[]>([]);
+  const [waitingList, setWaitingList] = useState<any[]>([]);
   const [selectedDateString, setSelectedDateString] = useState<string | null>(null);
   const { role } = useRole();
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('todos');
-  
-  // Search & Filter state
-  const [searchTerm, setSearchTerm] = useState('');
-  const [patients, setPatients] = useState<any[]>([]);
-  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
-  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
-
-  // Creation States from actions
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [doctors, setDoctors] = useState<any[]>([]);
-  const [newAppointment, setNewAppointment] = useState({ patient_id: '', doctor_id: '', date: '', time: '', notes: '' });
+  const [patients, setPatients] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const [calendarView, setCalendarView] = useState<'dia' | 'semana' | 'mes'>('dia');
+  
+  // Modals state
+  const [isApptModalOpen, setIsApptModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  
+  const [selectedAppt, setSelectedAppt] = useState<any>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  
+  // Appt Form
+  const [apptForm, setApptForm] = useState({
+    id: '', patient_id: '', patient_name: '', date: '', start_time: '', 
+    duration_minutes: 30, appointment_type: 'consultation', reason: '', notes: '', status: 'scheduled'
+  });
   const [quickPatientSearch, setQuickPatientSearch] = useState('');
   const [quickPatientDropdown, setQuickPatientDropdown] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string>('');
-  const [modalError, setModalError] = useState<string | null>(null);
-  const [calendarView, setCalendarView] = useState<'mes' | 'semana'>('mes');
-  const supabase = createClient();
-
-  const filteredAppointments = allAppointments.filter(app => {
-    const matchesDoctor = selectedDoctorId === 'todos' || app.doctor_id === selectedDoctorId;
-    const patientName = app.patients ? app.patients.name : 'Paciente';
-    const matchesPatient = selectedPatientId 
-      ? app.patient_id === selectedPatientId
-      : searchTerm.trim() === '' 
-          ? true 
-          : patientName.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesDoctor && matchesPatient;
+  
+  // Block Form
+  const [blockForm, setBlockForm] = useState({
+    date: '', start_time: '', end_time: '', reason: '', is_full_day: false, recurring: 'none'
   });
 
-  useEffect(() => {
-    fetchMonthAppointments();
-    fetchPatients();
-    if (role === 'admin') fetchSupportDoctors();
-    if (role === 'doctor') {
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user) setCurrentUserId(user.id);
-      });
-    }
-  }, [currentDate, role]);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const supabase = createClient();
+  const todayStr = new Date().toISOString().split('T')[0];
 
-  const fetchSupportDoctors = async () => {
-    try {
-      const res = await fetch('/api/admin/list-users');
-      const result = await res.json();
-      if (result.success) {
-         const docs = result.data.filter((u: any) => u.role === 'doctor');
-         setDoctors(docs);
-      }
-    } catch (err) {
-      console.error('Error fetching support doctors:', err);
-    }
-  };
-
-  const confirmNewAppointment = async () => {
-    if (!newAppointment.patient_id || !newAppointment.doctor_id || !newAppointment.date || !newAppointment.time) {
-      setModalError('Por favor llena todos los campos obligatorios.');
-      return;
-    }
-    setModalError(null);
-
-    const { error } = await supabase.from('appointments').insert([newAppointment]);
-
-    if (error) {
-      setModalError('Error: ' + error.message);
-    } else {
-      setIsModalOpen(false);
-      setQuickPatientSearch('');
-      fetchMonthAppointments(); // Refresh layouts configs!
-    }
-  };
-
-  const fetchMonthAppointments = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     const startCount = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
     const endCount = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
 
     try {
-      if (role === 'admin') {
-        const res = await fetch(`/api/admin/list-appointments?start=${startCount}&end=${endCount}`);
-        const result = await res.json();
-        if (result.success) setAllAppointments(result.data);
-      } else {
-        const { data } = await supabase
-          .from('appointments')
-          .select('*, patients(name), profiles:doctor_id(name)')
-          .gte('date', startCount)
-          .lte('date', endCount)
-          .order('time', { ascending: true });
-        
-        if (data) setAllAppointments(data);
-      }
+      const [apptsRes, blocksRes, waitRes] = await Promise.all([
+        fetch(`/api/appointments/list?date_from=${startCount}&date_to=${endCount}`),
+        fetch(`/api/appointments/blocked-slots?date_from=${startCount}&date_to=${endCount}`),
+        fetch(`/api/appointments/waiting-list`)
+      ]);
+
+      const apptsData = await apptsRes.json();
+      const blocksData = await blocksRes.json();
+      const waitData = await waitRes.json();
+
+      if (apptsData.success) setAllAppointments(apptsData.data);
+      if (blocksData.success) setBlockedSlots(blocksData.data);
+      if (waitData.success) setWaitingList(waitData.data);
     } catch (err) {
-      console.error('Error fetching appointments API:', err);
+      console.error('Error fetching agenda data:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDate]);
+
+  useEffect(() => {
+    fetchData();
+    fetchPatients();
+    if (!selectedDateString) setSelectedDateString(todayStr);
+  }, [fetchData]);
 
   const fetchPatients = async () => {
     const { data } = await supabase.from('patients').select('id, name');
     if (data) setPatients(data);
   };
 
-  // Safe Calendar Layout Math helpers
+  const handleSaveAppointment = async () => {
+    try {
+      setModalError(null);
+      if (!apptForm.date || !apptForm.start_time || (!apptForm.patient_id && !apptForm.patient_name)) {
+        throw new Error('Faltan campos obligatorios');
+      }
+
+      const endpoint = modalMode === 'create' ? '/api/appointments/create' : '/api/appointments/update';
+      const method = modalMode === 'create' ? 'POST' : 'PATCH';
+      
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apptForm)
+      });
+      const data = await res.json();
+      
+      if (!data.success) throw new Error(data.error);
+      
+      setIsApptModalOpen(false);
+      fetchData();
+    } catch (e: any) {
+      setModalError(e.message);
+    }
+  };
+
+  const handleCancelAppointment = async (id: string, reason?: string) => {
+    if (!confirm('¿Estás seguro de cancelar esta cita?')) return;
+    try {
+      const res = await fetch('/api/appointments/cancel', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, reason })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      setIsDetailModalOpen(false);
+      setIsApptModalOpen(false);
+      fetchData();
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
+  const handleSaveBlock = async () => {
+    try {
+      setModalError(null);
+      const res = await fetch('/api/appointments/block-slot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(blockForm)
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      setIsBlockModalOpen(false);
+      fetchData();
+    } catch (e: any) {
+      setModalError(e.message);
+    }
+  };
+
+  const openNewAppt = (date: string, time: string) => {
+    setModalMode('create');
+    setApptForm({
+      id: '', patient_id: '', patient_name: '', date, start_time: time,
+      duration_minutes: 30, appointment_type: 'consultation', reason: '', notes: '', status: 'scheduled'
+    });
+    setQuickPatientSearch('');
+    setIsApptModalOpen(true);
+  };
+
+  const openEditAppt = (appt: any) => {
+    setModalMode('edit');
+    setApptForm({
+      id: appt.id, 
+      patient_id: appt.patient_id || '', 
+      patient_name: appt.patients?.name || appt.patient_name || '', 
+      date: appt.date, 
+      start_time: appt.start_time.substring(0, 5),
+      duration_minutes: appt.duration_minutes, 
+      appointment_type: appt.appointment_type, 
+      reason: appt.reason || '', 
+      notes: appt.notes || '', 
+      status: appt.status
+    });
+    setQuickPatientSearch(appt.patients?.name || appt.patient_name || '');
+    setIsDetailModalOpen(false);
+    setIsApptModalOpen(true);
+  };
+
+  // Calendar Math
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday
+  const firstDayIndex = new Date(year, month, 1).getDay();
   
-  const monthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
+  const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-  const todayStr = new Date().toISOString().split('T')[0];
-
-  // Compute the 7 days of the week containing selectedDateString or today
   const weekDays = (() => {
     const anchor = selectedDateString ? new Date(selectedDateString + 'T00:00:00') : new Date();
     const dow = anchor.getDay();
@@ -148,501 +198,587 @@ export default function AgendaPage() {
     setSelectedDateString(null);
   };
 
-  const changeWeek = (val: number) => {
-    const anchor = selectedDateString ? new Date(selectedDateString + 'T00:00:00') : new Date();
-    anchor.setDate(anchor.getDate() + val * 7);
-    const ds = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}-${String(anchor.getDate()).padStart(2, '0')}`;
-    setSelectedDateString(ds);
-    setCurrentDate(anchor);
+  const getStatusColor = (status: string, type: string) => {
+    if (status === 'attended') return { bg: '#E1F5EE', border: '#0F6E56', text: '#0F6E56' };
+    if (status === 'cancelled' || status === 'no_show') return { bg: '#FEE2E2', border: '#EF4444', text: '#B91C1C' };
+    if (type === 'follow_up') return { bg: '#FAEEDA', border: '#854F0B', text: '#854F0B' };
+    if (type === 'emergency') return { bg: '#FEE2E2', border: '#EF4444', text: '#B91C1C' };
+    return { bg: '#E8F0FB', border: '#1A4A8A', text: '#1A4A8A' };
   };
 
-  const handleDayClick = (day: number) => {
-    const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    setSelectedDateString(dayStr);
-    const filtered = allAppointments.filter(app => 
-      app.date === dayStr && (selectedDoctorId === 'todos' || app.doctor_id === selectedDoctorId)
-    );
-    setSelectedDayAppointments(filtered);
-  };
+  const filteredObj = allAppointments.filter(app => 
+    searchTerm === '' || (app.patients?.name && app.patients.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">Agenda Médica</h1>
-          <p className="text-sm text-gray-500">Consulta en vista mensual las citas programadas.</p>
+          <p className="text-sm text-gray-500">Gestiona tus citas y horarios de atención.</p>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-2 w-full md:w-2/3 md:justify-end">
-          {/* Search Bar with Patient Filter */}
-          <div className="relative w-full md:w-1/2">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-              <Search size={18} />
-            </div>
-            <input
-              type="text"
-              placeholder="Filtrar por Paciente..."
-              value={searchTerm}
-              onFocus={() => setShowPatientDropdown(true)}
-              onBlur={() => setTimeout(() => setShowPatientDropdown(false), 150)}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-10 py-2 border border-gray-200 bg-white rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-900 text-sm"
-            />
-            {selectedPatientId && (
-              <button 
-                onClick={() => { setSelectedPatientId(null); setSearchTerm(''); }}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-              >
-                <X size={16} />
-              </button>
-            )}
-
-            {showPatientDropdown && searchTerm.trim() !== '' && (
-              <div className="absolute z-20 w-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                {patients
-                  .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                  .map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => {
-                        setSelectedPatientId(p.id);
-                        setSearchTerm(p.name);
-                        setShowPatientDropdown(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 text-xs font-semibold text-gray-800 border-b border-gray-50 last:border-0"
-                    >
-                      {p.name}
-                    </button>
-                  ))
-                }
-              </div>
-            )}
+        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+          <div className="relative w-full md:w-64">
+             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+               <Search size={18} />
+             </div>
+             <input
+               type="text"
+               placeholder="Buscar paciente..."
+               value={searchTerm}
+               onChange={(e) => setSearchTerm(e.target.value)}
+               className="w-full pl-10 pr-4 py-2 border-[0.5px] border-black/8 bg-white rounded-xl focus:outline-none focus:ring-1 focus:ring-gray-900 text-sm shadow-sm"
+             />
           </div>
-
-          {/* Doctor Filter removed — now in sidebar */}
+          <button 
+            onClick={() => {
+              setBlockForm({ date: selectedDateString || todayStr, start_time: '09:00', end_time: '10:00', reason: '', is_full_day: false, recurring: 'none' });
+              setIsBlockModalOpen(true);
+            }}
+            className="px-4 py-2 bg-white border-[0.5px] border-black/8 text-gray-700 font-bold rounded-xl text-sm hover:bg-gray-50 shadow-sm"
+          >
+            Bloquear Horario
+          </button>
+          <button 
+            onClick={() => openNewAppt(selectedDateString || todayStr, '09:00')}
+            className="px-4 py-2 bg-[#1A4A8A] text-white font-bold rounded-xl text-sm flex items-center gap-2 hover:bg-[#1A4A8A]/90 shadow-sm"
+          >
+            + Nueva Cita
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-        {/* ─── LEFT SIDEBAR ─── */}
-        <div className="space-y-4">
-
+        {/* ─── LEFT SIDEBAR (Fixed Width) ─── */}
+        <div className="w-full lg:w-[320px] shrink-0 space-y-4">
+          
           {/* Mini Calendar */}
-          <div className="bg-white rounded-2xl border border-gray-100/50 shadow-sm p-4">
-            <div className="flex items-center justify-between mb-3">
+          <div className="bg-white rounded-xl border-[0.5px] border-black/8 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3 border-b border-black/8 pb-2">
               <span className="text-sm font-bold text-gray-900">{monthNames[month]} {year}</span>
               <div className="flex gap-0.5">
                 <button onClick={() => changeMonth(-1)} className="p-1 rounded-lg hover:bg-gray-50 text-gray-500"><ChevronLeft size={15} /></button>
                 <button onClick={() => changeMonth(1)} className="p-1 rounded-lg hover:bg-gray-50 text-gray-500"><ChevronRight size={15} /></button>
               </div>
             </div>
-
-            {/* Day headers */}
             <div className="grid grid-cols-7 text-center mb-1">
-              {['D','L','M','M','J','V','S'].map((d, i) => (
-                <div key={i} className="text-[10px] font-bold text-gray-400">{d}</div>
-              ))}
+              {['D','L','M','M','J','V','S'].map((d, i) => <div key={i} className="text-[10px] font-bold text-gray-400">{d}</div>)}
             </div>
-
-            {/* Month view */}
-            {calendarView === 'mes' ? (
-              <div className="grid grid-cols-7 gap-0.5">
-                {Array.from({ length: firstDayIndex }).map((_, i) => <div key={`b-${i}`} />)}
-                {Array.from({ length: daysInMonth }).map((_, i) => {
-                  const day = i + 1;
-                  const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                  const hasCitas = filteredAppointments.some(a => a.date === dayStr);
-                  const isToday = dayStr === todayStr;
-                  const isSelected = dayStr === selectedDateString;
-                  return (
-                    <button
-                      key={day}
-                      onClick={() => handleDayClick(day)}
-                      className="h-7 w-full flex flex-col items-center justify-center rounded-lg text-xs font-bold relative transition-all"
-                      style={isToday ? { backgroundColor: '#1A4A8A', color: '#fff' } : isSelected ? { border: '1.5px solid #1A4A8A', color: '#1A4A8A' } : { color: '#374151' }}
-                    >
-                      {day}
-                      {hasCitas && !isToday && (
-                        <div className="w-1 h-1 rounded-full absolute bottom-0.5" style={{ backgroundColor: '#0F6E56' }} />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              /* Week view */
-              <div className="grid grid-cols-7 gap-0.5">
-                {weekDays.map(({ dayStr, dayNum }) => {
-                  const hasCitas = filteredAppointments.some(a => a.date === dayStr);
-                  const isToday = dayStr === todayStr;
-                  const isSelected = dayStr === selectedDateString;
-                  return (
-                    <button
-                      key={dayStr}
-                      onClick={() => { setSelectedDateString(dayStr); setSelectedDayAppointments(filteredAppointments.filter(a => a.date === dayStr)); }}
-                      className="h-7 w-full flex flex-col items-center justify-center rounded-lg text-xs font-bold relative transition-all"
-                      style={isToday ? { backgroundColor: '#1A4A8A', color: '#fff' } : isSelected ? { border: '1.5px solid #1A4A8A', color: '#1A4A8A' } : { color: '#374151' }}
-                    >
-                      {dayNum}
-                      {hasCitas && !isToday && (
-                        <div className="w-1 h-1 rounded-full absolute bottom-0.5" style={{ backgroundColor: '#0F6E56' }} />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            <div className="grid grid-cols-7 gap-0.5">
+              {Array.from({ length: firstDayIndex }).map((_, i) => <div key={`b-${i}`} />)}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                 const day = i + 1;
+                 const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                 const hasAppts = allAppointments.some(a => a.date === dayStr && a.status !== 'cancelled');
+                 const isToday = dayStr === todayStr;
+                 const isSelected = dayStr === selectedDateString;
+                 return (
+                   <button
+                     key={day}
+                     onClick={() => { setSelectedDateString(dayStr); setCalendarView('dia'); }}
+                     className="h-8 w-full flex flex-col items-center justify-center rounded-lg text-xs font-bold relative transition-all"
+                     style={isToday ? { backgroundColor: '#1A4A8A', color: '#fff' } : isSelected ? { border: '1.5px solid #1A4A8A', color: '#1A4A8A' } : { color: '#374151' }}
+                   >
+                     {day}
+                     {hasAppts && !isToday && <div className="w-1 h-1 rounded-full absolute bottom-1" style={{ backgroundColor: '#0F6E56' }} />}
+                   </button>
+                 );
+              })}
+            </div>
           </div>
 
-          {/* Week / Month Toggle */}
-          <div className="flex rounded-xl border border-gray-200 overflow-hidden bg-white">
-            {(['mes', 'semana'] as const).map(view => (
+          {/* Selected Day Agenda Compact List */}
+          {selectedDateString && (
+            <div className="bg-white rounded-xl border-[0.5px] border-black/8 shadow-sm p-4 flex flex-col max-h-[300px]">
+              <h3 className="text-xs font-bold text-gray-900 mb-3 border-b border-black/8 pb-2 flex items-center justify-between">
+                Citas del día {new Date(selectedDateString + 'T00:00:00').getDate()}
+                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[9px]">
+                  {allAppointments.filter(a => a.date === selectedDateString && a.status !== 'cancelled').length}
+                </span>
+              </h3>
+              <div className="overflow-y-auto space-y-2 pr-1 flex-1">
+                {allAppointments
+                  .filter(a => a.date === selectedDateString && a.status !== 'cancelled')
+                  .sort((a, b) => a.start_time.localeCompare(b.start_time))
+                  .map(appt => {
+                     const style = getStatusColor(appt.status, appt.appointment_type);
+                     return (
+                       <div key={appt.id} onClick={() => { setSelectedAppt(appt); setIsDetailModalOpen(true); }} className="flex gap-2 p-2 rounded-lg border-[0.5px] border-black/8 hover:bg-gray-50 cursor-pointer items-center">
+                         <div className="text-[10px] font-black text-gray-500 w-10 shrink-0 text-center">{appt.start_time.substring(0, 5)}</div>
+                         <div className="w-1 h-full rounded-full shrink-0" style={{ backgroundColor: style.border }} />
+                         <div className="min-w-0">
+                           <div className="text-xs font-bold text-gray-900 truncate">{appt.patients?.name || appt.patient_name}</div>
+                           <div className="text-[9px] text-gray-500 truncate">{appt.reason || 'Sin motivo'}</div>
+                         </div>
+                       </div>
+                     );
+                })}
+                {allAppointments.filter(a => a.date === selectedDateString && a.status !== 'cancelled').length === 0 && (
+                   <p className="text-xs text-gray-400 text-center py-4">Sin citas agendadas</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Waiting List */}
+          <div className="bg-white rounded-xl border-[0.5px] border-black/8 shadow-sm p-4">
+             <h3 className="text-xs font-bold text-gray-900 mb-3 border-b border-black/8 pb-2 flex items-center justify-between">
+                Lista de Espera
+                <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-[9px]">{waitingList.length}</span>
+             </h3>
+             <div className="space-y-2 max-h-[200px] overflow-y-auto">
+               {waitingList.map(item => (
+                 <div key={item.id} className="p-2 border-[0.5px] border-black/8 rounded-lg bg-orange-50/30 flex justify-between items-center">
+                   <div>
+                     <p className="text-xs font-bold text-gray-800">{item.patients?.name || item.patient_name}</p>
+                     <p className="text-[9px] text-gray-500">{item.reason || 'Urgente'}</p>
+                   </div>
+                   <button onClick={() => openEditAppt(item)} className="text-[9px] bg-white border-[0.5px] border-black/8 px-2 py-1 rounded hover:bg-gray-50 font-bold">
+                     Asignar
+                   </button>
+                 </div>
+               ))}
+               {waitingList.length === 0 && (
+                 <p className="text-xs text-gray-400 text-center py-2">Vacía</p>
+               )}
+             </div>
+          </div>
+
+          <div className="flex rounded-xl border-[0.5px] border-black/8 overflow-hidden bg-white shadow-sm">
+            {(['dia', 'semana', 'mes'] as const).map(view => (
               <button
                 key={view}
                 onClick={() => setCalendarView(view)}
-                className="flex-1 py-2 text-xs font-bold transition-colors"
+                className="flex-1 py-2 text-xs font-bold transition-colors capitalize"
                 style={calendarView === view ? { backgroundColor: '#1A4A8A', color: '#fff' } : { color: '#6b7280' }}
               >
-                {view === 'mes' ? 'Mes' : 'Semana'}
+                {view}
               </button>
             ))}
           </div>
 
-          {/* Doctor filter (Admin only) */}
-          {role === 'admin' && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Filtrar por Médico</label>
-              <select
-                value={selectedDoctorId}
-                onChange={(e) => setSelectedDoctorId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 bg-white rounded-xl text-sm font-medium text-gray-700 focus:outline-none"
-              >
-                <option value="todos">Todos los Médicos</option>
-                {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-            </div>
-          )}
-
-          {/* Color Legend */}
-          <div className="bg-white rounded-2xl border border-gray-100/50 shadow-sm p-4 space-y-2">
-            <p className="text-xs font-bold text-gray-700 mb-2">Leyenda</p>
-            {[
-              { bg: '#E8F0FB', border: '#1A4A8A', label: 'Cita agendada' },
-              { bg: '#E1F5EE', border: '#0F6E56', label: 'Atendida' },
-              { bg: '#FAEEDA', border: '#854F0B', label: 'Seguimiento sugerido' },
-              { bg: '#f3f4f6', border: '#9ca3af', label: 'Disponible' },
-            ].map(item => (
-              <div key={item.label} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.bg, border: `1.5px solid ${item.border}` }} />
-                <span className="text-xs text-gray-600">{item.label}</span>
-              </div>
-            ))}
-          </div>
-
         </div>
 
 
-
-        {/* RIGHT PANEL */}
-        {calendarView === 'semana' ? (
-
-          /* ─── WEEKLY GRID VIEW ─── */
-          <div className="bg-white rounded-2xl border border-gray-100/50 shadow-sm overflow-hidden">
-            {/* Week header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-              <button onClick={() => changeWeek(-1)} className="p-1.5 rounded-lg hover:bg-gray-50 text-gray-500"><ChevronLeft size={16} /></button>
-              <span className="text-sm font-bold text-gray-900">
-                {weekDays[0] && new Date(weekDays[0].dayStr + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
-                {' – '}
-                {weekDays[6] && new Date(weekDays[6].dayStr + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </span>
-              <button onClick={() => changeWeek(1)} className="p-1.5 rounded-lg hover:bg-gray-50 text-gray-500"><ChevronRight size={16} /></button>
-            </div>
-
-            {/* Grid */}
-            <div className="overflow-auto max-h-[600px]">
-              {(() => {
-                const dayLabels = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-                const slots: string[] = [];
-                for (let h = 9; h <= 18; h++) {
-                  slots.push(`${String(h).padStart(2, '0')}:00`);
-                  if (h < 18) slots.push(`${String(h).padStart(2, '0')}:30`);
-                }
-
-                const getApptStyle = (status: string) => {
-                  if (status === 'attended') return { bg: '#E1F5EE', border: '#0F6E56', text: '#0F6E56' };
-                  if (status === 'follow_up') return { bg: '#FAEEDA', border: '#854F0B', text: '#854F0B' };
-                  return { bg: '#E8F0FB', border: '#1A4A8A', text: '#1A4A8A' };
-                };
-
-                return (
-                  <table className="w-full text-xs border-collapse" style={{ minWidth: '600px' }}>
-                    <thead>
-                      <tr>
-                        <th className="w-14 py-2 border-b border-gray-100 bg-gray-50/50 text-gray-400 font-medium text-[10px]">Hora</th>
-                        {weekDays.map(({ dayStr, dayNum, month: dm }) => {
-                          const isToday = dayStr === todayStr;
-                          return (
-                            <th
-                              key={dayStr}
-                              className="py-2 border-b border-l border-gray-100 text-[11px] font-bold text-center"
-                              style={isToday ? { color: '#1A4A8A', backgroundColor: '#EEF4FF' } : { color: '#374151', backgroundColor: '#f9fafb' }}
-                            >
-                              <div>{dayLabels[weekDays.indexOf({ dayStr, dayNum, month: dm })] ?? dayLabels[new Date(dayStr + 'T00:00:00').getDay()]}</div>
-                              <div className="text-base font-black">{dayNum}</div>
-                            </th>
-                          );
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {slots.map(slot => (
-                        <tr key={slot} className="border-b border-gray-50">
-                          <td className="py-1 px-2 text-[9px] font-bold text-gray-400 text-right align-top border-r border-gray-100 w-14 whitespace-nowrap">
-                            {slot}
-                          </td>
-                          {weekDays.map(({ dayStr }) => {
-                            const appt = filteredAppointments.find(
-                              a => a.date === dayStr && a.time?.substring(0, 5) === slot
-                            );
-                            const style = appt ? getApptStyle(appt.status || appt.type) : null;
-                            return (
-                              <td
-                                key={dayStr}
-                                className="border-l border-gray-50 align-top p-0.5"
-                                onClick={() => {
-                                  if (!appt) {
-                                    setNewAppointment({
-                                      patient_id: '',
-                                      doctor_id: role === 'doctor' ? currentUserId : '',
-                                      date: dayStr,
-                                      time: slot,
-                                      notes: ''
-                                    });
-                                    setIsModalOpen(true);
-                                  }
-                                }}
-                              >
-                                {appt ? (
-                                  <div
-                                    className="rounded px-1 py-0.5 text-[9px] font-bold leading-tight cursor-default"
-                                    style={{ backgroundColor: style!.bg, borderLeft: `2px solid ${style!.border}`, color: style!.text }}
-                                  >
-                                    <div className="truncate">{appt.patients?.name || 'Paciente'}</div>
-                                    <div className="font-normal opacity-70 truncate">{appt.type === 'follow_up' ? 'Seguimiento' : 'Consulta'}</div>
-                                  </div>
-                                ) : (
-                                  <div className="h-6 rounded hover:bg-blue-50/50 cursor-pointer transition-colors" />
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                );
-              })()}
-            </div>
-          </div>
-
-        ) : (
-
-          /* ─── DAY SLOTS VIEW (mes) ─── */
-          <div className="bg-white rounded-2xl border border-gray-100/50 shadow-sm p-6 flex flex-col h-full max-h-[600px]">
-            <div className="pb-4 border-b border-gray-50 h-max">
-              <h3 className="text-md font-bold text-gray-900 flex items-center gap-1.5">
-                <Calendar size={18} className="text-blue-500" />
-                Horarios {selectedDateString && new Date(selectedDateString + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
-              </h3>
-            </div>
-
-            <div className="flex-1 mt-4 overflow-y-auto space-y-2 pr-1">
-              {!selectedDateString ? (
-                <div className="flex h-full items-center justify-center text-gray-400 text-xs text-center p-4">
-                  💡 Selecciona un día del calendario para ver o agendar horarios.
+        {/* ─── RIGHT MAIN PANEL ─── */}
+        <div className="flex-1 min-w-0 bg-white rounded-xl border-[0.5px] border-black/8 shadow-sm p-4 h-[calc(100vh-140px)] flex flex-col">
+           
+           {/* DAY VIEW */}
+           {calendarView === 'dia' && (
+             <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between border-b border-black/8 pb-4 mb-4">
+                   <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                     <Calendar className="text-blue-600" size={20}/>
+                     {selectedDateString && new Date(selectedDateString + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                   </h2>
                 </div>
-              ) : (
-                <div className="space-y-1">
+                <div className="overflow-y-auto flex-1 pr-2">
                   {(() => {
                     const slots: string[] = [];
-                    for (let h = 7; h <= 21; h++) {
+                    for (let h = 8; h <= 20; h++) {
                       slots.push(`${String(h).padStart(2, '0')}:00`);
-                      if (h < 21) slots.push(`${String(h).padStart(2, '0')}:30`);
+                      slots.push(`${String(h).padStart(2, '0')}:30`);
                     }
-                    const dayAppointments = filteredAppointments.filter(app => app.date === selectedDateString);
+                    const dayFiltered = filteredObj.filter(a => a.date === selectedDateString);
+                    const dayBlocks = blockedSlots.filter(b => b.date === selectedDateString);
+
                     return slots.map(slot => {
-                      const appointment = dayAppointments.find((app) => app.time.substring(0, 5) === slot);
+                      const appt = dayFiltered.find(a => a.start_time.startsWith(slot) && a.status !== 'cancelled');
+                      const blocked = dayBlocks.find(b => b.start_time <= slot && b.end_time > slot);
+
+                      if (blocked) {
+                         return (
+                           <div key={slot} className="flex min-h-[60px] border-b border-gray-100 group">
+                             <div className="w-16 shrink-0 py-2 border-r border-gray-100 text-right pr-4 text-[11px] font-bold text-gray-400">{slot}</div>
+                             <div className="flex-1 p-1">
+                               <div className="h-full w-full rounded-lg bg-gray-100 flex items-center justify-center opacity-70 stripe-bg border-[0.5px] border-gray-300">
+                                  <Ban size={14} className="text-gray-500 mr-2" />
+                                  <span className="text-xs font-bold text-gray-600">{blocked.reason || 'Bloqueado'}</span>
+                               </div>
+                             </div>
+                           </div>
+                         );
+                      }
+
+                      if (appt) {
+                         const style = getStatusColor(appt.status, appt.appointment_type);
+                         return (
+                           <div key={slot} className="flex min-h-[60px] border-b border-gray-100">
+                             <div className="w-16 shrink-0 py-2 border-r border-gray-100 text-right pr-4 text-[11px] font-bold text-gray-400">{slot}</div>
+                             <div className="flex-1 p-1">
+                               <div 
+                                onClick={() => { setSelectedAppt(appt); setIsDetailModalOpen(true); }}
+                                className="h-full w-full rounded-lg border-l-4 p-2 cursor-pointer shadow-sm flex flex-col justify-center"
+                                style={{ backgroundColor: style.bg, borderLeftColor: style.border }}
+                               >
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-black" style={{ color: style.text }}>{appt.patients?.name || appt.patient_name}</span>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/50">{appt.duration_minutes} min</span>
+                                  </div>
+                                  <div className="text-[10px] text-gray-600 mt-1 line-clamp-1">{appt.reason || 'Consulta General'}</div>
+                               </div>
+                             </div>
+                           </div>
+                         );
+                      }
+
+                      // Empty Slot
                       return (
-                        <div
-                          key={slot}
-                          onClick={() => {
-                            if (!appointment) {
-                              setNewAppointment({
-                                patient_id: '',
-                                doctor_id: role === 'doctor' ? currentUserId : '',
-                                date: selectedDateString || '',
-                                time: slot,
-                                notes: ''
-                              });
-                              setIsModalOpen(true);
-                            }
-                          }}
-                          className={`p-2 rounded-xl flex items-center justify-between border transition-all ${
-                            appointment
-                              ? 'bg-amber-50/70 border-amber-100 shadow-sm'
-                              : 'bg-white border-gray-50/80 hover:bg-gray-50/50 cursor-pointer'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xxs font-black px-1.5 py-0.5 rounded-lg flex items-center gap-1 ${appointment ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-                              <Clock size={10} />
-                              {slot}
-                            </span>
-                            {appointment ? (
-                              <div>
-                                <h4 className="font-bold text-gray-900 text-xxs flex items-center gap-1">
-                                  <User size={11} className="text-gray-400" />
-                                  {appointment.patients?.name || 'Paciente'}
-                                </h4>
-                                <p className="text-[9px] text-gray-400">Dr: {appointment.profiles?.name || 'Médico'}</p>
-                              </div>
-                            ) : (
-                              <span className="text-xxs text-gray-300 font-medium">Disponible</span>
-                            )}
-                          </div>
-                          {!appointment && (
-                            <span className="text-[10px] font-bold text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg">+ Agendar</span>
-                          )}
-                          {appointment && appointment.notes && (
-                            <span className="text-[9px] text-gray-400 italic max-w-[100px] truncate" title={appointment.notes}>"{appointment.notes}"</span>
-                          )}
-                        </div>
+                         <div key={slot} className="flex min-h-[40px] border-b border-gray-100 group">
+                            <div className="w-16 shrink-0 py-2 border-r border-gray-100 text-right pr-4 text-[11px] font-bold text-gray-400">{slot}</div>
+                            <div className="flex-1 p-0.5">
+                               <div 
+                                onClick={() => openNewAppt(selectedDateString!, slot)}
+                                className="h-full w-full min-h-[38px] rounded-lg border border-transparent group-hover:bg-blue-50/50 group-hover:border-blue-100 cursor-pointer flex items-center justify-center flex-col transition-all"
+                               >
+                                  <span className="text-blue-500 opacity-0 group-hover:opacity-100 font-bold text-lg leading-none">+</span>
+                               </div>
+                            </div>
+                         </div>
                       );
                     });
                   })()}
                 </div>
-              )}
-            </div>
-          </div>
+             </div>
+           )}
 
-        )}
+           {/* WEEK VIEW */}
+           {calendarView === 'semana' && (
+             <div className="flex flex-col h-full"> 
+               <div className="flex-1 overflow-x-auto border-[0.5px] border-black/8 rounded-xl overflow-y-auto">
+                 <table className="w-full text-xs border-collapse table-fixed" style={{ minWidth: '850px' }}>
+                    <thead>
+                       <tr className="bg-gray-50/80 border-b border-black/8">
+                         <th className="w-16 py-3 text-gray-400 font-bold text-[10px] text-right pr-4 sticky top-0 bg-gray-50/80 z-10">Hora</th>
+                         {weekDays.map(({ dayStr, dayNum }) => {
+                           const isToday = dayStr === todayStr;
+                           const dateObj = new Date(dayStr + 'T00:00:00');
+                           const dayLabels = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                           return (
+                             <th key={dayStr} className="py-2 text-[11px] font-bold text-center border-l border-black/5 sticky top-0 bg-gray-50/80 z-10" style={isToday ? { color: '#1A4A8A', backgroundColor: '#EEF4FF' } : { color: '#374151' }}>
+                               <div>{dayLabels[dateObj.getDay()]}</div>
+                               <div className="text-sm font-black">{dayNum}</div>
+                             </th>
+                           );
+                         })}
+                       </tr>
+                    </thead>
+                    <tbody>
+                       {(() => {
+                         const slots: string[] = [];
+                         for (let h = 8; h <= 20; h++) {
+                           slots.push(`${String(h).padStart(2, '0')}:00`);
+                           slots.push(`${String(h).padStart(2, '0')}:30`);
+                         }
+                         return slots.map(slot => (
+                           <tr key={slot} className="border-b border-gray-100/60 group">
+                             <td className="py-2 border-r border-gray-100/60 text-right pr-4 text-[10px] font-bold text-gray-400 w-16 shrink-0 bg-gray-50/30">{slot}</td>
+                             {weekDays.map(({ dayStr }) => {
+                               const dayFiltered = filteredObj.filter(a => a.date === dayStr);
+                               const dayBlocks = blockedSlots.filter(b => b.date === dayStr);
+                               const appt = dayFiltered.find(a => a.start_time.startsWith(slot) && a.status !== 'cancelled');
+                               const blocked = dayBlocks.find(b => b.start_time <= slot && b.end_time > slot);
+
+                               if (blocked) {
+                                  return (
+                                    <td key={dayStr} className="border-l border-gray-50 p-0.5 align-top">
+                                      <div className="h-full min-h-[40px] rounded-lg bg-gray-100 flex items-center justify-center opacity-70 stripe-bg border-[0.5px] border-gray-300">
+                                         <Ban size={12} className="text-gray-500 mr-1" />
+                                         <span className="text-[9px] font-bold text-gray-600 truncate">{blocked.reason || 'Bloqueado'}</span>
+                                      </div>
+                                    </td>
+                                  );
+                               }
+                               if (appt) {
+                                  const style = getStatusColor(appt.status, appt.appointment_type);
+                                  return (
+                                    <td key={dayStr} className="border-l border-gray-50 p-0.5 align-top">
+                                      <div 
+                                       onClick={() => { setSelectedAppt(appt); setIsDetailModalOpen(true); }}
+                                       className="rounded-lg border-l-4 p-1 cursor-pointer shadow-sm flex flex-col justify-center h-full min-h-[40px] hover:opacity-90 transition-opacity"
+                                       style={{ backgroundColor: style.bg, borderLeftColor: style.border }}
+                                      >
+                                         <div className="text-[10px] font-black truncate" style={{ color: style.text }}>{appt.patients?.name || appt.patient_name}</div>
+                                         <div className="text-[8px] text-gray-600 line-clamp-1">{appt.reason || 'Consulta'}</div>
+                                      </div>
+                                    </td>
+                                  );
+                               }
+                               return (
+                                 <td key={dayStr} className="border-l border-gray-50 p-0.5 align-top">
+                                   <div 
+                                    onClick={() => openNewAppt(dayStr, slot)}
+                                    className="h-full min-h-[40px] rounded-lg border border-transparent group-hover:bg-blue-50/40 cursor-pointer flex items-center justify-center transition-all"
+                                   >
+                                      <span className="text-blue-500 opacity-0 group-hover:opacity-100 font-bold text-base leading-none">+</span>
+                                   </div>
+                                 </td>
+                               );
+                             })}
+                           </tr>
+                         ));
+                       })()}
+                    </tbody>
+                 </table>
+               </div>
+             </div>
+           )}
+
+           {/* MONTH VIEW */}
+           {calendarView === 'mes' && (
+             <div className="flex flex-col h-full">
+               <div className="flex-1 overflow-y-auto border-[0.5px] border-black/8 rounded-xl">
+                 <table className="w-full text-xs border-collapse h-full table-fixed">
+                    <thead>
+                       <tr className="bg-gray-50 border-b border-black/8 sticky top-0 z-10">
+                         {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((d, i) => (
+                           <th key={d} className={`py-2 text-[11px] font-bold text-gray-600 text-center border-black/5 ${i > 0 ? 'border-l' : ''}`}>{d}</th>
+                         ))}
+                       </tr>
+                    </thead>
+                    <tbody>
+                       {(() => {
+                         const totalCells = Math.ceil((daysInMonth + firstDayIndex) / 7) * 7;
+                         const rows: any[] = [];
+                         let cells: any[] = [];
+
+                         for (let i = 0; i < totalCells; i++) {
+                           const dayNum = i - firstDayIndex + 1;
+                           const isValidDay = dayNum > 0 && dayNum <= daysInMonth;
+                           const dayStr = isValidDay ? `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}` : '';
+                           const isToday = dayStr === todayStr;
+                           const hasAppts = isValidDay && allAppointments.some(a => a.date === dayStr && a.status !== 'cancelled');
+                           
+                           cells.push(
+                             <td key={i} className={`border border-black/5 align-top p-1 h-32 ${isValidDay ? 'bg-white' : 'bg-gray-50/40'}`}>
+                               {isValidDay && (
+                                 <div className="flex flex-col h-full">
+                                   <div className="flex justify-between items-center mb-1">
+                                     <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${isToday ? 'bg-blue-600 text-white' : 'text-gray-700'}`}>{dayNum}</span>
+                                     {hasAppts && <div className="w-1.5 h-1.5 rounded-full bg-[#0F6E56]" />}
+                                   </div>
+                                   <div className="flex-1 overflow-y-auto space-y-0.5 pr-0.5">
+                                     {allAppointments
+                                       .filter(a => a.date === dayStr && a.status !== 'cancelled')
+                                       .sort((a, b) => a.start_time.localeCompare(b.start_time))
+                                       .slice(0, 3)
+                                       .map(appt => {
+                                          const style = getStatusColor(appt.status, appt.appointment_type);
+                                          return (
+                                            <div key={appt.id} onClick={() => { setSelectedAppt(appt); setIsDetailModalOpen(true); }} className="rounded px-1 py-0.5 text-[9px] font-bold cursor-pointer border-l-2 truncate shadow-sm hover:opacity-80 transition-opacity" style={{ backgroundColor: style.bg, borderLeftColor: style.border, color: style.text }}>
+                                               {appt.start_time.substring(0, 5)} {appt.patients?.name || appt.patient_name}
+                                            </div>
+                                          );
+                                     })}
+                                     {allAppointments.filter(a => a.date === dayStr && a.status !== 'cancelled').length > 3 && (
+                                       <button onClick={() => { setSelectedDateString(dayStr!); setCalendarView('dia'); }} className="text-[8px] text-blue-600 font-bold hover:underline">Ver más...</button>
+                                     )}
+                                   </div>
+                                 </div>
+                               )}
+                             </td>
+                           );
+
+                           if ((i + 1) % 7 === 0) {
+                             rows.push(<tr key={`row-${i}`}>{cells}</tr>);
+                             cells = [];
+                           }
+                         }
+                         return rows;
+                       })()}
+                    </tbody>
+                 </table>
+               </div>
+             </div>
+           )}
+
+        </div>
 
       </div>
-      {/* Modal Quick Appointment Agenda */}
-      {isModalOpen && (
+
+      {/* MODAL: APPOINTMENT FORM */}
+      {isApptModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 space-y-4 shadow-xl relative">
-            <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 text-lg">&times;</button>
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl p-6 relative">
+            <button onClick={() => setIsApptModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900"><X size={20}/></button>
+            <h2 className="text-lg font-bold text-gray-900 border-b border-black/8 pb-3 mb-4">
+              {modalMode === 'create' ? 'Nueva Cita' : 'Editar Cita'}
+            </h2>
             
-            <h3 className="text-md font-bold text-gray-900 border-b pb-2 flex items-center gap-1">
-              <Calendar size={18} className="text-blue-500"/> Agendar Horario
-            </h3>
-            
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* Paciente */}
               <div className="relative">
-                <label className="block text-xs font-medium text-gray-500 mb-1">Paciente</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Paciente *</label>
                 <input 
                   type="text" 
-                  placeholder="Buscar o escribir nombre..."
+                  placeholder="Buscar paciente registrado o ingresar nombre nuevo..."
                   value={quickPatientSearch}
                   onChange={(e) => {
                      setQuickPatientSearch(e.target.value);
+                     setApptForm({ ...apptForm, patient_name: e.target.value, patient_id: '' });
                      setQuickPatientDropdown(true);
-                     if (e.target.value === '') setNewAppointment({ ...newAppointment, patient_id: '' });
                   }}
                   onFocus={() => setQuickPatientDropdown(true)}
-                  className="w-full bg-white px-3 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
+                  className="w-full bg-white px-3 py-2 text-sm border-[0.5px] border-black/8 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
-                {quickPatientDropdown && (
-                  <div className="absolute top-14 left-0 w-full bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-40 overflow-y-auto p-1 space-y-0.5">
-                    {patients.filter(p => !quickPatientSearch || p.name.toLowerCase().includes(quickPatientSearch.toLowerCase())).map(p => (
-                       <div 
-                         key={p.id} 
-                         onClick={() => {
-                            setNewAppointment({ ...newAppointment, patient_id: p.id });
-                            setQuickPatientSearch(p.name);
-                            setQuickPatientDropdown(false);
-                         }}
-                         className="px-3 py-1.5 text-xxs hover:bg-gray-50 cursor-pointer rounded-lg text-gray-700 font-bold"
-                       >
+                {quickPatientDropdown && quickPatientSearch.length > 0 && (
+                  <div className="absolute top-16 left-0 w-full bg-white border-[0.5px] border-black/8 rounded-xl shadow-lg z-20 max-h-40 overflow-y-auto p-1">
+                    {patients.filter(p => p.name.toLowerCase().includes(quickPatientSearch.toLowerCase())).map(p => (
+                       <div key={p.id} onClick={() => {
+                          setApptForm({ ...apptForm, patient_id: p.id, patient_name: p.name });
+                          setQuickPatientSearch(p.name);
+                          setQuickPatientDropdown(false);
+                       }} className="px-3 py-2 text-xs hover:bg-gray-50 cursor-pointer rounded-lg text-gray-900 font-bold">
                           {p.name}
                        </div>
                     ))}
-                    {patients.filter(p => p.name.toLowerCase().includes(quickPatientSearch.toLowerCase())).length === 0 && quickPatientSearch.trim() !== '' && (
-                       <div 
-                         onClick={async () => {
-                           try {
-                             const res = await fetch('/api/patients/create', {
-                               method: 'POST',
-                               headers: { 'Content-Type': 'application/json' },
-                               body: JSON.stringify({ name: quickPatientSearch }),
-                             });
-                             const result = await res.json();
-                             if (!res.ok) throw new Error(result?.error || 'No se pudo crear el paciente');
-                             if (result?.data) {
-                               setPatients([...patients, result.data]);
-                               setNewAppointment({ ...newAppointment, patient_id: result.data.id });
-                               setQuickPatientDropdown(false);
-                             }
-                           } catch (e: any) {
-                             setModalError(e?.message || 'No se pudo crear el paciente');
-                           }
-                         }}
-                         className="px-3 py-1.5 text-xxs hover:bg-blue-50 cursor-pointer rounded-lg text-blue-600 font-black flex items-center gap-1"
-                       >
-                          + Crear "{quickPatientSearch}"
-                       </div>
-                    )}
+                  </div>
+                )}
+                <p className="text-[10px] text-gray-400 mt-1">Si no existe, se registrará como nombre temporal.</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-1">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Fecha *</label>
+                  <input type="date" value={apptForm.date} onChange={e => setApptForm({...apptForm, date: e.target.value})} className="w-full bg-white px-3 py-2 text-sm border-[0.5px] border-black/8 rounded-lg focus:outline-none"/>
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Hora inicio *</label>
+                  <input type="time" value={apptForm.start_time} onChange={e => setApptForm({...apptForm, start_time: e.target.value})} className="w-full bg-white px-3 py-2 text-sm border-[0.5px] border-black/8 rounded-lg focus:outline-none"/>
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Duración *</label>
+                  <select value={apptForm.duration_minutes} onChange={e => setApptForm({...apptForm, duration_minutes: Number(e.target.value)})} className="w-full bg-white px-3 py-2 text-sm border-[0.5px] border-black/8 rounded-lg focus:outline-none">
+                    <option value={15}>15 min</option>
+                    <option value={30}>30 min</option>
+                    <option value={45}>45 min</option>
+                    <option value={60}>1 hora</option>
+                    <option value={90}>1.5 horas</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Tipo de Cita</label>
+                  <select value={apptForm.appointment_type} onChange={e => setApptForm({...apptForm, appointment_type: e.target.value})} className="w-full bg-white px-3 py-2 text-sm border-[0.5px] border-black/8 rounded-lg focus:outline-none">
+                     <option value="consultation">Consulta General</option>
+                     <option value="follow_up">Seguimiento</option>
+                     <option value="procedure">Procedimiento</option>
+                     <option value="emergency">Urgencia</option>
+                  </select>
+                </div>
+                {modalMode === 'edit' && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Status</label>
+                    <select value={apptForm.status} onChange={e => setApptForm({...apptForm, status: e.target.value})} className="w-full bg-white px-3 py-2 text-sm border-[0.5px] border-black/8 rounded-lg focus:outline-none font-bold">
+                       <option value="scheduled">Agendada</option>
+                       <option value="confirmed">Confirmada</option>
+                       <option value="attended">Atendida</option>
+                       <option value="no_show">No se presentó</option>
+                       <option value="waiting_list">Lista de espera</option>
+                    </select>
                   </div>
                 )}
               </div>
-              
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Médico</label>
-                <select 
-                  value={newAppointment.doctor_id}
-                  onChange={(e) => setNewAppointment({ ...newAppointment, doctor_id: e.target.value })}
-                  className="w-full bg-white px-3 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
-                >
-                  <option value="">Selecciona Médico...</option>
-                  {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-              </div>
-
-              <div className="flex items-center justify-between bg-blue-50/50 p-2 rounded-xl border border-blue-50">
-                <span className="text-xxs font-bold text-gray-500">Fecha y Hora</span>
-                <span className="text-xxs font-black text-blue-600">
-                  {newAppointment.date} - {newAppointment.time}
-                </span>
-              </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Notas / Motivo</label>
-                <input 
-                  type="text" 
-                  placeholder="Ej: Consulta de rutina" 
-                  value={newAppointment.notes} 
-                  onChange={e => setNewAppointment({...newAppointment, notes: e.target.value})} 
-                  className="w-full p-2 border border-gray-100 rounded-lg text-xs focus:outline-none" 
-                />
+                <label className="block text-xs font-bold text-gray-700 mb-1">Motivo / Notas médicas previas</label>
+                <textarea value={apptForm.reason} onChange={e => setApptForm({...apptForm, reason: e.target.value})} rows={2} className="w-full bg-white px-3 py-2 text-sm border-[0.5px] border-black/8 rounded-lg focus:outline-none resize-none" placeholder="Motivo de la consulta..."></textarea>
               </div>
-            </div>
 
-            {modalError && (
-               <div className="bg-red-50 border border-red-100 text-red-600 p-2 rounded-xl text-xxs font-bold text-center mt-2 mx-1">
-                 {modalError}
-               </div>
-            )}
+              {modalError && <div className="text-red-500 text-xs font-bold flex items-center gap-1"><AlertCircle size={14}/> {modalError}</div>}
 
-            <div className="flex gap-2 pt-3 border-t border-gray-50 mt-4">
-              <button onClick={() => setIsModalOpen(false)} className="w-full py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-bold">Cancelar</button>
-              <button onClick={confirmNewAppointment} className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm">Confirmar Cita</button>
+              <div className="flex items-center justify-between pt-4 border-t border-black/8 mt-4">
+                 {modalMode === 'edit' ? (
+                   <button onClick={() => handleCancelAppointment(apptForm.id)} className="text-red-600 font-bold text-xs hover:bg-red-50 px-3 py-2 rounded-lg transition-colors">Cancelar Cita</button>
+                 ) : <div></div>}
+                 <div className="flex gap-2">
+                   <button onClick={() => setIsApptModalOpen(false)} className="px-4 py-2 bg-white border-[0.5px] border-black/8 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-50">Cerrar</button>
+                   <button onClick={handleSaveAppointment} className="px-5 py-2 bg-gray-900 text-white font-bold text-xs rounded-xl shadow-sm hover:bg-gray-800">Guardar</button>
+                 </div>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* MODAL: DETAIL READONLY */}
+      {isDetailModalOpen && selectedAppt && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+           <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 relative">
+              <button onClick={() => setIsDetailModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900"><X size={20}/></button>
+              <div className="flex items-center gap-3 mb-4 border-b border-black/8 pb-4">
+                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-black text-xl">
+                  {(selectedAppt.patients?.name || selectedAppt.patient_name || 'P')[0]}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">{selectedAppt.patients?.name || selectedAppt.patient_name}</h3>
+                  <p className="text-xs text-blue-600 font-bold capitalize">{selectedAppt.appointment_type.replace('_', ' ')}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                 <div className="flex gap-2 text-sm">
+                   <Calendar size={16} className="text-gray-400 shrink-0"/>
+                   <span className="font-medium text-gray-700">{selectedAppt.date}</span>
+                 </div>
+                 <div className="flex gap-2 text-sm">
+                   <Clock size={16} className="text-gray-400 shrink-0"/>
+                   <span className="font-medium text-gray-700">{selectedAppt.start_time.substring(0,5)} ({selectedAppt.duration_minutes} min)</span>
+                 </div>
+                 {selectedAppt.reason && (
+                   <div className="flex gap-2 text-sm">
+                     <FileText size={16} className="text-gray-400 shrink-0 mt-0.5"/>
+                     <span className="text-gray-600 leading-tight">{selectedAppt.reason}</span>
+                   </div>
+                 )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                 <button onClick={() => { setIsDetailModalOpen(false); window.location.href = `/dashboard/consultations?patient_id=${selectedAppt.patient_id}`; }} className="w-full py-2.5 bg-[#1A4A8A] text-white font-bold text-xs rounded-xl">Ir a Consulta Médica</button>
+                 <button onClick={() => openEditAppt(selectedAppt)} className="w-full py-2.5 bg-white border-[0.5px] border-black/8 text-gray-900 font-bold text-xs rounded-xl hover:bg-gray-50">Editar Fecha/Detalles</button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* MODAL: BLOCK SLOT */}
+      {isBlockModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 relative">
+            <button onClick={() => setIsBlockModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900"><X size={20}/></button>
+            <h2 className="text-lg font-bold text-gray-900 border-b border-black/8 pb-3 mb-4">Bloquear Horario</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Fecha</label>
+                <input type="date" value={blockForm.date} onChange={e => setBlockForm({...blockForm, date: e.target.value})} className="w-full bg-white px-3 py-2 text-sm border-[0.5px] border-black/8 rounded-lg outline-none"/>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Inicia</label>
+                  <input type="time" value={blockForm.start_time} onChange={e => setBlockForm({...blockForm, start_time: e.target.value})} className="w-full bg-white px-3 py-2 text-sm border-[0.5px] border-black/8 rounded-lg outline-none"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Termina</label>
+                  <input type="time" value={blockForm.end_time} onChange={e => setBlockForm({...blockForm, end_time: e.target.value})} className="w-full bg-white px-3 py-2 text-sm border-[0.5px] border-black/8 rounded-lg outline-none"/>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Motivo (ej. Comida, Quirófano)</label>
+                <input type="text" value={blockForm.reason} onChange={e => setBlockForm({...blockForm, reason: e.target.value})} className="w-full bg-white px-3 py-2 text-sm border-[0.5px] border-black/8 rounded-lg outline-none"/>
+              </div>
+              {modalError && <p className="text-red-500 text-xs font-bold">{modalError}</p>}
+              <button onClick={handleSaveBlock} className="w-full py-2.5 bg-gray-900 text-white font-bold text-xs rounded-xl shadow-sm hover:bg-gray-800 focus:ring-2 focus:ring-offset-2 focus:ring-gray-900">
+                Guardar Bloqueo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -102,15 +102,19 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
+    if (loadingMore) return; // No auto-scroll si estamos paginando hacia atrás
+
     if (messagesEndRef.current && messages.length > 0) {
-       if (isInitialLoad) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-          setIsInitialLoad(false);
-       } else {
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-       }
+       const timer = setTimeout(() => {
+          if (messagesEndRef.current) {
+             messagesEndRef.current.scrollIntoView({ behavior: isInitialLoad ? 'auto' : 'smooth' });
+             if (isInitialLoad) setIsInitialLoad(false);
+          }
+       }, 150); // Tiempo suficiente para el render de la caja fija
+       
+       return () => clearTimeout(timer);
     }
-  }, [messages]);
+  }, [messages, isInitialLoad, loadingMore]);
 
   const fetchOlderMessages = async () => {
     if (!hasMore || loadingMore || messages.length === 0) return;

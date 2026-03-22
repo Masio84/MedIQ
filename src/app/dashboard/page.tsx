@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
 import AssistantDashboard from '@/components/dashboards/AssistantDashboard';
+import { getProfile } from '@/lib/get-profile';
 import DoctorDashboard from '@/components/dashboards/DoctorDashboard';
 
 export default async function DashboardPage() {
@@ -12,11 +13,7 @@ export default async function DashboardPage() {
     return <div>No autenticado</div>;
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+  const { data: profile } = await getProfile(user.id);
 
   const role = profile?.role;
 

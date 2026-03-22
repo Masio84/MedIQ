@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { RoleProvider } from '@/context/RoleContext';
 import DashboardShell from '@/components/DashboardShell';
+import { getProfile } from '@/lib/get-profile';
 
 export default async function DashboardLayout({
   children,
@@ -16,11 +17,7 @@ export default async function DashboardLayout({
   }
 
   // Get User Profile for Role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+  const { data: profile } = await getProfile(user.id);
 
   const role = profile?.role || 'assistant';
   const clinicId = profile?.clinic_id || null;

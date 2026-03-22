@@ -197,8 +197,8 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
                     )
                   )}
                   <div className={`p-2.5 rounded-2xl max-w-[80%] shadow-sm text-balance ${isMe ? 'bg-[#0084FF] text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'}`}>
-                    {!isMe && <span className="block text-[8px] font-bold opacity-60 mb-0.5">{m.profiles?.name || 'Usuario'}</span>}
-                    <p className="text-xs leading-snug break-words">{m.message}</p>
+                    {!isMe && <span className="block text-[10px] font-bold text-gray-400 mb-0.5">{m.profiles?.name || 'Usuario'}</span>}
+                    <p className="text-sm leading-snug break-words">{m.message}</p>
                   </div>
                 </div>
               );

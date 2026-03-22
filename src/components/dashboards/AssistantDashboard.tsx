@@ -238,9 +238,15 @@ export default function AssistantDashboard() {
             patient_id: patientId,
             doctor_id: doctorId,
             date: agendaData.date,
-            time: agendaData.time,
-            type: 'follow_up',
-            notes: agendaData.notes,
+            start_time: agendaData.time,
+            end_time: (() => {
+               const [hours, minutes] = agendaData.time.split(':').map(Number);
+               const endDate = new Date(0, 0, 0, hours, minutes + 30);
+               return `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}:00`;
+            })(),
+            duration_minutes: 30,
+            appointment_type: 'follow_up',
+            reason: agendaData.notes,
             status: 'scheduled'
           }
         ]);

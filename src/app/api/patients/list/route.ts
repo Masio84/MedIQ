@@ -17,7 +17,9 @@ export async function GET(request: Request) {
 
     let query = supabaseAdmin.from('patients').select(columns).order('name');
 
-    if (profile.clinic_id) {
+    if (profile.role === 'assistant' && profile.doctor_id) {
+      query = query.eq('doctor_id', profile.doctor_id);
+    } else if (profile.clinic_id) {
       query = query.eq('clinic_id', profile.clinic_id);
     }
 

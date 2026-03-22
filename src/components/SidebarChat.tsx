@@ -110,6 +110,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
 
     const { error } = await supabase.from('chat_messages').insert([{
       doctor_id: targetDoctorId,
+      clinic_id: profile.clinic_id, // Añadir clinic_id para persistencia segura
       from_user_id: profile.id,
       message: msgText,
     }]);

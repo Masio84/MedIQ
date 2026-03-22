@@ -19,6 +19,34 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showUsersDropdown, setShowUsersDropdown] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState<{ [key: string]: number }>({});
+
+  const selectedUserIdRef = useRef<string | null>(null);
+  const isOpenRef = useRef(false);
+
+  useEffect(() => {
+    selectedUserIdRef.current = selectedUserId;
+  }, [selectedUserId]);
+
+  const playNotifySound = () => {
+     try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        const audioCtx = new AudioContext();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(600, audioCtx.currentTime); // Nota discreta
+        gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime); // Volumen bajo
+
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.12);
+     } catch (e) {}
+  };
 
   const targetDoctorId = role === 'doctor' ? profile?.id : profile?.doctor_id;
 
@@ -54,17 +82,23 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
     fetchPatients();
   }, [profile?.id, targetDoctorId]);
 
-  // 2. Cargar mensajes y suscribirse cuando cambia selectedUserId
+  // 2. Cargar mensajes cuando cambia selectedUserId
   useEffect(() => {
     if (!profile?.id || !selectedUserId) return;
 
-    // Actualizar nombre del perfil seleccionado
     const userObj = users.find(u => u.id === selectedUserId);
     if (userObj) setTargetProfileName(userObj.name);
 
-    setMessages([]); // Limpiar mensajes al cambiar de chat
+    setMessages([]); 
     setIsInitialLoad(true);
     setHasMore(true);
+
+    // Limpiar contador de este usuario al abrir su chat
+    setUnreadCounts(prev => {
+       const copy = { ...prev };
+       delete copy[selectedUserId];
+       return copy;
+    });
 
     const fetchMessages = async () => {
       const { data, error } = await supabase
@@ -90,38 +124,63 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
       }
     };
     fetchMessages();
+  }, [profile?.id, selectedUserId]);
 
-    // Suscribirse a mensajes de este chat específico
+  // 3. Suscripción Global a mensajes para Notificaciones
+  useEffect(() => {
+    if (!profile?.id) return;
+
     const channel = supabase
-      .channel(`public:chat_messages:${selectedUserId}`)
+      .channel(`public:all_messages:${profile.id}`)
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'chat_messages'
       }, async (payload) => {
-        const isFromTarget = payload.new.from_user_id === selectedUserId && payload.new.doctor_id === profile.id;
-        const isFromMe = payload.new.from_user_id === profile.id && payload.new.doctor_id === selectedUserId;
+        const senderId = payload.new.from_user_id;
+        const receiverId = payload.new.doctor_id;
 
-        if (!isFromTarget && !isFromMe) return;
+        const currentId = selectedUserIdRef.current;
+        const oOpen = isOpenRef.current;
 
-        if (isFromTarget && !isOpenRef.current) {
-           setUnreadCount(prev => prev + 1);
+        if (receiverId !== profile.id && senderId !== profile.id) return;
+
+        // Si el mensaje es para mí
+        if (receiverId === profile.id) {
+           if (!oOpen || senderId !== currentId) {
+              setUnreadCounts(prev => ({ ...prev, [senderId]: (prev[senderId] || 0) + 1 }));
+              playNotifySound();
+           }
         }
 
-        const { data: sender } = await supabase.from('profiles').select('name, avatar_url').eq('id', payload.new.from_user_id).single();
-        
-        setMessages((prev) => {
-           const base = prev.filter(m => !(m.isOptimistic && m.message === payload.new.message));
-           if (base.some(m => m.id === payload.new.id)) return prev;
-           return [...base, { ...payload.new, profiles: sender }];
-        });
+        const isFromCurrentTarget = senderId === currentId && receiverId === profile.id;
+        const isFromMe = senderId === profile.id && receiverId === currentId;
+
+        if (isFromCurrentTarget || isFromMe) {
+           const { data: sender } = await supabase.from('profiles').select('name, avatar_url').eq('id', senderId).single();
+           setMessages((prev) => {
+              const base = prev.filter(m => !(m.isOptimistic && m.message === payload.new.message));
+              if (base.some(m => m.id === payload.new.id)) return prev;
+              return [...base, { ...payload.new, profiles: sender }];
+           });
+        }
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.id, selectedUserId]);
+  }, [profile?.id]);
+
+  // Calcular unreadCount global
+  useEffect(() => {
+     const total = Object.values(unreadCounts).reduce((acc, count) => acc + count, 0);
+     if (total === 0) {
+        setUnreadCount(0);
+     } else {
+        setUnreadCount(total);
+     }
+  }, [unreadCounts]);
 
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const isPrependRef = useRef(false);
@@ -241,23 +300,29 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
 
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const isOpenRef = useRef(false);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
     if (isOpen) {
-       setUnreadCount(0);
-       setIsInitialLoad(true); // Forzar scroll a abajo al reabrir el panel
+       setIsInitialLoad(true); 
        
+       if (selectedUserId) {
+          setUnreadCounts(prev => {
+             const copy = { ...prev };
+             delete copy[selectedUserId];
+             return copy;
+          });
+       }
+
        const timer = setTimeout(() => {
           if (scrollContainerRef.current) {
              scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
           }
-       }, 300); // Dar holgura a las animaciones CSS
+       }, 300); 
 
        return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, selectedUserId]);
 
   // El chat flotará en la esquina inferior derecha para no saturar el sidebar en laptops de 13"
   return (
@@ -294,21 +359,31 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
             {/* Users Dropdown */}
             {showUsersDropdown && (
               <div className="absolute top-11 left-2 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-100 z-50 w-60 max-h-48 overflow-y-auto divide-y divide-gray-50 flex flex-col animate-in fade-in-0 zoom-in-95 duration-150">
-                {users.map((u) => (
-                  <button 
-                    key={u.id} 
-                    onClick={() => {
-                      setSelectedUserId(u.id);
-                      setShowUsersDropdown(false);
-                    }} 
-                    className={`w-full text-left px-3 py-2 text-xs hover:bg-[#F4F7FB] flex items-center justify-between transition-colors ${selectedUserId === u.id ? 'bg-blue-50/70 font-bold text-[#1A4A8A]' : 'text-gray-700'}`}
-                  >
-                    <span>{u.name}</span>
-                    <span className="text-[9px] uppercase font-bold text-gray-400">
-                      {u.role === 'doctor' ? 'Doc' : u.role === 'assistant' ? 'Asis' : u.role}
-                    </span>
-                  </button>
-                ))}
+                {users.map((u) => {
+                  const uCount = unreadCounts[u.id] || 0;
+                  return (
+                    <button 
+                      key={u.id} 
+                      onClick={() => {
+                        setSelectedUserId(u.id);
+                        setShowUsersDropdown(false);
+                      }} 
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-[#F4F7FB] flex items-center justify-between transition-colors ${selectedUserId === u.id ? 'bg-blue-50/70 font-bold text-[#1A4A8A]' : 'text-gray-700'}`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>{u.name}</span>
+                        {uCount > 0 && (
+                          <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black scale-90 shadow-sm animate-pulse">
+                            {uCount}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[9px] uppercase font-bold text-gray-400">
+                        {u.role === 'doctor' ? 'Doc' : u.role === 'assistant' ? 'Asis' : u.role}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 

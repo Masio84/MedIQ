@@ -13,6 +13,9 @@ export default function ConsultationsPage() {
   const searchParams = useSearchParams();
   const initialPatientId = searchParams.get('patient_id') || undefined;
   const initialSymptoms = searchParams.get('symptoms') || undefined;
+  const initialWeight = searchParams.get('weight') || undefined;
+  const initialPressure = searchParams.get('blood_pressure') || undefined;
+  const initialTemperature = searchParams.get('temperature') || undefined;
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
@@ -61,7 +64,7 @@ export default function ConsultationsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <div>
-            {doctorId && <ConsultationForm doctorId={doctorId} initialPatientId={initialPatientId} initialSymptoms={initialSymptoms} />}
+            {doctorId && <ConsultationForm doctorId={doctorId} initialPatientId={initialPatientId} initialSymptoms={initialSymptoms} initialWeight={initialWeight} initialPressure={initialPressure} initialTemperature={initialTemperature} />}
           </div>
 
           <div className="bg-white p-6 rounded-xl border border-gray-100/50 shadow-sm">

@@ -15,7 +15,8 @@ export async function POST(request: Request) {
     const {
       patient_id, patient_name, patient_phone, patient_email,
       date, start_time, duration_minutes = 30, reason, notes,
-      appointment_type = 'consultation', status = 'scheduled'
+      appointment_type = 'consultation', status = 'scheduled',
+      weight, blood_pressure, temperature
     } = body;
 
     let targetDoctorId = body.doctor_id || user!.id;
@@ -66,7 +67,8 @@ export async function POST(request: Request) {
       patient_id, patient_name, patient_phone, patient_email,
       date, start_time, end_time, duration_minutes, reason, notes,
       appointment_type, status, booked_by,
-      clinic_id: profile?.clinic_id
+      clinic_id: profile?.clinic_id,
+      weight, blood_pressure, temperature
     };
 
     const { data, error } = await supabase.from('appointments').insert([appointment]).select().single();

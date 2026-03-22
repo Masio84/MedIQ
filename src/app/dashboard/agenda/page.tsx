@@ -31,7 +31,10 @@ export default function AgendaPage() {
   // Appt Form
   const [apptForm, setApptForm] = useState({
     id: '', patient_id: '', patient_name: '', date: '', start_time: '', 
-    duration_minutes: 30, appointment_type: 'consultation', reason: '', notes: '', status: 'scheduled'
+    duration_minutes: 30, appointment_type: 'consultation', reason: '', notes: '', status: 'scheduled',
+    weight: '',
+    blood_pressure: '',
+    temperature: ''
   });
   const [quickPatientSearch, setQuickPatientSearch] = useState('');
   const [quickPatientDropdown, setQuickPatientDropdown] = useState(false);
@@ -147,7 +150,8 @@ export default function AgendaPage() {
     setModalMode('create');
     setApptForm({
       id: '', patient_id: '', patient_name: '', date, start_time: time,
-      duration_minutes: 30, appointment_type: 'consultation', reason: '', notes: '', status: 'scheduled'
+      duration_minutes: 30, appointment_type: 'consultation', reason: '', notes: '', status: 'scheduled',
+      weight: '', blood_pressure: '', temperature: ''
     });
     setQuickPatientSearch('');
     setIsApptModalOpen(true);
@@ -165,7 +169,10 @@ export default function AgendaPage() {
       appointment_type: appt.appointment_type, 
       reason: appt.reason || '', 
       notes: appt.notes || '', 
-      status: appt.status
+      status: appt.status,
+      weight: appt.weight || '',
+      blood_pressure: appt.blood_pressure || '',
+      temperature: appt.temperature || ''
     });
     setQuickPatientSearch(appt.patients?.name || appt.patient_name || '');
     setIsDetailModalOpen(false);
@@ -684,6 +691,21 @@ export default function AgendaPage() {
                 )}
               </div>
 
+              <div className="grid grid-cols-3 gap-3 border-t border-black/5 pt-3">
+                 <div>
+                    <label className="block text-[10px] font-black text-gray-500 mb-1">Peso (kg)</label>
+                    <input type="number" step="0.1" placeholder="Ej: 75" value={apptForm.weight || ''} onChange={e => setApptForm({...apptForm, weight: e.target.value})} className="w-full bg-white px-2 py-1.5 text-xs border-[0.5px] border-gray-300 rounded-lg focus:outline-none font-bold text-gray-900"/>
+                 </div>
+                 <div>
+                    <label className="block text-[10px] font-black text-gray-500 mb-1">Presión Arterial</label>
+                    <input type="text" placeholder="120/80" value={apptForm.blood_pressure || ''} onChange={e => setApptForm({...apptForm, blood_pressure: e.target.value})} className="w-full bg-white px-2 py-1.5 text-xs border-[0.5px] border-gray-300 rounded-lg focus:outline-none font-bold text-gray-900"/>
+                 </div>
+                 <div>
+                    <label className="block text-[10px] font-black text-gray-500 mb-1">Temp (°C)</label>
+                    <input type="number" step="0.1" placeholder="36.5" value={apptForm.temperature || ''} onChange={e => setApptForm({...apptForm, temperature: e.target.value})} className="w-full bg-white px-2 py-1.5 text-xs border-[0.5px] border-gray-300 rounded-lg focus:outline-none font-bold text-gray-900"/>
+                 </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Motivo / Notas médicas previas</label>
                 <textarea value={apptForm.reason} onChange={e => setApptForm({...apptForm, reason: e.target.value})} rows={2} className="w-full bg-white px-3 py-2 text-sm border-[0.5px] border-black/8 rounded-lg focus:outline-none resize-none" placeholder="Motivo de la consulta..."></textarea>
@@ -756,7 +778,7 @@ export default function AgendaPage() {
                         }
                      }
                      if (pId) {
-                        setIsDetailModalOpen(false);                         window.location.href = `/dashboard/consultations?patient_id=${pId}&symptoms=${encodeURIComponent(selectedAppt.reason || '')}`;
+                        setIsDetailModalOpen(false);                         window.location.href = `/dashboard/consultations?patient_id=${pId}&symptoms=${encodeURIComponent(selectedAppt.reason || '')}&weight=${selectedAppt.weight || ''}&blood_pressure=${selectedAppt.blood_pressure || ''}&temperature=${selectedAppt.temperature || ''}`;
                      } else {
                         alert('No se pudo crear el registro del paciente para la consulta.');
                      }

@@ -274,6 +274,23 @@ export default function SettingsPage() {
                     value={profile.slug || ''}
                     onChange={(e) => setProfile({ ...profile, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
                   />
+                  <button 
+                     type="button" 
+                     onClick={async () => {
+                        if (!profile.slug) return;
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (!user) return;
+                        const { error: upError } = await supabase.from('profiles').update({ slug: profile.slug }).eq('id', user.id);
+                        if (upError) {
+                           setFeedback({ isOpen: true, title: 'Error', message: 'Alias ya en uso o no disponible.', type: 'error' });
+                        } else {
+                           setFeedback({ isOpen: true, title: '¡Éxito!', message: 'Alias de reserva establecido correctamente.', type: 'success' });
+                        }
+                     }} 
+                     className="px-3 py-2 bg-[#105E42] text-white text-xs font-bold rounded-lg hover:bg-[#105E42]/90 shadow-sm"
+                  >
+                     Establecer
+                  </button>
                 </div>
               </div>
             </div>

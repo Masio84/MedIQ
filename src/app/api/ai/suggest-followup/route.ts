@@ -1,0 +1,51 @@
+import { NextResponse } from 'next/server';
+
+export async function POST(request: Request) {
+  try {
+    const { diagnosis, treatment, symptoms } = await request.json();
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ success: false, error: 'API Key no configurada' }, { status: 500 });
+    }
+
+    const prompt = `Considere el diagnóstico médico y tratamiento:
+DIAGNÓSTICO: ${diagnosis || 'No especificado'}
+TRATAMIENTO: ${treatment || 'No especificado'}
+SÍNTOMAS: ${symptoms || 'No especificado'}
+
+Tu tarea es sugerir una indicación de seguimiento O próxima cita para el médico. 
+Debe ser muy directa y breve. Ej: "Cita en 7 días para revisión", "Cita en 1 mes con estudios de sangre", "Urgencia si presenta fiebre".
+
+Devuelve ÚNICAMENTE la indicación sugerida, sin comillas, sin introducciones ni saludos.`;
+
+    const payload = {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 100,
+      temperature: 0.2,
+      messages: [
+        { role: 'user', content: prompt }
+      ]
+    };
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const anthropicData = await res.json();
+    if (res.status !== 200) throw new Error(anthropicData.error?.message || 'Error AI Anthropic');
+
+    let follow_up = anthropicData.content?.[0]?.text?.trim() || '';
+    follow_up = follow_up.replace(/^"|"$/g, ''); 
+
+    return NextResponse.json({ success: true, follow_up });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

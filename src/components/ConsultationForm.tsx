@@ -20,7 +20,8 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
   const [formData, setFormData] = useState({
     patient_id: '',
     weight: '', blood_pressure: '', temperature: '',
-    symptoms: '', diagnosis: '', treatment: '', notes: ''
+    symptoms: '', diagnosis: '', treatment: '', notes: '',
+    needs_follow_up: false, follow_up_date: '', follow_up_time: '', follow_up_notes: ''
   });
 
   const [aiSuggestions, setAiSuggestions] = useState<{
@@ -34,6 +35,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
   const [symptomInput, setSymptomInput] = useState('');
   const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [isTreating, setIsTreating] = useState(false);
+  const [isSuggestingFollowup, setIsSuggestingFollowup] = useState(false);
   const [patientContext, setPatientContext] = useState<any>(null);
 
   // Modal State
@@ -186,6 +188,32 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
     }
   };
 
+
+  const generateFollowUp = async () => {
+    if (!formData.diagnosis) {
+      setFeedback({ isOpen: true, title: 'Atención', message: 'Genera o escribe un diagnóstico primero', type: 'error' });
+      return;
+    }
+    setIsSuggestingFollowup(true);
+    try {
+      const res = await fetch('/api/ai/suggest-followup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          diagnosis: formData.diagnosis,
+          treatment: formData.treatment,
+          symptoms: symptomsList.length > 0 ? symptomsList.join(', ') : formData.symptoms
+        })
+      });
+      const aiData = await res.json();
+      if (!res.ok) throw new Error(aiData.error);
+      setFormData(prev => ({ ...prev, follow_up_notes: aiData.follow_up }));
+    } catch (err: any) {
+      setFeedback({ isOpen: true, title: 'Error IA', message: err.message, type: 'error' });
+    } finally {
+      setIsSuggestingFollowup(false);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -455,7 +483,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
                 <input 
                   type="date" 
                   name="follow_up_date"
-                  value={(formData as any).follow_up_date || ''}
+                  value={formData.follow_up_date || ''}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
                 />
@@ -465,10 +493,26 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
                 <input 
                   type="time" 
                   name="follow_up_time"
-                  value={(formData as any).follow_up_time || ''}
+                  value={formData.follow_up_time || ''}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
                 />
+              </div>
+              <div className="col-span-full mt-2">
+                 <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-medium text-gray-500">Indicaciones de Seguimiento / Notas Próxima Cita</label>
+                    <button type="button" onClick={generateFollowUp} disabled={isSuggestingFollowup} className="flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-md transition-colors disabled:opacity-50" style={{ backgroundColor: '#E8F0FB', color: '#1A4A8A' }}>
+                       {isSuggestingFollowup ? <Loader2 size={12} className="animate-spin"/> : <Sparkles size={12} />} Sugerir Seguimiento IA
+                    </button>
+                 </div>
+                 <textarea 
+                    name="follow_up_notes"
+                    rows={2}
+                    value={formData.follow_up_notes || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none resize-none"
+                    placeholder="Ej: Cita en 7 días para revisión de analgésicos..."
+                 />
               </div>
             </div>
           )}

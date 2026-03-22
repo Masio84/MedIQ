@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client';
 import { Send, Smile, Paperclip, MessageSquare } from 'lucide-react';
 
 export default function SidebarChat({ profile, role }: { profile: any; role: string }) {
-  const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [patients, setPatients] = useState<any[]>([]);
@@ -14,16 +13,17 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
+  const targetDoctorId = role === 'doctor' ? profile?.id : profile?.doctor_id;
+
   useEffect(() => {
-    if (!profile?.id) return;
+    if (!profile?.id || !targetDoctorId) return;
 
     const fetchMessages = async () => {
       const { data } = await supabase
         .from('chat_messages')
-        .select('*')
-        .eq('clinic_id', profile.clinic_id)
-        .order('created_at', { ascending: true })
-        .limit(30);
+        .select('*, profiles ( name )')
+        .eq('doctor_id', targetDoctorId)
+        .order('created_at', { ascending: true });
 
       if (data) setMessages(data);
     };
@@ -32,9 +32,21 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
 
     // Subscribe to realtime Chat Messages
     const channel = supabase
-      .channel('public:chat_messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
-        setMessages((prev) => [...prev, payload.new]);
+      .channel(`chat_messages:${targetDoctorId}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'chat_messages',
+        filter: `doctor_id=eq.${targetDoctorId}`
+      }, async (payload) => {
+        // Fetch sender name to avoid missing profile.name
+        const { data: sender } = await supabase.from('profiles').select('name').eq('id', payload.new.from_user_id).single();
+        setMessages((prev) => {
+           if (prev.some(m => m.id === payload.new.id || (m.from_user_id === payload.new.from_user_id && m.message === payload.new.message && Math.abs(new Date(m.created_at).getTime() - new Date(payload.new.created_at).getTime()) < 3000))) {
+              return prev; // evitar duplicados optimistas
+           }
+           return [...prev, { ...payload.new, profiles: sender }];
+        });
       })
       .subscribe();
 
@@ -48,24 +60,43 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.id]);
+  }, [profile?.id, targetDoctorId]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, isOpen]);
+  }, [messages]);
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !targetDoctorId) return;
 
-    await supabase.from('chat_messages').insert([{
-      clinic_id: profile.clinic_id,
+    const msgText = input;
+    setInput(''); // Limpiar caja instantáneamente
+
+    // Respuesta Optimista
+    const tempMessage = {
+      id: Math.random().toString(),
+      doctor_id: targetDoctorId,
       from_user_id: profile.id,
-      message: input,
+      message: msgText,
+      created_at: new Date().toISOString(),
+      profiles: { name: profile.name }
+    };
+
+    setMessages((prev) => [...prev, tempMessage]);
+
+    const { error } = await supabase.from('chat_messages').insert([{
+      doctor_id: targetDoctorId,
+      from_user_id: profile.id,
+      message: msgText,
     }]);
 
-    setInput('');
+    if (error) {
+       console.error("Error sending message:", error);
+       // Remover si falló para evitar ghosting
+       setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,26 +118,14 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
     setShowMention(false);
   };
 
-  if (!isOpen) {
-    return (
-      <button 
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 bg-[#1A4A8A] text-white p-3 rounded-full shadow-lg hover:bg-[#1A4A8A]/90 transition-all flex items-center justify-center gap-2 z-50 md:relative md:bottom-auto md:right-auto md:m-4 md:rounded-xl md:py-2 md:w-[88%]"
-      >
-        <MessageSquare size={16} />
-        <span className="text-xs font-bold">Chat de Clínica</span>
-      </button>
-    );
-  }
-
+  // El chat siempre está abierto, no hay isOpen condicional
   return (
     <div className="border-t border-gray-100 p-3 bg-white space-y-2 mt-auto h-[350px] flex flex-col z-50">
       <div className="flex justify-between items-center border-b pb-1">
         <span className="text-xs font-bold text-gray-800 flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          Chat Grupal
+          Chat {role === 'doctor' ? 'con Asistente' : 'con Dr.'}
         </span>
-        <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-900 text-xxs font-bold">Cerrar</button>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-2 p-1 text-xxs flex flex-col">
@@ -114,8 +133,9 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
           const isMe = m.from_user_id === profile?.id;
           return (
             <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-              <div className={`p-2 rounded-lg max-w-[85%] ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
-                {m.message}
+              <div className={`p-2 rounded-lg max-w-[85%] shadow-sm ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
+                {!isMe && <span className="block text-[7px] font-bold opacity-75 mb-0.5">{m.profiles?.name || 'Usuario'}</span>}
+                <p className="text-xxs leading-snug">{m.message}</p>
               </div>
             </div>
           );
@@ -138,7 +158,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
           value={input}
           onChange={handleInputChange}
           placeholder="Escribe... (@mencionar)" 
-          className="flex-1 p-1 borders border-gray-100 rounded text-xxs focus:outline-none"
+          className="flex-1 p-1 border border-gray-100 rounded text-xxs focus:outline-none"
           onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
         />
         <button onClick={sendMessage} className="p-1 bg-blue-600 text-white rounded">

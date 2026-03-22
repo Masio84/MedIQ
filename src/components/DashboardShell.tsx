@@ -247,9 +247,6 @@ export default function DashboardShell({
         {/* Sidebar Navigation */}
         <SidebarLinks />
 
-        {/* Dynamic Chat de Comunicación */}
-        <SidebarChat profile={profile} role={role} />
-
         {/* Footer/Aviso Legal */}
         <div className="p-4 border-t border-gray-50 text-center mt-auto">
           <Link href="/legal" className="text-xs text-gray-400 hover:text-gray-900 transition-colors">
@@ -439,6 +436,9 @@ export default function DashboardShell({
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {children}
         </main>
+        
+        {/* Chat Flotante: Fuera de los contenedores para evitar problemas de posicionamiento relativo */}
+        <SidebarChat profile={profile} role={role} />
       </div>
     </div>
   );

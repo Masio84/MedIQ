@@ -278,6 +278,7 @@ export default function DoctorDashboard() {
             <p className="text-xs font-bold text-gray-700 mb-2">Acciones Rápidas</p>
             <div className="space-y-2">
               <button 
+                onClick={() => window.location.href = '/dashboard/consultations'}
                 className="w-full py-2.5 bg-gray-900 border-[0.5px] border-gray-900 text-white rounded-lg text-xs font-bold hover:bg-gray-800 transition-colors shadow-sm">
                 Nueva consulta
               </button>

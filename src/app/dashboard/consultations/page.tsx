@@ -12,6 +12,7 @@ export default function ConsultationsPage() {
   const [history, setHistory] = useState<any[]>([]);
   const searchParams = useSearchParams();
   const initialPatientId = searchParams.get('patient_id') || undefined;
+  const initialSymptoms = searchParams.get('symptoms') || undefined;
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
@@ -60,7 +61,7 @@ export default function ConsultationsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <div>
-            {doctorId && <ConsultationForm doctorId={doctorId} initialPatientId={initialPatientId} />}
+            {doctorId && <ConsultationForm doctorId={doctorId} initialPatientId={initialPatientId} initialSymptoms={initialSymptoms} />}
           </div>
 
           <div className="bg-white p-6 rounded-xl border border-gray-100/50 shadow-sm">

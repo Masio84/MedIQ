@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2, AlertTriangle, Sparkles, X, Plus } from 'lucide-react';
 
-export default function ConsultationForm({ doctorId, initialPatientId }: { doctorId: string; initialPatientId?: string }) {
+export default function ConsultationForm({ doctorId, initialPatientId, initialSymptoms }: { doctorId: string; initialPatientId?: string; initialSymptoms?: string }) {
   const [patients, setPatients] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Doctor Pricing Settings State
   const [doctorSettings, setDoctorSettings] = useState<any>({
     base_price: 0,
@@ -43,6 +43,17 @@ export default function ConsultationForm({ doctorId, initialPatientId }: { docto
 
   // Feedback State
   const [feedback, setFeedback] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'error' }>({ isOpen: false, title: '', message: '', type: 'success' });
+
+  useEffect(() => {
+    if (!initialSymptoms) return;
+    // Dividir los síntomas por comas, guiones o saltos si aplica, o simplemente crear una capsula individual entera si es un texto continuo.
+    const items = initialSymptoms.split(',').map(s => s.trim()).filter(Boolean);
+    if (items.length > 0) {
+       setSymptomsList(items);
+    }
+  }, [initialSymptoms]);
+  
+
 
   const supabase = createClient();
 

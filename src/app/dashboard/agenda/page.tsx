@@ -756,8 +756,7 @@ export default function AgendaPage() {
                         }
                      }
                      if (pId) {
-                        setIsDetailModalOpen(false); 
-                        window.location.href = `/dashboard/consultations?patient_id=${pId}`;
+                        setIsDetailModalOpen(false);                         window.location.href = `/dashboard/consultations?patient_id=${pId}&symptoms=${encodeURIComponent(selectedAppt.reason || '')}`;
                      } else {
                         alert('No se pudo crear el registro del paciente para la consulta.');
                      }

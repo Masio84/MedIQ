@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2, AlertTriangle, Sparkles, X, Plus } from 'lucide-react';
 
-export default function ConsultationForm({ doctorId, initialPatientId, initialSymptoms, initialWeight, initialPressure, initialTemperature }: { doctorId: string; initialPatientId?: string; initialSymptoms?: string; initialWeight?: string; initialPressure?: string; initialTemperature?: string }) {
+export default function ConsultationForm({ doctorId, initialPatientId, initialSymptoms, initialWeight, initialPressure, initialTemperature, onPatientChange }: { doctorId: string; initialPatientId?: string; initialSymptoms?: string; initialWeight?: string; initialPressure?: string; initialTemperature?: string; onPatientChange?: (id: string) => void }) {
   const [patients, setPatients] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +105,12 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
     };
     fetchPatientData();
   }, [formData.patient_id, supabase]);
+
+  useEffect(() => {
+    if (onPatientChange && formData.patient_id) {
+       onPatientChange(formData.patient_id);
+    }
+  }, [formData.patient_id, onPatientChange]);
 
   const mockAiSytmpoms = ['Fiebre', 'Dolor de cabeza', 'Tos seca', 'Dolor de garganta', 'Congestión nasal', 'Fatiga', 'Náuseas'];
 

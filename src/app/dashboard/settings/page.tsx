@@ -363,7 +363,7 @@ export default function SettingsPage() {
                <p className="text-xs text-blue-600">Comparte este enlace con tus pacientes para que agenden citas de forma autónoma.</p>
                <div className="flex gap-2 mt-2">
                   <input type="text" readOnly value={`${typeof window !== 'undefined' ? window.location.origin : ''}/book/${profile.id}`} className="flex-1 bg-white px-3 py-1.5 text-xs border border-blue-100 rounded-lg outline-none text-blue-900 font-bold" />
-                  <button type="button" onClick={() => { const url = window.location.origin + '/book/' + profile.id; navigator.clipboard.writeText(url); alert('¡Enlace copiado!'); }} className="px-3 py-1.5 bg-[#1A4A8A] text-white text-xs font-bold rounded-lg hover:bg-[#1A4A8A]/90">Copiar</button>
+                  <button type="button" onClick={() => { const url = window.location.origin + '/book/' + profile.id; navigator.clipboard.writeText(url); setFeedback({ isOpen: true, title: '¡Copiado!', message: 'El enlace se copió al portapapeles.', type: 'success' }); }} className="px-3 py-1.5 bg-[#1A4A8A] text-white text-xs font-bold rounded-lg hover:bg-[#1A4A8A]/90">Copiar</button>
                </div>
             </div>
           </div>

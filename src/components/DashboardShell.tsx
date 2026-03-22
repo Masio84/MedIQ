@@ -234,6 +234,7 @@ export default function DashboardShell({
               height={40} 
               className="object-contain"
               priority
+              style={{ width: 'auto', height: 'auto' }}
             />
           </Link>
           <button 

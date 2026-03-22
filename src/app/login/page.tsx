@@ -43,6 +43,8 @@ export default function LoginPage() {
             width={160} 
             height={60} 
             className="mx-auto mb-4 object-contain"
+            priority
+            style={{ width: 'auto', height: 'auto' }}
           />
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">
             Iniciar Sesión

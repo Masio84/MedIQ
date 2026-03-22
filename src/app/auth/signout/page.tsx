@@ -37,6 +37,7 @@ export default function SignOutPage() {
           height={35} 
           className="object-contain"
           priority
+          style={{ width: 'auto', height: 'auto' }}
         />
 
         <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center animate-pulse mt-2">

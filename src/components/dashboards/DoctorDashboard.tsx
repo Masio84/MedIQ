@@ -412,7 +412,7 @@ export default function DoctorDashboard() {
             <div className="pb-4 border-b border-black/8 h-max">
               <h3 className="text-md font-bold text-gray-900 flex items-center gap-1.5">
                 <Calendar size={18} className="text-blue-500" />
-                Horarios díd {selectedDateString && new Date(selectedDateString + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                Horarios del día {selectedDateString && new Date(selectedDateString + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
               </h3>
             </div>
 

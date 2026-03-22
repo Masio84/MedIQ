@@ -135,3 +135,26 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- ==========================================
+-- CORRECTIONS (9, 10, 11)
+-- ==========================================
+
+-- Habilitar extensión necesaria para gin_trgm_ops (si no está activa)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Índices para búsqueda de texto
+CREATE INDEX IF NOT EXISTS idx_patients_name_trgm ON public.patients USING gin(name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_patients_last_name_trgm ON public.patients USING gin(last_name gin_trgm_ops);
+
+-- Índices para filtros por clínica y doctor
+CREATE INDEX IF NOT EXISTS idx_patients_clinic_id ON public.patients(clinic_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_clinic_id ON public.profiles(clinic_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_doctor_id ON public.profiles(doctor_id);
+
+-- Status column in consultations
+ALTER TABLE public.consultations ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed'));
+
+-- Unificar schemas
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS clinic_id UUID REFERENCES public.clinics(id) ON DELETE SET NULL;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS doctor_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;

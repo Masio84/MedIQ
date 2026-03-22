@@ -34,13 +34,24 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
     fetchTarget();
 
     const fetchMessages = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('chat_messages')
-        .select('*, profiles ( name, avatar_url )')
+        .select('*')
         .eq('doctor_id', targetDoctorId)
         .order('created_at', { ascending: true });
 
-      if (data) setMessages(data);
+      if (error) {
+         console.error("Error fetching messages:", error);
+         return;
+      }
+
+      if (data) {
+         const enriched = await Promise.all(data.map(async (m) => {
+            const { data: sender } = await supabase.from('profiles').select('name, avatar_url').eq('id', m.from_user_id).single();
+            return { ...m, profiles: sender };
+         }));
+         setMessages(enriched);
+      }
     };
 
     fetchMessages();

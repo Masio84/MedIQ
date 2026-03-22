@@ -253,7 +253,7 @@ export default function DoctorDashboard() {
                 className="flex-1 py-2 text-xs font-bold transition-colors"
                 style={calendarView === view ? { backgroundColor: '#1A4A8A', color: '#fff' } : { color: '#6b7280' }}
               >
-                {view === 'mes' ? 'Mes' : 'Semana'}
+                {view === 'mes' ? 'Día' : 'Semana'}
               </button>
             ))}
           </div>

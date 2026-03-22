@@ -222,6 +222,14 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
     if (isOpen) {
        setUnreadCount(0);
        setIsInitialLoad(true); // Forzar scroll a abajo al reabrir el panel
+       
+       const timer = setTimeout(() => {
+          if (scrollContainerRef.current) {
+             scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+          }
+       }, 300); // Dar holgura a las animaciones CSS
+
+       return () => clearTimeout(timer);
     }
   }, [isOpen]);
 

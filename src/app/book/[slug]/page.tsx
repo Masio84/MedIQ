@@ -4,15 +4,33 @@ import { useState, useEffect, use } from 'react';
 import { Calendar as CalendarIcon, Clock, User, Phone, Mail, FileText, CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, Loader } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function BookPage({ params }: { params: Promise<{ doctorId: string }> }) {
-  const { doctorId } = use(params);
+export default function BookPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Doctor Info
-  const [doctorInfo, setDoctorInfo] = useState<{ name: string; role: string } | null>(null);
+  const [doctorInfo, setDoctorInfo] = useState<{ id: string; name: string; role: string } | null>(null);
+
+  // Fetch Doctor info on load
+  useEffect(() => {
+    const fetchDoctor = async () => {
+       try {
+         const res = await fetch(`/api/appointments/available-slots?slug=${slug}`);
+         const data = await res.json();
+         if (data.success && data.doctor) {
+            setDoctorInfo(data.doctor);
+         } else {
+            setError(data.error || 'No se encontró información del médico');
+         }
+       } catch (err: any) {
+          setError(err.message);
+       }
+    };
+    fetchDoctor();
+  }, [slug]);
 
   // Form Data
   const [selectedDate, setSelectedDate] = useState('');
@@ -46,14 +64,14 @@ export default function BookPage({ params }: { params: Promise<{ doctorId: strin
   }, [selectedDate]);
 
   const fetchSlots = async (dateStr: string) => {
+     if (!doctorInfo?.id) return;
      setLoading(true);
      setError(null);
      try {
-       const res = await fetch(`/api/appointments/available-slots?doctor_id=${doctorId}&date=${dateStr}`);
+       const res = await fetch(`/api/appointments/available-slots?doctor_id=${doctorInfo.id}&date=${dateStr}`);
        const data = await res.json();
        if (data.success) {
          setAvailableSlots(data.data);
-         if (data.doctor) setDoctorInfo(data.doctor);
        } else {
          setError(data.error || 'No se pudieron cargar los horarios');
        }
@@ -65,6 +83,7 @@ export default function BookPage({ params }: { params: Promise<{ doctorId: strin
   };
 
   const handleBook = async () => {
+     if (!doctorInfo?.id) return;
      setLoading(true);
      setError(null);
      try {
@@ -72,7 +91,7 @@ export default function BookPage({ params }: { params: Promise<{ doctorId: strin
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({
-            doctor_id: doctorId,
+            doctor_id: doctorInfo.id,
             date: selectedDate,
             start_time: selectedTime,
             patient_name: patientForm.name,

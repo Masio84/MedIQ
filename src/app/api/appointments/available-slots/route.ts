@@ -4,20 +4,32 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const doctor_id = searchParams.get('doctor_id');
+    const doctor_id_param = searchParams.get('doctor_id');
+    const slug = searchParams.get('slug');
     const date = searchParams.get('date');
 
-    if (!doctor_id || !date) {
-      return NextResponse.json({ success: false, error: 'Se requiere doctor_id y date' }, { status: 400 });
+    let doctor_id = doctor_id_param;
+
+    if (!doctor_id && slug) {
+       const { data: prof } = await supabaseAdmin.from('profiles').select('id').eq('slug', slug).single();
+       if (prof) doctor_id = prof.id;
+    }
+
+    if (!doctor_id) {
+       return NextResponse.json({ success: false, error: 'Se requiere doctor_id o slug' }, { status: 400 });
     }
 
     const { data: schedule } = await supabaseAdmin.from('doctor_schedule').select('*').eq('doctor_id', doctor_id).single();
     const { data: profile } = await supabaseAdmin.from('profiles').select('name, role').eq('id', doctor_id).single();
 
     const resultHeader = { 
-      doctor: profile ? { name: profile.name, role: profile.role } : null,
-      schedule: schedule ? { slot_interval: schedule.slot_interval_minutes } : null 
+       doctor: profile ? { id: doctor_id, name: profile.name, role: profile.role } : null,
+       schedule: schedule ? { slot_interval: schedule.slot_interval_minutes } : null 
     };
+
+    if (!date) {
+       return NextResponse.json({ success: true, ...resultHeader });
+    }
 
     if (!schedule) return NextResponse.json({ success: false, error: 'Horario no configurado' }, { status: 404 });
 

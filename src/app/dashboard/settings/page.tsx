@@ -126,6 +126,7 @@ export default function SettingsPage() {
         updateData.discount_max = profile.discount_max || 0;
         updateData.increment_min = profile.increment_min || 0;
         updateData.increment_max = profile.increment_max || 0;
+        updateData.slug = profile.slug || '';
       }
 
       const { error: updateError } = await supabase
@@ -256,6 +257,27 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+
+          {isDoctor && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-50 pt-4">
+              <div>
+                <label className="block text-xs font-black text-blue-800 mb-1 flex items-center gap-1">
+                   Alias de Reserva Pública
+                   <span className="font-normal text-gray-400 text-[10px]">(Enlace corto)</span>
+                </label>
+                <div className="flex gap-1 items-center">
+                  <span className="text-gray-400 text-sm">/book/</span>
+                  <input
+                    type="text"
+                    placeholder="ej: dr-jorge"
+                    className="w-full px-2 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none font-bold text-blue-900"
+                    value={profile.slug || ''}
+                    onChange={(e) => setProfile({ ...profile, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Precios y Reglas - Solo médicos */}
@@ -362,8 +384,8 @@ export default function SettingsPage() {
                <h3 className="text-sm font-black text-blue-800">Enlace de reserva pública</h3>
                <p className="text-xs text-blue-600">Comparte este enlace con tus pacientes para que agenden citas de forma autónoma.</p>
                <div className="flex gap-2 mt-2">
-                  <input type="text" readOnly value={`${typeof window !== 'undefined' ? window.location.origin : ''}/book/${profile.id}`} className="flex-1 bg-white px-3 py-1.5 text-xs border border-blue-100 rounded-lg outline-none text-blue-900 font-bold" />
-                  <button type="button" onClick={() => { const url = window.location.origin + '/book/' + profile.id; navigator.clipboard.writeText(url); setFeedback({ isOpen: true, title: '¡Copiado!', message: 'El enlace se copió al portapapeles.', type: 'success' }); }} className="px-3 py-1.5 bg-[#1A4A8A] text-white text-xs font-bold rounded-lg hover:bg-[#1A4A8A]/90">Copiar</button>
+                  <input type="text" readOnly value={`${typeof window !== 'undefined' ? window.location.origin : ''}/book/${profile.slug || profile.id}`} className="flex-1 bg-white px-3 py-1.5 text-xs border border-blue-100 rounded-lg outline-none text-blue-900 font-bold" />
+                  <button type="button" onClick={() => { const url = window.location.origin + '/book/' + (profile.slug || profile.id); navigator.clipboard.writeText(url); setFeedback({ isOpen: true, title: '¡Copiado!', message: 'El enlace se copió al portapapeles.', type: 'success' }); }} className="px-3 py-1.5 bg-[#1A4A8A] text-white text-xs font-bold rounded-lg hover:bg-[#1A4A8A]/90">Copiar</button>
                </div>
             </div>
           </div>

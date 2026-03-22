@@ -65,6 +65,7 @@ export default function DoctorDashboard() {
   const handleDayClick = (day: number) => {
     const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     setSelectedDateString(dayStr);
+    setCurrentDate(new Date(dayStr + 'T00:00:00')); // Actualizar el ancla semanal
   };
 
   // Search autocomplete
@@ -353,7 +354,7 @@ export default function DoctorDashboard() {
                           </td>
                           {weekDays.map(({ dayStr }) => {
                             const appt = weekAppointments.find(
-                              a => a.date === dayStr && a.time?.substring(0, 5) === slot
+                              a => a.date === dayStr && (a.start_time?.substring(0, 5) === slot || a.time?.substring(0, 5) === slot)
                             );
                             const style = appt ? getApptStyle(appt.status || appt.type) : null;
                             return (
@@ -429,7 +430,7 @@ export default function DoctorDashboard() {
                     }
                     const dayAppointments = weekAppointments.filter(app => app.date === selectedDateString);
                     return slots.map(slot => {
-                      const appointment = dayAppointments.find((app) => app.time.substring(0, 5) === slot);
+                      const appointment = dayAppointments.find((app) => (app.start_time?.substring(0, 5) === slot || app.time?.substring(0, 5) === slot));
                       return (
                         <div
                           key={slot}

@@ -40,6 +40,10 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
       }, async (payload) => {
         if (payload.new.doctor_id !== targetDoctorId) return; // Filtrar por médico
 
+        if (payload.new.from_user_id !== profile.id && !isOpenRef.current) {
+           setUnreadCount(prev => prev + 1);
+        }
+
         // Fetch sender name
         const { data: sender } = await supabase.from('profiles').select('name, avatar_url').eq('id', payload.new.from_user_id).single();
         
@@ -121,6 +125,13 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
   };
 
   const [isOpen, setIsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const isOpenRef = useRef(false);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    if (isOpen) setUnreadCount(0);
+  }, [isOpen]);
 
   // El chat flotará en la esquina inferior derecha para no saturar el sidebar en laptops de 13"
   return (
@@ -128,9 +139,14 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
       {!isOpen && (
         <button 
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 bg-[#0084FF] text-white p-3.5 rounded-full shadow-2xl hover:bg-[#0073E6] transition-all flex items-center justify-center z-50 active:scale-95 group border-2 border-white/20 animate-bounce duration-1000"
+          className={`fixed bottom-6 right-6 bg-[#0084FF] text-white p-3.5 rounded-full shadow-2xl hover:bg-[#0073E6] transition-all flex items-center justify-center z-50 active:scale-95 group border-2 border-white/20 duration-1000 ${unreadCount > 0 ? 'animate-bounce' : ''}`}
         >
           <MessageSquare size={20} className="group-hover:animate-pulse" />
+          {unreadCount > 0 && (
+             <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+               {unreadCount}
+             </div>
+          )}
         </button>
       )}
 

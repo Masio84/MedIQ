@@ -14,7 +14,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
   const [error, setError] = useState<string | null>(null);
 
   // Doctor Info
-  const [doctorInfo, setDoctorInfo] = useState<{ id: string; name: string; role: string } | null>(null);
+  const [doctorInfo, setDoctorInfo] = useState<{ id: string; name: string; role: string; avatar_url?: string } | null>(null);
 
   // Fetch Doctor info on load
   useEffect(() => {
@@ -137,8 +137,12 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
           <div className="bg-[#1A4A8A] p-6 text-white relative">
              <div className="absolute inset-0 bg-blue-500/10 backdrop-blur-3xl"></div>
              <div className="relative z-10 flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center font-black text-xl">
-                   {doctorInfo ? doctorInfo.name[0] : 'Dr'}
+                <div className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center font-black text-xl overflow-hidden">
+                   {doctorInfo?.avatar_url ? (
+                      <Image src={doctorInfo.avatar_url} alt={`Dr. ${doctorInfo.name}`} className="object-cover w-full h-full" width={56} height={56} />
+                   ) : (
+                      doctorInfo ? doctorInfo.name[0] : 'Dr'
+                   )}
                 </div>
                 <div>
                    <p className="text-xs text-blue-200 font-bold tracking-wide uppercase">Agendar Cita Médica</p>

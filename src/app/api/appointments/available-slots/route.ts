@@ -20,10 +20,10 @@ export async function GET(request: Request) {
     }
 
     const { data: schedule } = await supabaseAdmin.from('doctor_schedule').select('*').eq('doctor_id', doctor_id).single();
-    const { data: profile } = await supabaseAdmin.from('profiles').select('name, role').eq('id', doctor_id).single();
+    const { data: profile } = await supabaseAdmin.from('profiles').select('name, role, avatar_url').eq('id', doctor_id).single();
 
     const resultHeader = { 
-       doctor: profile ? { id: doctor_id, name: profile.name, role: profile.role } : null,
+       doctor: profile ? { id: doctor_id, name: profile.name, role: profile.role, avatar_url: profile.avatar_url } : null,
        schedule: schedule ? { slot_interval: schedule.slot_interval_minutes } : null 
     };
 

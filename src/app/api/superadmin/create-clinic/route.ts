@@ -69,7 +69,9 @@ export async function POST(req: Request) {
       .insert([{
         clinic_id: clinic.id,
         plan_slug: plan_slug,
-        status: 'active'
+        status: 'active',
+        current_period_start: new Date().toISOString(),
+        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
       }]);
 
     if (subError) throw new Error('Error al inicializar suscripción: ' + subError.message);

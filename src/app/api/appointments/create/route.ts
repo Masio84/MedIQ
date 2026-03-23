@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { authorizeUser } from '@/lib/auth-helpers';
+import { requireFeature } from '@/lib/permissions';
 
 export async function POST(request: Request) {
   try {
@@ -10,6 +11,10 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const { data: profile } = await supabase.from('profiles').select('role, clinic_id, doctor_id').eq('id', user!.id).single();
+
+    if (profile?.clinic_id) {
+        await requireFeature(profile.clinic_id, 'ai_followup');
+    }
 
     const body = await request.json();
     const {

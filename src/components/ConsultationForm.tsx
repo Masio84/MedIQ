@@ -46,6 +46,16 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
   // Feedback State
   const [feedback, setFeedback] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'error' }>({ isOpen: false, title: '', message: '', type: 'success' });
 
+  // Auto-schedule Modal State
+  const [scheduleModal, setScheduleModal] = useState({ 
+    isOpen: false, 
+    date: '', 
+    start_time: '10:00', 
+    reason: '', 
+    notes: '', 
+    submitting: false 
+  });
+
   useEffect(() => {
     if (initialSymptoms) {
       // Dividir los síntomas por comas, guiones o saltos si aplica, o simplemente crear una capsula individual entera si es un texto continuo.
@@ -213,12 +223,58 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
       });
       const aiData = await res.json();
       if (!res.ok) throw new Error(aiData.error);
+      
       setFormData(prev => ({ ...prev, follow_up_notes: aiData.follow_up }));
+
+      // Abrir modal de agendado automático
+      setScheduleModal({
+         isOpen: true,
+         date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+         start_time: '10:00',
+         reason: aiData.follow_up,
+         notes: 'Sugerido por Inteligencia Artificial',
+         submitting: false
+      });
+
     } catch (err: any) {
       setFeedback({ isOpen: true, title: 'Error IA', message: err.message, type: 'error' });
     } finally {
       setIsSuggestingFollowup(false);
     }
+  };
+
+  const handleConfirmSchedule = async () => {
+      setScheduleModal(prev => ({ ...prev, submitting: true }));
+      try {
+          const res = await fetch('/api/appointments/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  patient_id: formData.patient_id,
+                  doctor_id: doctorId,
+                  date: scheduleModal.date,
+                  start_time: scheduleModal.start_time,
+                  reason: scheduleModal.reason,
+                  notes: scheduleModal.notes,
+                  status: 'scheduled'
+              })
+          });
+
+          const result = await res.json();
+
+          if (res.status === 403) {
+              setFeedback({ isOpen: true, title: 'Límite', message: 'Tu plan no incluye agendado automático.', type: 'error' });
+          } else if (!res.ok) {
+              throw new Error(result.error || 'Error al agendar');
+          } else {
+              setFeedback({ isOpen: true, title: 'Éxito', message: 'Cita agendada correctamente', type: 'success' });
+              setScheduleModal(prev => ({ ...prev, isOpen: false }));
+          }
+      } catch (err: any) {
+          setFeedback({ isOpen: true, title: 'Cita Fallida', message: err.message || 'Error al guardar, intenta de nuevo', type: 'error' });
+      } finally {
+          setScheduleModal(prev => ({ ...prev, submitting: false }));
+      }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -611,6 +667,75 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
           </div>
         </div>
       )}
+      {/* Auto-Schedule Modal Overlay */}
+      {scheduleModal.isOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4">
+            <h3 className="font-bold text-lg text-gray-900 border-b pb-2 flex items-center gap-1.5">
+               <Sparkles size={18} className="text-blue-500" /> Agendado Automático
+            </h3>
+            
+            <div className="space-y-3">
+               <div>
+                  <label className="block text-xxs font-black text-gray-400 uppercase">Fecha de Cita</label>
+                  <input 
+                    type="date" 
+                    value={scheduleModal.date} 
+                    onChange={e => setScheduleModal(prev => ({ ...prev, date: e.target.value }))}
+                    className="w-full text-sm border border-gray-100 rounded-lg p-2 focus:outline-none focus:border-blue-500 mt-1"
+                  />
+               </div>
+               <div>
+                  <label className="block text-xxs font-black text-gray-400 uppercase">Hora</label>
+                  <input 
+                    type="time" 
+                    value={scheduleModal.start_time} 
+                    onChange={e => setScheduleModal(prev => ({ ...prev, start_time: e.target.value }))}
+                    className="w-full text-sm border border-gray-100 rounded-lg p-2 focus:outline-none focus:border-blue-500 mt-1"
+                  />
+               </div>
+               <div>
+                  <label className="block text-xxs font-black text-gray-400 uppercase">Motivo</label>
+                  <input 
+                    type="text" 
+                    value={scheduleModal.reason} 
+                    onChange={e => setScheduleModal(prev => ({ ...prev, reason: e.target.value }))}
+                    className="w-full text-sm border border-gray-100 rounded-lg p-2 focus:outline-none focus:border-blue-500 mt-1"
+                  />
+               </div>
+               <div>
+                  <label className="block text-xxs font-black text-gray-400 uppercase">Notas</label>
+                  <textarea 
+                    value={scheduleModal.notes} 
+                    onChange={e => setScheduleModal(prev => ({ ...prev, notes: e.target.value }))}
+                    rows={2}
+                    className="w-full text-sm border border-gray-100 rounded-lg p-2 focus:outline-none focus:border-blue-500 mt-1"
+                  />
+               </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+               <button 
+                 type="button" 
+                 onClick={() => setScheduleModal(prev => ({ ...prev, isOpen: false }))}
+                 className="w-full py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-sm font-medium"
+               >
+                 Cancelar
+               </button>
+               <button 
+                 type="button" 
+                 disabled={scheduleModal.submitting}
+                 onClick={handleConfirmSchedule}
+                 className="w-full py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1 disabled:opacity-50"
+               >
+                 {scheduleModal.submitting && <Loader2 size={14} className="animate-spin" />}
+                 Confirmar y Agendar
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Feedback Modal Overlay */}
       {feedback.isOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">

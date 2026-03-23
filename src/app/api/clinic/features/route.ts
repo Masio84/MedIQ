@@ -1,13 +1,31 @@
 import { NextResponse } from 'next/server';
 import { getClinicPlan } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
+import { authorizeUser } from '@/lib/auth-helpers';
 
 export async function GET(request: Request) {
+  const auth = await authorizeUser(['admin', 'doctor', 'assistant']);
+  if ('error' in auth) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   const { searchParams } = new URL(request.url);
   const clinic_id = searchParams.get('clinic_id');
 
   if (!clinic_id) {
     return NextResponse.json({ error: 'Falta clinic_id' }, { status: 400 });
+  }
+
+  const { profile, user } = auth as any;
+  let isSuperAdmin = false;
+  try {
+    const { requireSuperAdmin } = await import('@/lib/permissions');
+    await requireSuperAdmin(user.id);
+    isSuperAdmin = true;
+  } catch (e) {}
+
+  if (!isSuperAdmin && clinic_id !== profile.clinic_id) {
+    return NextResponse.json({ error: 'No autorizado para ver esta clínica' }, { status: 403 });
   }
 
   const supabase = await createClient();

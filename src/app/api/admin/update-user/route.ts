@@ -15,6 +15,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
     }
 
+    // Verificar si el usuario a actualizar es de la misma clínica
+    const { data: targetProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('clinic_id')
+      .eq('id', id)
+      .single();
+
+    if (!targetProfile) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+    }
+
+    const { user, profile } = auth as any;
+    let isSuperAdmin = false;
+    try {
+      const { requireSuperAdmin } = await import('@/lib/permissions');
+      await requireSuperAdmin(user.id);
+      isSuperAdmin = true;
+    } catch (e) {}
+
+    if (!isSuperAdmin && targetProfile.clinic_id !== profile.clinic_id) {
+      return NextResponse.json({ error: 'No autorizado para actualizar usuarios de otra clínica' }, { status: 403 });
+    }
+
     // 1. Update Auth user metadata via Service Role
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, {
       user_metadata: { name, role },

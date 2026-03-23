@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { createClient } from '@/lib/supabase/server';
 import { authorizeUser } from '@/lib/auth-helpers';
 
 export async function POST(request: Request) {
@@ -35,11 +35,16 @@ export async function POST(request: Request) {
     }
 
     const { user, profile } = auth as any;
-    let query = supabaseAdmin.from('consultations').update(updateData).eq('id', id);
+    const supabase = await createClient();
+    
+    let query = supabase.from('consultations')
+      .update(updateData)
+      .eq('id', id)
+      .eq('clinic_id', profile.clinic_id); // Filtro clinic_id explícito
 
     if (profile.role === 'doctor') {
       query = query.eq('doctor_id', user.id);
-    } // Admins can update any Consultation
+    } // Admins can update any Consultation of their clinic
 
     const { data: updated, error } = await query.select();
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { createClient } from '@/lib/supabase/server';
 import { authorizeUser } from '@/lib/auth-helpers';
 
 export async function POST(request: Request) {
@@ -25,11 +25,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Falta campo doctor_id' }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
       .from('consultations')
       .insert([{
         patient_id,
         doctor_id: finalDoctorId,
+        clinic_id: profile.clinic_id, // Forzar clinic_id
         ...consultationData
       }])
       .select();

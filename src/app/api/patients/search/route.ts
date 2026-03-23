@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { createClient } from '@/lib/supabase/server';
 import { authorizeUser } from '@/lib/auth-helpers';
 
 export async function GET(request: Request) {
@@ -23,9 +23,12 @@ export async function GET(request: Request) {
     if (!cleaned) return NextResponse.json({ success: true, data: [] });
 
     const { user, profile } = auth as any;
-    let query = supabaseAdmin
+    const supabase = await createClient();
+
+    let query = supabase
       .from('patients')
       .select('id, name, last_name')
+      .eq('clinic_id', profile.clinic_id) // Filtro clinic_id explícito
       .or(`name.ilike.%${cleaned}%,last_name.ilike.%${cleaned}%`);
     
     if (profile.role === 'doctor') {

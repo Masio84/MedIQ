@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { createClient } from '@/lib/supabase/server';
 import { authorizeUser } from '@/lib/auth-helpers';
 
 export async function GET() {
@@ -8,8 +8,9 @@ export async function GET() {
     if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
     const { user, profile } = auth as any;
+    const supabase = await createClient();
 
-    const { data: billings, error } = await supabaseAdmin
+    const { data: billings, error } = await supabase
       .from('billing')
       .select(`
         id,

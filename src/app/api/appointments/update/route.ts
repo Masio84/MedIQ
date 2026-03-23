@@ -58,7 +58,8 @@ export async function PATCH(request: Request) {
     const { error } = await supabase
       .from('appointments')
       .update(body)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('clinic_id', (auth as any).profile?.clinic_id); // Filtro clinic_id explícito
 
     if (error) throw error;
     

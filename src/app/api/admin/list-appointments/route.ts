@@ -1,22 +1,26 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { authorizeUser } from '@/lib/auth-helpers';
+import { createClient } from '@/lib/supabase/server';
+import { requireSuperAdmin } from '@/lib/permissions';
 
 export async function GET(request: Request) {
-  const auth = await authorizeUser(['admin']);
-  if ('error' in auth) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const { searchParams } = new URL(request.url);
-  const start = searchParams.get('start');
-  const end = searchParams.get('end');
-
-  if (!start || !end) {
-    return NextResponse.json({ error: 'Parámetros start y end son requeridos' }, { status: 400 });
+  if (!user) {
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   }
 
   try {
+    await requireSuperAdmin(user.id);
+    const { supabaseAdmin } = await import('@/lib/supabaseAdmin');
+    const { searchParams } = new URL(request.url);
+    const start = searchParams.get('start');
+  const end = searchParams.get('end');
+
+    if (!start || !end) {
+      return NextResponse.json({ error: 'Parámetros start y end son requeridos' }, { status: 400 });
+    }
+
     const { data: appointments, error } = await supabaseAdmin
       .from('appointments')
       .select('*, patients(name), profiles:doctor_id(name)')

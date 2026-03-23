@@ -3,7 +3,6 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeUser } from '@/lib/auth-helpers';
 
 export async function POST(request: Request) {
-  // 1. Verify Authentication & Role authorization
   const auth = await authorizeUser(['admin']);
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -16,12 +15,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
     }
 
-    // 2. Create User in Supabase Auth via Service Role
+    const { user, profile } = auth as any;
+    let isSuperAdmin = false;
+    try {
+      const { requireSuperAdmin } = await import('@/lib/permissions');
+      await requireSuperAdmin(user.id);
+      isSuperAdmin = true;
+    } catch (e) {}
+
+    const targetClinicId = isSuperAdmin ? clinic_id : profile.clinic_id;
+
+    if (!targetClinicId) {
+      return NextResponse.json({ error: 'Falta clinic_id asociado' }, { status: 400 });
+    }
+
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { name, role, clinic_id },
+      user_metadata: { name, role, clinic_id: targetClinicId },
     });
 
     if (authError) throw authError;

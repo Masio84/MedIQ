@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { createClient } from '@/lib/supabase/server';
 import { authorizeUser } from '@/lib/auth-helpers';
 
 export async function POST(request: Request) {
@@ -23,10 +23,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No se puede asociar un doctor a este paciente' }, { status: 400 });
     }
 
-    const { data: patient, error } = await supabaseAdmin
+    const supabase = await createClient();
+
+    const { data: patient, error } = await supabase
       .from('patients')
       .insert([{
         doctor_id: doctorId,
+        clinic_id: profile.clinic_id, // Forzar clinic_id
         name: data.name,
         birthdate: data.birthdate || null,
         phone: data.phone || null,

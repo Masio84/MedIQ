@@ -21,7 +21,8 @@ export async function DELETE(request: Request) {
     const { error } = await supabase
       .from('appointments')
       .update(updateData)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('clinic_id', (auth as any).profile?.clinic_id); // Filtro clinic_id explícito
 
     if (error) throw error;
     

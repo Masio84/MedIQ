@@ -1,6 +1,31 @@
 import { NextResponse } from 'next/server';
+import { authorizeUser } from '@/lib/auth-helpers';
+
+const rateLimitMap = new Map<string, { count: number; reset: number }>();
 
 export async function POST(req: Request) {
+  const auth = await authorizeUser(['admin', 'doctor', 'assistant']);
+  if ('error' in auth) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const { user } = auth as any;
+  const key = user.id;
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+
+  if (entry && now < entry.reset) {
+    if (entry.count >= 20) {
+      return NextResponse.json(
+        { error: 'Límite de resúmenes alcanzado. Intenta en una hora.' }, 
+        { status: 429 }
+      );
+    }
+    entry.count++;
+  } else {
+    rateLimitMap.set(key, { count: 1, reset: now + 3600000 });
+  }
+
   try {
     const { consultations, appointments } = await req.json();
     const apiKey = process.env.ANTHROPIC_API_KEY;

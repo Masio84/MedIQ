@@ -7,8 +7,48 @@ export default function ClinicsTable({ clinics, isLoading, onRefresh }: { clinic
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [customLimits, setCustomLimits] = useState<string>('');
+  
+  const [pendingUpgrades, setPendingUpgrades] = useState<Record<string, number>>({});
 
   const supabase = createClient();
+
+  useState(() => {
+     fetchPendingUpgrades();
+  });
+
+  const fetchPendingUpgrades = async () => {
+     const { data } = await supabase
+       .from('notifications')
+       .select('clinic_id')
+       .eq('type', 'upgrade_request')
+       .eq('acted', false);
+       
+     if (data) {
+        const counts: Record<string, number> = {};
+        data.forEach((n: any) => {
+           if (n.clinic_id) counts[n.clinic_id] = (counts[n.clinic_id] || 0) + 1;
+        });
+        setPendingUpgrades(counts);
+     }
+  };
+
+  const handleResolveUpgrade = async (id: string, clinicObj: any) => {
+      await supabase
+        .from('notifications')
+        .update({ acted: true })
+        .eq('clinic_id', id)
+        .eq('type', 'upgrade_request');
+
+      setPendingUpgrades(prev => {
+         const dummy = { ...prev };
+         delete dummy[id];
+         return dummy;
+      });
+
+      setSelectedClinic(clinicObj);
+      setCustomLimits(JSON.stringify(clinicObj.custom_limits || {}, null, 2));
+      setIsDrawerOpen(true);
+  };
 
   const handleStatusToggle = async (id: string, currentStatus: string) => {
     setIsUpdating(true);
@@ -80,10 +120,22 @@ export default function ClinicsTable({ clinics, isLoading, onRefresh }: { clinic
             ) : (
               clinics.map((c) => {
                 const isActive = c.status === 'active';
+                const hasUpgrade = (pendingUpgrades[c.id] || 0) > 0;
+
                 return (
                   <tr key={c.id} className="hover:bg-gray-50/40 transition-colors">
                     <td className="px-6 py-4">
-                      <p className="text-sm font-bold text-gray-900">{c.name}</p>
+                      <div className="flex items-center gap-1.5">
+                         <p className="text-sm font-bold text-gray-900">{c.name}</p>
+                         {hasUpgrade && (
+                            <button 
+                              onClick={() => handleResolveUpgrade(c.id, c)}
+                              className="bg-orange-100 border border-orange-200 text-orange-700 text-[9px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5 animate-pulse shadow-sm"
+                            >
+                              <AlertTriangle size={10} /> Upgrade
+                            </button>
+                         )}
+                      </div>
                       <p className="text-xxs text-gray-400">Alta: {new Date(c.created_at).toLocaleDateString()}</p>
                     </td>
                     <td className="px-6 py-4">

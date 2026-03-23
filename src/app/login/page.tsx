@@ -1,9 +1,10 @@
 'use client';
 import { useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Eye, EyeOff } from 'lucide-react';
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,7 +13,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  const disabledReason = searchParams.get('reason') === 'account_disabled';
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -53,6 +57,13 @@ export default function LoginPage() {
             Plataforma Médica MedIQ (BETA)
           </p>
         </div>
+        
+        {disabledReason && (
+          <div className="mb-4 p-3 bg-amber-50 text-amber-700 text-xs rounded-lg border border-amber-100 font-bold">
+            Tu cuenta ha sido desactivada. Contacta al administrador de tu clínica.
+          </div>
+        )}
+
         {error && (
           <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
             {error}

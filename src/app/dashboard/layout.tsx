@@ -19,6 +19,10 @@ export default async function DashboardLayout({
   // Get User Profile for Role
   const { data: profile } = await getProfile(user.id);
 
+  if (profile && profile.is_active === false) {
+     redirect('/login?reason=account_disabled');
+  }
+
   const role = profile?.role || 'assistant';
   const clinicId = profile?.clinic_id || null;
   const doctorId = profile?.doctor_id || null;

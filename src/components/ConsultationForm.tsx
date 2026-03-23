@@ -415,7 +415,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
             className="w-full bg-white px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900"
           >
             <option value="">Selecciona un paciente...</option>
-            {patients.map((p) => (
+            {Array.isArray(patients) && patients.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
@@ -440,7 +440,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Síntomas *</label>
           <div className="flex flex-wrap gap-2 mb-2">
-            {symptomsList.map(s => (
+            {Array.isArray(symptomsList) && symptomsList.map(s => (
               <span key={s} className="inline-flex items-center gap-1 bg-gray-100 border-[0.5px] border-black/8 text-gray-800 px-2 py-1 rounded-md text-xs font-medium">
                 {s}
                 <button type="button" onClick={() => setSymptomsList(symptomsList.filter(item => item !== s))} className="text-gray-400 hover:text-red-500"><X size={12}/></button>
@@ -467,7 +467,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {aiSuggestions.symptoms.map(s => (
+                  {Array.isArray(aiSuggestions.symptoms) && aiSuggestions.symptoms.map(s => (
                     <button key={s} type="button" onClick={() => handleAddSymptom(s)} className="text-xs bg-white border-[0.5px] border-black/8 text-gray-700 px-2.5 py-1.5 rounded-md hover:bg-gray-50 transition-colors shadow-sm">{s}</button>
                   ))}
                 </div>

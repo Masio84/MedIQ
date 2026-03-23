@@ -34,7 +34,7 @@ export default function BillingPanel() {
       try {
         const res = await fetch('/api/billing/list');
         const result = await res.json();
-        if (result.success && result.data) setBilling(result.data);
+        if (result.success && result.data) setBilling(Array.isArray(result.data) ? result.data : []);
       } catch (error) {
         console.error("Error fetching billing:", error);
       } finally {
@@ -44,7 +44,7 @@ export default function BillingPanel() {
 
     const fetchPatients = async () => {
       const { data } = await supabase.from('patients').select('id, name');
-      if (data) setPatients(data);
+      setPatients(Array.isArray(data) ? data : []);
     };
 
     fetchBilling();
@@ -138,7 +138,7 @@ export default function BillingPanel() {
 
       {/* MOBILE CARD VIEW */}
       <div className="md:hidden space-y-3">
-        {billing.map((b) => {
+        {Array.isArray(billing) && billing.map((b) => {
           try {
             const normal = Number(b.normal_fee);
             const discount = Number(b.discount || 0);
@@ -217,7 +217,7 @@ export default function BillingPanel() {
              </tr>
            </thead>
            <tbody className="divide-y divide-gray-100">
-             {billing.map((b) => {
+             {Array.isArray(billing) && billing.map((b) => {
                const normal = Number(b.normal_fee);
                const discount = Number(b.discount || 0);
                const extra = Number(b.extra_charge || 0);
@@ -291,7 +291,7 @@ export default function BillingPanel() {
                            className="w-full text-sm border rounded-lg p-2 focus:outline-none focus:border-blue-500 mt-1"
                         >
                             <option value="">Selecciona paciente...</option>
-                            {patients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            {Array.isArray(patients) && patients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                     </div>
 

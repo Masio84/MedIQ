@@ -61,7 +61,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
         .neq('id', profile.id); // Excluirme a mí mismo
       
       if (data && data.length > 0) {
-         setUsers(data);
+         setUsers(Array.isArray(data) ? data : []);
          // Seleccionar el primero por defecto o al doctor vinculado
          const defaultTarget = targetDoctorId && targetDoctorId !== profile.id 
            ? data.find(u => u.id === targetDoctorId) 
@@ -77,7 +77,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
 
     const fetchPatients = async () => {
       const { data } = await supabase.from('patients').select('id, name').limit(50);
-      if (data) setPatients(data);
+      setPatients(Array.isArray(data) ? data : []);
     };
     fetchPatients();
   }, [profile?.id, targetDoctorId]);
@@ -364,7 +364,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
             {/* Users Dropdown */}
             {showUsersDropdown && (
               <div className="absolute top-11 left-2 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-100 z-50 w-60 max-h-48 overflow-y-auto divide-y divide-gray-50 flex flex-col animate-in fade-in-0 zoom-in-95 duration-150">
-                {users.map((u) => {
+                {Array.isArray(users) && users.map((u) => {
                   const uCount = unreadCounts[u.id] || 0;
                   return (
                     <button 
@@ -408,7 +408,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
             className="flex-1 overflow-y-auto space-y-3 p-3 flex flex-col scrollbar-thin bg-gray-50/50"
           >
             {loadingMore && <div className="text-center text-[10px] text-gray-400">Cargando anteriores...</div>}
-            {messages.map((m, i) => {
+            {Array.isArray(messages) && messages.map((m, i) => {
               const isMe = m.from_user_id === profile?.id;
               const avatar = m.profiles?.avatar_url;
               const nameInitial = m.profiles?.name ? m.profiles.name[0].toUpperCase() : '?';
@@ -456,7 +456,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
           <div className="relative">
             {showMention && filteredPatients.length > 0 && (
               <div className="absolute bottom-full left-2 right-2 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-24 overflow-y-auto divide-y divide-gray-50 flex flex-col animate-in slide-in-from-bottom-2 duration-150">
-                {filteredPatients.map((p) => (
+                {Array.isArray(filteredPatients) && filteredPatients.map((p) => (
                   <button key={p.id} onClick={() => selectMention(p.name)} className="w-full text-left px-2 py-1.5 text-xs hover:bg-[#F4F7FB] text-gray-700 transition-colors flex items-center gap-1">
                     <span className="font-bold text-blue-500">@</span>{p.name}
                   </button>

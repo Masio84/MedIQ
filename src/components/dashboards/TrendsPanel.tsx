@@ -46,7 +46,7 @@ export default function TrendsPanel({ clinicId }: { clinicId: string }) {
      const fetchDoctors = async () => {
          const res = await fetch(`/api/admin/list-users?clinic_id=${clinicId}&role=doctor`);
          const data = await res.json();
-         if (data.success) setDoctors(data.users);
+         if (data.success) setDoctors(Array.isArray(data.users) ? data.users : []);
      };
 
      if (clinicId) fetchDoctors();
@@ -126,7 +126,7 @@ export default function TrendsPanel({ clinicId }: { clinicId: string }) {
                     className="w-full text-sm border rounded-lg p-2 focus:outline-none focus:border-blue-500"
                  >
                      <option value="">Todos los médicos</option>
-                     {doctors.map(d => (
+                     {Array.isArray(doctors) && doctors.map(d => (
                          <option key={d.id} value={d.id}>{d.name}</option>
                      ))}
                  </select>

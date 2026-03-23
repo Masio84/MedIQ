@@ -62,7 +62,7 @@ export default function AssistantDashboard() {
       }
 
       const { data } = await query.order('created_at', { ascending: false });
-      setNotifications(data || []);
+      setNotifications(Array.isArray(data || []) ? data || [] : []);
       setNotifCount(data?.length || 0);
     };
     loadNotifications();
@@ -120,7 +120,7 @@ export default function AssistantDashboard() {
     // 2. Cargar doctores y pacientes
     const { data: d } = await supabase.from('profiles').select('id, name').eq('role', 'doctor');
     const { data: p } = await supabase.from('patients').select('id, name');
-    if (d) setDoctors(d);
+    if (d) setDoctors(Array.isArray(d) ? d : []);
     if (p) setPatients(p);
 
     const today = new Date();
@@ -385,7 +385,7 @@ export default function AssistantDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y-[0.5px] divide-black/8">
-                {billings.map((b) => {
+                {Array.isArray(billings) && billings.map((b) => {
                   const total = Number(b.normal_fee) + Number(b.extra_charge) - Number(b.discount);
                   const patientName = b.patients?.name ? b.patients.name : 'Paciente Sin Nombre'; // Requerimiento: jalar el nombre real, no N/A
                   return (
@@ -448,7 +448,7 @@ export default function AssistantDashboard() {
           <p className="text-xs text-gray-400 text-center py-4">Sin notificaciones pendientes</p>
         ) : (
           <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
-            {notifications.map((notif, idx) => {
+            {Array.isArray(notifications) && notifications.map((notif, idx) => {
               const borderColor = notif.type === 'seguimiento_sugerido' ? '#993C1D' : '#1A4A8A';
               const acted = notif.acted;
               const patientName = notif.message?.match(/para (.+)$/)?.[1] || 'Paciente';
@@ -730,7 +730,7 @@ export default function AssistantDashboard() {
                     className="w-full bg-white px-3 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
                   >
                     <option value="">Selecciona un doctor...</option>
-                    {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    {Array.isArray(doctors) && doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 </div>
 

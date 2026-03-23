@@ -58,7 +58,7 @@ export default function PatientList({ role }: { role: 'admin' | 'doctor' | 'assi
         )}
 
         <div className="flex-1 overflow-y-auto space-y-2 mt-2">
-          {patients.map((p) => (
+          {Array.isArray(patients) && patients.map((p) => (
             <button
               key={p.id}
               onClick={() => setSelectedPatient(p)}

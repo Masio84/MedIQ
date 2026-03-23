@@ -73,7 +73,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
        const res = await fetch(`/api/appointments/available-slots?doctor_id=${doctorInfo.id}&date=${dateStr}`);
        const data = await res.json();
        if (data.success) {
-         setAvailableSlots(data.data);
+         setAvailableSlots(Array.isArray(data.data) ? data.data : []);
        } else {
          setError(data.error || 'No se pudieron cargar los horarios');
        }
@@ -228,7 +228,7 @@ export default function BookPage({ params }: { params: Promise<{ slug: string }>
                         ) : (
                            <div className="flex-1 grid grid-cols-4 gap-2 border border-black/8 rounded-2xl p-4 bg-gray-50/30 overflow-y-auto max-h-[250px] content-start">
                               {availableSlots.length > 0 ? (
-                                availableSlots.map(slot => (
+                                Array.isArray(availableSlots) && availableSlots.map(slot => (
                                    <button 
                                      key={slot.time}
                                      disabled={!slot.available}

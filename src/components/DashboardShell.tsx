@@ -337,10 +337,10 @@ export default function DashboardShell({
                     <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[150px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
                       <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Citas por Doctor:</p>
                       <div className="space-y-0.5">
-                        {doctorAppts.length === 0 ? (
+                        {!Array.isArray(doctorAppts) || doctorAppts.length === 0 ? (
                           <p className="text-[11px] text-gray-500">Sin citas hoy</p>
                         ) : (
-                          doctorAppts.map((da, i) => (
+                          Array.isArray(doctorAppts) && doctorAppts.map((da, i) => (
                             <p key={i} className="text-[11px] font-medium tracking-tight text-gray-100 flex items-center justify-between gap-2">
                               <span>{da.name}</span>
                               <span className="font-bold text-blue-400">{da.count}</span>
@@ -385,10 +385,10 @@ export default function DashboardShell({
                       <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[120px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
                         <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Doctores Conectados:</p>
                         <div className="space-y-0.5">
-                          {doctorNames.length === 0 ? (
+                          {!Array.isArray(doctorNames) || doctorNames.length === 0 ? (
                             <p className="text-[11px] text-gray-500">Sin usuarios</p>
                           ) : (
-                            doctorNames.map((name, i) => (
+                            Array.isArray(doctorNames) && doctorNames.map((name, i) => (
                               <p key={i} className="text-[11px] font-medium tracking-tight text-gray-100 flex items-center gap-1">
                                 <span className="w-1 h-1 rounded-full bg-emerald-400" />
                                 {name}
@@ -410,10 +410,10 @@ export default function DashboardShell({
                       <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[120px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
                         <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Asistentes Conectados:</p>
                         <div className="space-y-0.5">
-                          {assistantNames.length === 0 ? (
+                          {!Array.isArray(assistantNames) || assistantNames.length === 0 ? (
                             <p className="text-[11px] text-gray-500">Sin usuarios</p>
                           ) : (
-                            assistantNames.map((name, i) => (
+                            Array.isArray(assistantNames) && assistantNames.map((name, i) => (
                               <p key={i} className="text-[11px] font-medium tracking-tight text-gray-100 flex items-center gap-1">
                                 <span className="w-1 h-1 rounded-full bg-blue-400" />
                                 {name}

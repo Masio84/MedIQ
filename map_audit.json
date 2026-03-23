@@ -1,0 +1,282 @@
+[
+  {
+    "file": "/src/app/api/superadmin/clinics-list/route.ts",
+    "line": 72,
+    "variable": "clinics",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/app/book/[slug]/page.tsx",
+    "line": 231,
+    "variable": "availableSlots",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/app/dashboard/agenda/page.tsx",
+    "line": 344,
+    "variable": "waitingList",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/app/dashboard/agenda/page.tsx",
+    "line": 399,
+    "variable": "slots",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/app/dashboard/agenda/page.tsx",
+    "line": 467,
+    "variable": "weekDays",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/app/dashboard/agenda/page.tsx",
+    "line": 487,
+    "variable": "slots",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/app/dashboard/agenda/page.tsx",
+    "line": 490,
+    "variable": "weekDays",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/app/dashboard/consultations/page.tsx",
+    "line": 221,
+    "variable": "consultations",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/app/dashboard/consultations/page.tsx",
+    "line": 249,
+    "variable": "appointments",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/app/dashboard/consultations/page.tsx",
+    "line": 270,
+    "variable": "history",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/BillingPanel.tsx",
+    "line": 141,
+    "variable": "billing",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/BillingPanel.tsx",
+    "line": 220,
+    "variable": "billing",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/BillingPanel.tsx",
+    "line": 294,
+    "variable": "patients",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/ConsultationForm.tsx",
+    "line": 418,
+    "variable": "patients",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/ConsultationForm.tsx",
+    "line": 443,
+    "variable": "symptomsList",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/ConsultationForm.tsx",
+    "line": 470,
+    "variable": "symptoms",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/components/dashboards/AdminDashboard.tsx",
+    "line": 229,
+    "variable": "profiles",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/dashboards/AssistantDashboard.tsx",
+    "line": 317,
+    "variable": "prev",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/components/dashboards/AssistantDashboard.tsx",
+    "line": 388,
+    "variable": "billings",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/dashboards/AssistantDashboard.tsx",
+    "line": 451,
+    "variable": "notifications",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/dashboards/AssistantDashboard.tsx",
+    "line": 733,
+    "variable": "doctors",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/dashboards/AssistantDashboard.tsx",
+    "line": 752,
+    "variable": "slots",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/components/dashboards/DoctorDashboard.tsx",
+    "line": 166,
+    "variable": "searchResults",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/dashboards/DoctorDashboard.tsx",
+    "line": 333,
+    "variable": "weekDays",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/components/dashboards/DoctorDashboard.tsx",
+    "line": 351,
+    "variable": "slots",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/components/dashboards/DoctorDashboard.tsx",
+    "line": 356,
+    "variable": "weekDays",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/components/dashboards/DoctorDashboard.tsx",
+    "line": 433,
+    "variable": "slots",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/components/dashboards/TrendsPanel.tsx",
+    "line": 129,
+    "variable": "doctors",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/DashboardShell.tsx",
+    "line": 343,
+    "variable": "doctorAppts",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/DashboardShell.tsx",
+    "line": 391,
+    "variable": "doctorNames",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/DashboardShell.tsx",
+    "line": 416,
+    "variable": "assistantNames",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/PatientList.tsx",
+    "line": 61,
+    "variable": "patients",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/SidebarChat.tsx",
+    "line": 118,
+    "variable": "inverted",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/components/SidebarChat.tsx",
+    "line": 222,
+    "variable": "inverted",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/components/SidebarChat.tsx",
+    "line": 367,
+    "variable": "users",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/SidebarChat.tsx",
+    "line": 411,
+    "variable": "messages",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/SidebarChat.tsx",
+    "line": 459,
+    "variable": "filteredPatients",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/superadmin/ClinicsTable.tsx",
+    "line": 132,
+    "variable": "clinics",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  },
+  {
+    "file": "/src/components/UserManagement.tsx",
+    "line": 57,
+    "variable": "prev",
+    "initialized": "Desconocida / Prop",
+    "protected": "no"
+  },
+  {
+    "file": "/src/components/UserManagement.tsx",
+    "line": 103,
+    "variable": "profiles",
+    "initialized": "Desconocida / Prop",
+    "protected": "sí"
+  }
+]

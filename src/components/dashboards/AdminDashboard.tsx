@@ -226,7 +226,7 @@ export default function AdminDashboard({ profile, plan, stats }: AdminDashboardP
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                      {profiles.map((p) => {
+                      {Array.isArray(profiles) && profiles.map((p) => {
                           const isUserActive = p.is_active !== false;
                           return (
                               <tr key={p.id} className="hover:bg-gray-50/40 transition-colors">

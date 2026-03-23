@@ -100,7 +100,7 @@ export default function UserManagement() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {profiles.map((profile) => (
+            {Array.isArray(profiles) && profiles.map((profile) => (
               <tr key={profile.id} className="hover:bg-gray-50/50 transition-colors">
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{profile.name || 'Sin Nombre'}</td>
                 <td className="px-6 py-4">

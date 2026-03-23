@@ -341,7 +341,7 @@ export default function AgendaPage() {
                 <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-[9px]">{waitingList.length}</span>
              </h3>
              <div className="space-y-2 max-h-[200px] overflow-y-auto">
-               {waitingList.map(item => (
+               {Array.isArray(waitingList) && waitingList.map(item => (
                  <div key={item.id} className="p-2 border-[0.5px] border-black/8 rounded-lg bg-orange-50/30 flex justify-between items-center">
                    <div>
                      <p className="text-xs font-bold text-gray-800">{item.patients?.name || item.patient_name}</p>

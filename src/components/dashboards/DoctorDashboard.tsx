@@ -80,7 +80,7 @@ export default function DoctorDashboard() {
         .from('patients')
         .select('id, name')
         .or(`name.ilike.%${searchTerm}%`);
-      if (data) setSearchResults(data);
+      setSearchResults(Array.isArray(data) ? data : []);
       setSearching(false);
     };
 
@@ -163,7 +163,7 @@ export default function DoctorDashboard() {
           {/* Suggestions Dropdown */}
           {searchResults.length > 0 && (
             <div className="absolute z-10 w-full mt-1 bg-white border-[0.5px] border-black/8 rounded-xl shadow-lg">
-              {searchResults.map((p) => (
+              {Array.isArray(searchResults) && searchResults.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => {

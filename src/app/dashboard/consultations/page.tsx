@@ -44,7 +44,7 @@ export default function ConsultationsPage() {
         `)
         .eq('doctor_id', docId)
         .order('created_at', { ascending: false });
-      if (data) setHistory(data);
+      setHistory(Array.isArray(data) ? data : []);
     };
 
     const fetchUser = async () => {
@@ -267,7 +267,7 @@ export default function ConsultationsPage() {
             ) : (
                 <div className="space-y-2 overflow-y-auto max-h-[600px]">
                    {history.length === 0 && <p className="text-sm text-gray-400">No hay consultas registradas aún.</p>}
-                   {history.map((c) => (
+                   {Array.isArray(history) && history.map((c) => (
                      <div key={c.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100/20 text-sm">
                        <div className="flex justify-between items-center">
                          <span className="font-semibold text-gray-900">{(c.patients as any)?.name || 'Paciente'}</span>

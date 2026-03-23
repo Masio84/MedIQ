@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2, PlusCircle, AlertTriangle } from 'lucide-react';
 
@@ -12,9 +12,9 @@ export default function ClinicsTable({ clinics = [], isLoading, onRefresh }: { c
 
   const supabase = createClient();
 
-  useState(() => {
+  useEffect(() => {
      fetchPendingUpgrades();
-  });
+  }, []);
 
   const fetchPendingUpgrades = async () => {
      const { data } = await supabase

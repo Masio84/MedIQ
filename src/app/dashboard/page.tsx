@@ -30,13 +30,20 @@ export default async function DashboardPage() {
   let consultationsCount = 0;
   let usersCount = 0;
 
+  let plan = null;
+
   if (role === 'admin') {
      const { supabaseAdmin } = await import('@/lib/supabaseAdmin');
+     const { getClinicPlan } = await import('@/lib/permissions');
+     const clinicId = profile?.clinic_id;
+
+     plan = await getClinicPlan(clinicId);
+
      const [d, a, c, u] = await Promise.all([
-       supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'doctor'),
-       supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'assistant'),
-       supabaseAdmin.from('consultations').select('*', { count: 'exact', head: true }),
-       supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true })
+       supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'doctor').eq('clinic_id', clinicId),
+       supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'assistant').eq('clinic_id', clinicId),
+       supabaseAdmin.from('consultations').select('*', { count: 'exact', head: true }).eq('clinic_id', clinicId),
+       supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('clinic_id', clinicId)
      ]);
      doctorsCount = d.count || 0;
      assistantsCount = a.count || 0;
@@ -47,7 +54,11 @@ export default async function DashboardPage() {
   return (
     <div>
       {role === 'admin' && (
-        <AdminDashboard stats={{ doctorsCount: doctorsCount || 0, assistantsCount: assistantsCount || 0, consultationsCount: consultationsCount || 0, usersCount: usersCount || 0 }} />
+        <AdminDashboard 
+          profile={profile}
+          plan={plan}
+          stats={{ doctorsCount, assistantsCount, consultationsCount, usersCount }} 
+        />
       )}
 
       

@@ -54,26 +54,37 @@ export default function ClinicsTable({ clinics, isLoading, onRefresh }: { clinic
     setIsUpdating(true);
     const nextStatus = currentStatus === 'active' ? 'suspended' : 'active';
 
-    const { error } = await supabase
-      .from('clinic_subscriptions')
-      .update({ status: nextStatus })
-      .eq('clinic_id', id);
-
-    if (error) alert('Error: ' + error.message);
-    else onRefresh();
-    setIsUpdating(false);
+    try {
+      const res = await fetch('/api/superadmin/update-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clinic_id: id, status: nextStatus })
+      });
+      if (!res.ok) throw new Error('Error al actualizar status');
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handlePlanChange = async (id: string, newPlan: string) => {
     setIsUpdating(true);
-    const { error } = await supabase
-      .from('clinic_subscriptions')
-      .update({ plan_slug: newPlan })
-      .eq('clinic_id', id);
 
-    if (error) alert('Error: ' + error.message);
-    else onRefresh();
-    setIsUpdating(false);
+    try {
+      const res = await fetch('/api/superadmin/update-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clinic_id: id, plan_slug: newPlan })
+      });
+      if (!res.ok) throw new Error('Error al cambiar plan');
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const updateCustomLimits = async () => {

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import SidebarLinks from '@/components/SidebarLinks';
 import SidebarChat from '@/components/SidebarChat';
+import FeatureGate from '@/components/FeatureGate';
 
 export default function DashboardShell({
   children,
@@ -438,8 +439,10 @@ export default function DashboardShell({
           {children}
         </main>
         
-        {/* Chat Flotante: Fuera de los contenedores para evitar problemas de posicionamiento relativo */}
-        <SidebarChat profile={profile} role={role} />
+        {/* Chat Flotante habilitado mediante Feature Gate */}
+        <FeatureGate feature="chat_realtime">
+           <SidebarChat profile={profile} role={role} />
+        </FeatureGate>
       </div>
     </div>
   );

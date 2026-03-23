@@ -1,7 +1,25 @@
 import { NextResponse } from 'next/server';
+import { requireFeature } from '@/lib/permissions';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('clinic_id')
+      .eq('id', user.id)
+      .single();
+
+    const clinicId = profile?.clinic_id;
+    if (!clinicId) return NextResponse.json({ error: 'Clínica no vinculada' }, { status: 400 });
+
+    await requireFeature(clinicId, 'ai_diagnosis');
+
     const { symptoms, diagnosis, weight, blood_pressure, temperature, age, medical_history } = await req.json();
     const apiKey = process.env.ANTHROPIC_API_KEY;
 
@@ -60,6 +78,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ treatment: textResponse.trim() });
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const status = error.status || 500;
+    return NextResponse.json({ error: error.message }, { status });
   }
 }

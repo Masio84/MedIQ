@@ -191,3 +191,10 @@ export async function requireSuperAdmin(user_id: string): Promise<void> {
     throw new UnauthorizedError();
   }
 }
+
+/**
+ * Invalida el caché de memoria para una clínica específica (útil tras cambio de plan)
+ */
+export function invalidateClinicCache(clinic_id: string): void {
+  cache.delete(clinic_id);
+}

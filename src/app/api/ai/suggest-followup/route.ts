@@ -1,9 +1,26 @@
 import { NextResponse } from 'next/server';
+import { requireFeature } from '@/lib/permissions';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
   try {
-    const { diagnosis, treatment, symptoms } = await request.json();
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
+    if (!user) return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('clinic_id')
+      .eq('id', user.id)
+      .single();
+
+    const clinicId = profile?.clinic_id;
+    if (!clinicId) return NextResponse.json({ success: false, error: 'Clínica no vinculada' }, { status: 400 });
+
+    await requireFeature(clinicId, 'ai_followup');
+
+    const { diagnosis, treatment, symptoms } = await request.json();
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ success: false, error: 'API Key no configurada' }, { status: 500 });
@@ -46,6 +63,7 @@ Devuelve ÚNICAMENTE la indicación sugerida, sin comillas, sin introducciones n
 
     return NextResponse.json({ success: true, follow_up });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    const status = error.status || 500;
+    return NextResponse.json({ success: false, error: error.message }, { status });
   }
 }

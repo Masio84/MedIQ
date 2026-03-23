@@ -144,7 +144,9 @@ export async function checkUsage(clinic_id: string, resource: string): Promise<U
 
   let current = 0;
   // Mapear recurso tipo "max_doctors" a columnas tipo "doctors_count"
-  const mappedKey = resource === 'storage_mb' ? 'storage_mb_used' : `${resource.replace('max_', '')}_count`;
+  const mappedKey = resource === 'storage_mb' 
+    ? 'storage_mb_used' 
+    : `${resource.replace('max_', '').replace('_mo', '')}_count`;
 
   if (usage && usage[mappedKey] !== undefined) {
     current = Number(usage[mappedKey]);

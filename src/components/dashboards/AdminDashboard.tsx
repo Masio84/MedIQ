@@ -71,27 +71,22 @@ export default function AdminDashboard({ profile, plan, stats }: AdminDashboardP
   };
 
   const fetchRealtimeUsages = async () => {
-    const { count: consultsCount } = await supabase.from('consultations').select('*', { count: 'exact', head: true }).eq('clinic_id', profile.clinic_id);
-    const { count: patientsCount } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('clinic_id', profile.clinic_id);
-    const { data: usage } = await supabase.from('usage_counters').select('*').eq('clinic_id', profile.clinic_id).single();
-
-    setCounts(prev => ({
-       ...prev,
-       consultations: consultsCount || 0,
-       patients: patientsCount || 0,
-       storage_mb: usage?.storage_mb_used || 0
-    }));
+    try {
+      const res = await fetch(`/api/clinic/usage?clinic_id=${profile.clinic_id}`);
+      if (res.ok) {
+         const data = await res.json();
+         setCounts({
+            consultations: data.usage.max_consultations_mo || 0,
+            patients: data.usage.max_patients || 0,
+            doctors: data.usage.max_doctors || 0,
+            assistants: data.usage.max_assistants || 0,
+            storage_mb: data.usage.storage_mb || 0
+         });
+      }
+    } catch (err) {
+      console.error('Error cargando consumos:', err);
+    }
   };
-
-  useEffect(() => {
-     if (profiles.length > 0) {
-        setCounts(prev => ({
-           ...prev,
-           doctors: profiles.filter(p => p.role === 'doctor' && p.is_active !== false).length,
-           assistants: profiles.filter(p => p.role === 'assistant' && p.is_active !== false).length
-        }));
-     }
-  }, [profiles]);
 
   const handleToggleUserStatus = async (userId: string, currentStatus: boolean | undefined) => {
       const nextStatus = currentStatus === false; // toggle invertido

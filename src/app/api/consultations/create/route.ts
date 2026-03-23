@@ -36,6 +36,17 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
+    // Incrementar consumo de consultas (Silencioso)
+    try {
+        const { incrementUsage } = await import('@/lib/usage');
+        const clinicId = (auth as any).profile?.clinic_id;
+        if (clinicId) {
+            await incrementUsage(clinicId, 'consultations_count');
+        }
+    } catch (e) {
+        console.error('Error en incrementUsage:', e);
+    }
+
     return NextResponse.json({ success: true, message: 'Consulta creada correctamente', data: data[0] });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Error al crear consulta' }, { status: 500 });

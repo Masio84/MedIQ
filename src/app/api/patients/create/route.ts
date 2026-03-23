@@ -40,6 +40,17 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
+    // Incrementar consumo de pacientes (Silencioso)
+    try {
+        const { incrementUsage } = await import('@/lib/usage');
+        const clinicId = (auth as any).profile?.clinic_id;
+        if (clinicId) {
+            await incrementUsage(clinicId, 'patients_count');
+        }
+    } catch (e) {
+        console.error('Error en incrementUsage:', e);
+    }
+
     return NextResponse.json({ success: true, data: patient });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Error al crear paciente' }, { status: 500 });

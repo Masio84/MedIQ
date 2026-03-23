@@ -14,6 +14,22 @@ export interface UsageCheck {
   percentage: number;
 }
 
+export class FeatureNotAvailableError extends Error {
+  status = 403;
+  constructor(feature: string) {
+    super('FEATURE_NOT_AVAILABLE:' + feature);
+    this.name = 'FeatureNotAvailableError';
+  }
+}
+
+export class UnauthorizedError extends Error {
+  status = 401;
+  constructor() {
+    super('UNAUTHORIZED:SUPERADMIN_REQUIRED');
+    this.name = 'UnauthorizedError';
+  }
+}
+
 // Caché de memoria simple por clínica (5 minutos)
 const cache = new Map<string, { data: ClinicPlan; expires: number }>();
 
@@ -156,7 +172,7 @@ export async function checkUsage(clinic_id: string, resource: string): Promise<U
 export async function requireFeature(clinic_id: string, feature_key: string): Promise<void> {
   const enabled = await hasFeature(clinic_id, feature_key);
   if (!enabled) {
-    throw new Error(`FEATURE_NOT_AVAILABLE:${feature_key}`);
+    throw new FeatureNotAvailableError(feature_key);
   }
 }
 
@@ -172,6 +188,6 @@ export async function requireSuperAdmin(user_id: string): Promise<void> {
     .single();
 
   if (!data?.is_superadmin) {
-    throw new Error('UNAUTHORIZED:SUPERADMIN_REQUIRED');
+    throw new UnauthorizedError();
   }
 }

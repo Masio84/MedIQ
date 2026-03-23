@@ -1,9 +1,22 @@
 'use client';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Eye, EyeOff } from 'lucide-react';
+
+function LoginBanner() {
+  const searchParams = useSearchParams();
+  const disabledReason = searchParams.get('reason') === 'account_disabled';
+
+  if (!disabledReason) return null;
+
+  return (
+    <div className="mb-4 p-3 bg-amber-50 text-amber-700 text-xs rounded-lg border border-amber-100 font-bold">
+      Tu cuenta ha sido desactivada. Contacta al administrador de tu clínica.
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,10 +26,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   
   const router = useRouter();
-  const searchParams = useSearchParams();
   const supabase = createClient();
 
-  const disabledReason = searchParams.get('reason') === 'account_disabled';
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -58,11 +69,9 @@ export default function LoginPage() {
           </p>
         </div>
         
-        {disabledReason && (
-          <div className="mb-4 p-3 bg-amber-50 text-amber-700 text-xs rounded-lg border border-amber-100 font-bold">
-            Tu cuenta ha sido desactivada. Contacta al administrador de tu clínica.
-          </div>
-        )}
+        <Suspense fallback={null}>
+          <LoginBanner />
+        </Suspense>
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">

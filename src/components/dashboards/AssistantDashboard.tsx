@@ -51,17 +51,22 @@ export default function AssistantDashboard() {
   useEffect(() => {
     if (!currentUserId) return;
     const loadNotifications = async () => {
-      const { data } = await supabase
+      let query = supabase
         .from('notifications')
         .select('*')
         .eq('to_user_id', currentUserId)
-        .eq('read', false)
-        .order('created_at', { ascending: false });
+        .eq('read', false);
+
+      if (currentProfile?.clinic_id) {
+        query = query.eq('clinic_id', currentProfile.clinic_id);
+      }
+
+      const { data } = await query.order('created_at', { ascending: false });
       setNotifications(data || []);
       setNotifCount(data?.length || 0);
     };
     loadNotifications();
-  }, [currentUserId]);
+  }, [currentUserId, currentProfile?.clinic_id]);
 
   // Realtime listener for new notifications
   useEffect(() => {

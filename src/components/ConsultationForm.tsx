@@ -310,6 +310,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
 
         if (assistantUserId) {
           await supabase.from('notifications').insert([{
+            clinic_id: doctorProfile?.clinic_id || null,
             from_user_id: doctorId,
             to_user_id: assistantUserId,
             type: 'seguimiento_sugerido',

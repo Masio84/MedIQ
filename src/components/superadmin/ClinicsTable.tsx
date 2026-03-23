@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2, PlusCircle, AlertTriangle } from 'lucide-react';
 
-export default function ClinicsTable({ clinics, isLoading, onRefresh }: { clinics: any[]; isLoading: boolean; onRefresh: () => void }) {
+export default function ClinicsTable({ clinics = [], isLoading, onRefresh }: { clinics: any[]; isLoading: boolean; onRefresh: () => void }) {
   const [selectedClinic, setSelectedClinic] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -126,10 +126,10 @@ export default function ClinicsTable({ clinics, isLoading, onRefresh }: { clinic
           <tbody className="divide-y divide-gray-50">
             {isLoading ? (
               <tr><td colSpan={5} className="text-center py-8"><Loader2 className="animate-spin inline-block mr-2" /> Cargando Clínicas...</td></tr>
-            ) : clinics.length === 0 ? (
+            ) : !Array.isArray(clinics) || clinics.length === 0 ? (
               <tr><td colSpan={5} className="text-center py-8 text-gray-400">Sin registros de clínicas activas</td></tr>
             ) : (
-              clinics.map((c) => {
+              clinics.map((c: any) => {
                 const isActive = c.status === 'active';
                 const hasUpgrade = (pendingUpgrades[c.id] || 0) > 0;
 
@@ -147,7 +147,14 @@ export default function ClinicsTable({ clinics, isLoading, onRefresh }: { clinic
                             </button>
                          )}
                       </div>
-                      <p className="text-xxs text-gray-400">Alta: {new Date(c.created_at).toLocaleDateString()}</p>
+                      <p className="text-xxs text-gray-400">
+                        Alta: {new Date(c.created_at || Date.now()).toLocaleDateString('es-MX', {
+                          year: 'numeric',
+                          month: '2-digit', 
+                          day: '2-digit',
+                          timeZone: 'America/Mexico_City'
+                        })}
+                      </p>
                     </td>
                     <td className="px-6 py-4">
                       <select 

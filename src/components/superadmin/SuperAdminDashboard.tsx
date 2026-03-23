@@ -17,7 +17,7 @@ export default function SuperAdminDashboard({ serverMetrics }: { serverMetrics: 
       const res = await fetch('/api/superadmin/clinics-list');
       if (res.ok) {
         const data = await res.json();
-        setClinics(data);
+        setClinics(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error('Error cargando clínicas para superadmin:', error);

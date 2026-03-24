@@ -35,9 +35,19 @@ export async function POST(req: Request) {
 
     const payload = {
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 500,
-      temperature: 0.3,
-      system: "Eres un asistente médico experto. Se te proporcionarán los datos de un paciente (constantes vitales, edad, historial clínico) y sus síntomas actuales. Tu única tarea es sugerir un diagnóstico principal muy conciso y directo (o un par si hay mucha incertidumbre). No incluyas advertencias, notas preámbulo, ni explicaciones largas. Sólo da el diagnóstico o sugerencia diagnóstica clara de la manera más profesional posible, como un médico lo anotaría en un expediente.",
+      max_tokens: 1000,
+      temperature: 0.1,
+      system: `Eres un asistente de medicina clínica. Se te proporcionan datos y síntomas de un paciente.
+Tu tarea es sugerir de 3 a 5 diagnósticos médicos con sus correspondientes códigos CIE-10 corregidos.
+La respuesta DEBE ser únicamente un array JSON válido (sin bloque markdown \`\`\`, sin texto antes ni después) con esta estructura:
+[
+  {
+    "codigo": "Código CIE-10",
+    "descripcion": "Nombre oficial de la afección",
+    "probabilidad": "alta" o "media" o "baja",
+    "razon": "Explicación breve de por qué los síntomas coinciden"
+  }
+]`,
       messages: [
         {
           role: 'user',
@@ -54,7 +64,7 @@ export async function POST(req: Request) {
             Síntomas reportados:
             ${Array.isArray(symptoms) ? symptoms.join(', ') : symptoms}
 
-            Por favor, dime el diagnóstico más probable basado estrictamente en esta información.
+            Genera sugerencias diagnósticas con código CIE-10 formateadas EXACTAMENTE como el array JSON solicitado. No incluyas texto explicativo antes ni después.
           `
         }
       ]
@@ -76,8 +86,14 @@ export async function POST(req: Request) {
       throw new Error(data.error?.message || 'Error en la API de Anthropic');
     }
 
-    const textResponse = data.content?.[0]?.text || '';
-    return NextResponse.json({ diagnosis: textResponse.trim() });
+    const textResponse = data.content?.[0]?.text || '[]';
+    try {
+      const cleanJson = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+      const suggestions = JSON.parse(cleanJson);
+      return NextResponse.json({ suggestions });
+    } catch (parseError) {
+      return NextResponse.json({ error: 'Formato de respuesta incorrecto de la IA', raw: textResponse }, { status: 500 });
+    }
 
   } catch (error: any) {
     const status = error.status || 500;

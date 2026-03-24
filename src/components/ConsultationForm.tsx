@@ -53,6 +53,47 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
   const [isSuggestingFollowup, setIsSuggestingFollowup] = useState(false);
   const [patientContext, setPatientContext] = useState<any>(null);
 
+  // AI Diagnostic Suggestions (Debounced)
+  const [suggestedDiagnostics, setSuggestedDiagnostics] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (symptomsList.length < 2) {
+      setSuggestedDiagnostics([]);
+      return;
+    }
+
+    const delayDebounce = setTimeout(async () => {
+      setLoadingSuggestions(true);
+      try {
+        const res = await fetch('/api/ai/diagnose', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            symptoms: symptomsList,
+            weight: formData.weight,
+            blood_pressure: formData.blood_pressure,
+            temperature: formData.temperature,
+            age: patientContext?.dob ? Math.floor((Date.now() - new Date(patientContext.dob).getTime()) / 31557600000) : 'Desconocida',
+            medical_history: patientContext?.medical_history
+          })
+        });
+        const data = await res.json();
+        if (data.suggestions) {
+          setSuggestedDiagnostics(data.suggestions);
+        } else {
+          setSuggestedDiagnostics([]);
+        }
+      } catch (err) {
+        setSuggestedDiagnostics([]);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 800);
+
+    return () => clearTimeout(delayDebounce);
+  }, [symptomsList, formData.weight, formData.blood_pressure, formData.temperature, patientContext]);
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [paymentType, setPaymentType] = useState<'normal' | 'discount' | 'increment'>('normal');
@@ -473,13 +514,31 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
         {/* Symptoms (Capsules) */}
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Síntomas *</label>
-          <div className="flex flex-wrap gap-2 mb-2">
+          <div className="flex flex-wrap gap-2 mb-2 p-2 border border-gray-100 rounded-lg focus-within:ring-1 focus-within:ring-gray-900 bg-white">
             {Array.isArray(symptomsList) && symptomsList.map(s => (
-              <span key={s} className="inline-flex items-center gap-1 bg-gray-100 border-[0.5px] border-black/8 text-gray-800 px-2 py-1 rounded-md text-xs font-medium">
+              <span key={s} className="inline-flex items-center gap-1 bg-gray-50 border-[0.5px] border-black/8 text-gray-800 px-1.5 py-1 rounded-md text-xs font-medium">
                 {s}
                 <button type="button" onClick={() => setSymptomsList(symptomsList.filter(item => item !== s))} className="text-gray-400 hover:text-red-500"><X size={12}/></button>
               </span>
             ))}
+            <input
+              type="text"
+              placeholder="Escribe un síntoma y presiona Enter o coma..."
+              value={symptomInput}
+              onChange={(e) => setSymptomInput(e.target.value)}
+              onKeyDown={(e) => {
+                const isDelimiter = e.key === 'Enter' || e.key === ',';
+                if (isDelimiter) {
+                  e.preventDefault();
+                  const val = symptomInput.trim().replace(/^,|,$/g, '');
+                  if (val && !symptomsList.includes(val)) {
+                    setSymptomsList([...symptomsList, val]);
+                    setSymptomInput('');
+                  }
+                }
+              }}
+              className="flex-1 min-w-[150px] text-xs font-medium border-0 focus:outline-none focus:ring-0 p-0.5 placeholder-gray-400 bg-transparent"
+            />
           </div>
         </div>
 
@@ -540,6 +599,45 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
               </button>
             </div>
           </div>
+
+          {/* Sugerencias de IA CIE-10 */}
+          {symptomsList.length >= 2 && (
+            <div className="mb-4 animate-in fade-in-50 duration-300">
+              {loadingSuggestions ? (
+                <div className="bg-blue-50/20 p-4 rounded-xl border border-blue-100/30 flex items-center justify-center gap-2 text-xs text-blue-800 font-bold">
+                   <Loader2 size={14} className="animate-spin text-blue-600"/> Analizando síntomas y calculando diagnósticos...
+                </div>
+              ) : suggestedDiagnostics.length > 0 ? (
+                <div className="space-y-2">
+                  <span className="text-[10px] font-black uppercase text-blue-900 flex items-center gap-1"><Sparkles size={12} className="text-blue-600"/> Diagnósticos Sugeridos por IA</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {suggestedDiagnostics.map((sug, ix) => (
+                      <button
+                        key={ix}
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, cie10_code: sug.codigo, cie10_description: sug.descripcion, diagnosis: sug.descripcion }));
+                          setCie10Search(`${sug.codigo} - ${sug.descripcion}`);
+                        }}
+                        className="bg-gradient-to-br from-white to-blue-50/10 p-3 rounded-xl border border-blue-100/50 hover:shadow-sm hover:border-blue-300 transform hover:-translate-y-0.5 transition-all text-left flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex justify-between items-start mb-1 overflow-hidden">
+                             <span className="text-xs font-black text-gray-900 truncate flex-1"><span className="text-blue-600">{sug.codigo}</span> - {sug.descripcion}</span>
+                             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full capitalize ml-1 ${sug.probabilidad === 'alta' ? 'bg-green-50 text-green-700' : sug.probabilidad === 'media' ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-500'}`}>
+                                {sug.probabilidad}
+                             </span>
+                          </div>
+                          {sug.razon && <p className="text-[10px] text-gray-500 leading-normal line-clamp-2">{sug.razon}</p>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-gray-400 italic">Sugerencias generadas por IA como apoyo al criterio médico. El diagnóstico final es responsabilidad del médico.</p>
+                </div>
+              ) : null}
+            </div>
+          )}
 
           <div className="relative mb-2">
             <input

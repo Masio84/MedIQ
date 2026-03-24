@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, AlertTriangle, Sparkles, X, Plus } from 'lucide-react';
+import { Loader2, AlertTriangle, Sparkles, X, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import cie10Catalogue from '@/lib/cie10_comunes.json';
 
 export default function ConsultationForm({ doctorId, initialPatientId, initialSymptoms, initialWeight, initialPressure, initialTemperature, onPatientChange }: { doctorId: string; initialPatientId?: string; initialSymptoms?: string; initialWeight?: string; initialPressure?: string; initialTemperature?: string; onPatientChange?: (id: string) => void }) {
   const [patients, setPatients] = useState<any[]>([]);
@@ -21,7 +22,21 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
     patient_id: '',
     weight: '', blood_pressure: '', temperature: '',
     symptoms: '', diagnosis: '', treatment: '', notes: '',
-    needs_follow_up: false, follow_up_date: '', follow_up_time: '', follow_up_notes: ''
+    needs_follow_up: false, follow_up_date: '', follow_up_time: '', follow_up_notes: '',
+    cie10_code: '', cie10_description: '',
+    physical_examination: '', prognosis: '', interconsultation_note: '',
+    informed_consent_id: ''
+  });
+
+  const [systemsReview, setSystemsReview] = useState({
+    general: '', respiratory: '', digestive: '', cardiovascular: '', other: ''
+  });
+
+  const [cie10Search, setCie10Search] = useState('');
+  const [cie10Suggestions, setCie10Suggestions] = useState<{ code: string; description: string }[]>([]);
+  
+  const [collapsed, setCollapsed] = useState({
+    systems: true
   });
 
   const [aiSuggestions, setAiSuggestions] = useState<{
@@ -131,6 +146,18 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
       treatment: []
     });
   }, [symptomInput, symptomsList]);
+
+  useEffect(() => {
+    if (!cie10Search.trim()) {
+      setCie10Suggestions([]);
+      return;
+    }
+    const filtered = cie10Catalogue.filter(item => 
+      item.code.toLowerCase().includes(cie10Search.toLowerCase()) || 
+      item.description.toLowerCase().includes(cie10Search.toLowerCase())
+    ).slice(0, 5); // limitar a 5
+    setCie10Suggestions(filtered as any);
+  }, [cie10Search]);
 
   const handleAddSymptom = (s: string) => {
     if (!s.trim()) return;
@@ -315,6 +342,13 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
             blood_pressure: formData.blood_pressure || null,
             temperature: formData.temperature ? parseFloat(formData.temperature) : null,
             notes: (formData.notes || '') + ( (formData as any).needs_follow_up ? `\n\n[SEGUIMIENTO]: Fecha sugerida: ${(formData as any).follow_up_date || 'N/A'}. Notas de médico: ${(formData as any).follow_up_notes || 'N/A'}` : ''),
+            cie10_code: formData.cie10_code || null,
+            cie10_description: formData.cie10_description || null,
+            physical_examination: formData.physical_examination || null,
+            prognosis: formData.prognosis || null,
+            interconsultation_note: formData.interconsultation_note || null,
+            systems_review: systemsReview,
+            informed_consent_id: formData.informed_consent_id || null
           },
         ])
         .select()
@@ -447,39 +481,54 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
               </span>
             ))}
           </div>
-          <div className="relative flex gap-2">
-            <input
-              type="text"
-              value={symptomInput}
-              onChange={(e) => setSymptomInput(e.target.value)}
-              onKeyDown={(e) => { if(e.key === 'Enter'){ e.preventDefault(); handleAddSymptom(symptomInput); } }}
-              className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900"
-              placeholder="Escribe síntoma y presiona Enter..."
-            />
-            <button type="button" onClick={() => handleAddSymptom(symptomInput)} className="px-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-600">
-              <Plus size={16}/>
-            </button>
-            {aiSuggestions.symptoms.length > 0 && (
-              <div className="absolute top-full z-10 w-full shadow-lg rounded-xl mt-1 p-3 bg-[#F8F9FA] border border-gray-100 border-l-[2px] border-l-[#1A4A8A]">
-                <div className="mb-2">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold" style={{ backgroundColor: '#E8F0FB', color: '#1A4A8A' }}>
-                    ✦ Sugerencias IA
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {Array.isArray(aiSuggestions.symptoms) && aiSuggestions.symptoms.map(s => (
-                    <button key={s} type="button" onClick={() => handleAddSymptom(s)} className="text-xs bg-white border-[0.5px] border-black/8 text-gray-700 px-2.5 py-1.5 rounded-md hover:bg-gray-50 transition-colors shadow-sm">{s}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* Diagnosis */}
+        {/* Interrogatorio por Aparatos y Sistemas */}
+        <div className="border border-gray-100 rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setCollapsed(prev => ({ ...prev, systems: !prev.systems }))}
+            className="w-full flex items-center justify-between p-3 bg-gray-50 text-sm font-medium text-gray-700"
+          >
+            <span>Interrogatorio por Aparatos y Sistemas (NOM-004)</span>
+            {collapsed.systems ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+          </button>
+          {!collapsed.systems && (
+            <div className="p-3 space-y-2 text-sm">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">General</label>
+                <textarea rows={1} className="w-full p-2 border border-gray-100 rounded text-xs" onChange={e => setSystemsReview(p => ({ ...p, general: e.target.value }))}></textarea>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Cardiovascular / Respiratorio</label>
+                <textarea rows={1} className="w-full p-2 border border-gray-100 rounded text-xs" onChange={e => setSystemsReview(p => ({ ...p, respiratory: e.target.value }))}></textarea>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Digestivo</label>
+                <textarea rows={1} className="w-full p-2 border border-gray-100 rounded text-xs" onChange={e => setSystemsReview(p => ({ ...p, digestive: e.target.value }))}></textarea>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Exploración Física */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Exploración Física Detallada *</label>
+          <textarea
+            name="physical_examination"
+            rows={3}
+            value={formData.physical_examination}
+            onChange={handleInputChange}
+            className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
+            placeholder="Describir cabeza, cuello, tórax, extremidades..."
+            required
+          />
+        </div>
+
+        {/* CIE-10 & Diagnosis */}
         <div>
           <div className="flex justify-between items-center mb-1">
-            <label className="block text-xs font-medium text-gray-500">Diagnóstico</label>
+            <label className="block text-xs font-medium text-gray-500">Diagnóstico CIE-10 / Impresión Diagnóstica *</label>
             <div className="flex gap-2">
               {formData.diagnosis && (
                  <button type="button" onClick={() => generateDiagnosis(true)} disabled={isDiagnosing} className="text-[10px] font-bold px-2 py-1 rounded-md bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 transition-colors disabled:opacity-50">
@@ -491,13 +540,46 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
               </button>
             </div>
           </div>
+
+          <div className="relative mb-2">
+            <input
+              type="text"
+              value={cie10Search}
+              onChange={(e) => setCie10Search(e.target.value)}
+              className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900"
+              placeholder="Buscar por código o nombre CIE-10..."
+            />
+            {cie10Suggestions.length > 0 && (
+              <div className="absolute top-full z-10 w-full shadow-lg rounded-xl mt-1 p-2 bg-white border border-gray-100">
+                {cie10Suggestions.map(item => (
+                  <button
+                    key={item.code}
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, cie10_code: item.code, cie10_description: item.description, diagnosis: item.description }));
+                      setCie10Search(`${item.code} - ${item.description}`);
+                      setCie10Suggestions([]);
+                    }}
+                    className="w-full text-left p-2 hover:bg-gray-50 text-xs rounded-md"
+                  >
+                    <span className="font-bold text-blue-600">{item.code}</span> - {item.description}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Prognosis */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Pronóstico (NOM-004)</label>
           <textarea
-            name="diagnosis"
-            rows={3}
-            value={formData.diagnosis}
+            name="prognosis"
+            rows={1}
+            value={formData.prognosis}
             onChange={handleInputChange}
-            className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900"
-            placeholder="Ej: Rinofaringitis aguda..."
+            className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
+            placeholder="Ej: Bueno para la vida, reservado para la función..."
           />
         </div>
 

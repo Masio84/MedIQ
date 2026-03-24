@@ -52,14 +52,14 @@ export default async function SuperAdminPage() {
       .select('*', { count: 'exact', head: true })
       .gte('created_at', startOfMonth);
 
-    // Estimación de MRR (suma de price_monthly)
-    const { data: plans } = await supabase.from('plans').select('slug, price_monthly');
+    // Estimación de MRR (suma de monthly_price)
+    const { data: plans } = await supabase.from('plans').select('slug, monthly_price');
     let mrr = 0;
     if (subsData && plans) {
       subsData.forEach(sub => {
         if (sub.status === 'active') {
           const plan = plans.find(p => p.slug === sub.plan_slug);
-          mrr += Number(plan?.price_monthly || 0);
+          mrr += Number(plan?.monthly_price || 0);
         }
       });
     }

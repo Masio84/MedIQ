@@ -12,6 +12,9 @@ export default function SettingsPage() {
     name: '',
     phone: '',
     medical_license: '',
+    specialty: '',
+    specialty_license: '',
+    institution: '',
     consult_schedule: '',
     base_price: 0,
     discount_min: 0,
@@ -120,6 +123,9 @@ export default function SettingsPage() {
 
       if (profile.role === 'doctor') {
         updateData.medical_license = profile.medical_license || '';
+        updateData.specialty = profile.specialty || '';
+        updateData.specialty_license = profile.specialty_license || '';
+        updateData.institution = profile.institution || '';
         updateData.consult_schedule = profile.consult_schedule || '';
         updateData.base_price = profile.base_price || 0;
         updateData.discount_min = profile.discount_min || 0;
@@ -259,6 +265,40 @@ export default function SettingsPage() {
           </div>
 
           {isDoctor && (
+            <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-50 pt-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Especialidad (NOM-004)</label>
+                <input
+                  type="text"
+                  placeholder="Ej: Pediatría"
+                  className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
+                  value={profile.specialty || ''}
+                  onChange={(e) => setProfile({ ...profile, specialty: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Cédula de Especialidad</label>
+                <input
+                  type="text"
+                  placeholder="Ej: CESP123456"
+                  className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
+                  value={profile.specialty_license || ''}
+                  onChange={(e) => setProfile({ ...profile, specialty_license: e.target.value })}
+                />
+              </div>
+              <div className="col-span-full">
+                <label className="block text-xs font-medium text-gray-500 mb-1">Institución Educativa (Título)</label>
+                <input
+                  type="text"
+                  placeholder="Ej: Universidad Nacional Autónoma de México"
+                  className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none"
+                  value={profile.institution || ''}
+                  onChange={(e) => setProfile({ ...profile, institution: e.target.value })}
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-50 pt-4">
               <div>
                 <label className="block text-xs font-black text-blue-800 mb-1 flex items-center gap-1">
@@ -294,6 +334,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+            </>
           )}
         </div>
 

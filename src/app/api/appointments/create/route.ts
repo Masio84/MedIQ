@@ -24,6 +24,12 @@ export async function POST(request: Request) {
       weight, blood_pressure, temperature
     } = body;
 
+    const sanitizeNumeric = (value: any) => {
+      if (value === '' || value === undefined || value === null) return null;
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? null : parsed;
+    };
+
     let targetDoctorId = body.doctor_id || user!.id;
     if (profile?.role === 'assistant' && profile?.doctor_id) targetDoctorId = profile.doctor_id;
 
@@ -73,7 +79,9 @@ export async function POST(request: Request) {
       date, start_time, end_time, duration_minutes, reason, notes,
       appointment_type, status, booked_by,
       clinic_id: profile?.clinic_id,
-      weight, blood_pressure, temperature
+      weight: sanitizeNumeric(weight),
+      temperature: sanitizeNumeric(temperature),
+      blood_pressure: blood_pressure?.trim() || null
     };
 
     const { data, error } = await supabase.from('appointments').insert([appointment]).select().single();

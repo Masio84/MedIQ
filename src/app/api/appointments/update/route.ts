@@ -11,6 +11,18 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { id, date, start_time, duration_minutes, status, reason, notes, appointment_type } = body;
 
+    const sanitizeNumeric = (value: any) => {
+      if (value === '' || value === undefined || value === null) return null;
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    if (body.weight !== undefined) body.weight = sanitizeNumeric(body.weight);
+    if (body.temperature !== undefined) body.temperature = sanitizeNumeric(body.temperature);
+    if (body.blood_pressure !== undefined) {
+      body.blood_pressure = body.blood_pressure?.trim() || null;
+    }
+
     if (!id) {
       return NextResponse.json({ success: false, error: 'Se requiere ID de cita' }, { status: 400 });
     }

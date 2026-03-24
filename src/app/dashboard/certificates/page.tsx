@@ -57,32 +57,79 @@ export default function CertificatesPage() {
     fetchHistory();
   }, [selectedPatientId, supabase]);
 
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [emailTargetCert, setEmailTargetCert] = useState<any>(null);
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+
   const generatePDF = async (cert: any) => {
     setDownloading(cert.id);
-    setPrintingCert(cert);
 
-    await new Promise(r => setTimeout(r, 200)); 
-
-    const element = document.getElementById('certificate-print-template');
+    const element = document.getElementById(`certificate-print-template-${cert.id}`);
     if (!element) {
+       alert('Error: No se encontró la plantilla para generar el PDF.');
        setDownloading(null);
        return;
     }
 
     try {
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL('image/png');
+      const canvas = await html2canvas(element, { scale: 1.5, useCORS: true, logging: false });
+      const imgData = canvas.toDataURL('image/jpeg', 0.9);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210; 
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
       pdf.save(`Certificado_${cert.patients?.name?.replace(/ /g, '_') || 'Paciente'}.pdf`);
     } catch (err) {
-      console.error('Error generating PDF:', err);
+      console.error('Error generando PDF:', err);
+      alert('Error al generar el PDF.');
     } finally {
       setDownloading(null);
-      setPrintingCert(null);
+    }
+  };
+
+  const sendEmail = async (cert: any, inputEmail: string) => {
+    setSendingEmail(cert.id);
+    const element = document.getElementById(`certificate-print-template-${cert.id}`);
+    if (!element) {
+       alert('Error: No se encontró la plantilla para adjuntar el PDF.');
+       setSendingEmail(null);
+       return;
+    }
+    try {
+      const canvas = await html2canvas(element, { scale: 1.2, useCORS: true, logging: false });
+      const imgData = canvas.toDataURL('image/jpeg', 0.7); // Compress more for email bandwidth
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210; 
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+      const pdfBase64 = pdf.output('datauristring');
+
+      const response = await fetch('/api/email/send', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+            email: inputEmail,
+            folio: cert.folio,
+            pdfBase64: pdfBase64,
+            patientName: cert.patients?.name || 'Paciente'
+         })
+      });
+
+      const res = await response.json();
+      if (res.success) {
+         alert('Certificado enviado por correo exitosamente.');
+         setIsEmailModalOpen(false);
+      } else {
+         alert(`Error al enviar correo: ${res.error}`);
+      }
+    } catch (err: any) {
+      console.error('Error enviando correo:', err);
+      alert('Error técnico al enviar el correo.');
+    } finally {
+      setSendingEmail(null);
     }
   };
 
@@ -184,31 +231,37 @@ export default function CertificatesPage() {
                        <span>Vigencia: {c.valid_days} días</span>
                     </div>
 
-                    <div className="absolute bottom-4 right-4 flex gap-1.5">
+                    <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-black/5 justify-end">
                        <button 
                          onClick={() => generatePDF(c)}
                          disabled={!!downloading}
-                         className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-100 hover:text-blue-600 transition-colors flex items-center justify-center bg-white shadow-sm"
-                         title="Descargar PDF"
+                         className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-[11px] font-bold px-3 py-2 rounded-lg shadow-sm transition-all disabled:opacity-50"
                        >
-                          {downloading === c.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                          {downloading === c.id ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                          Descargar PDF
                        </button>
+
                        <button 
-                         onClick={() => { alert('Envío por email en desarrollo (Simulado). El PDF se descargará...'); generatePDF(c); }}
-                         className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-100 hover:text-green-600 transition-colors flex items-center justify-center bg-white shadow-sm"
-                         title="Enviar por Email"
+                         onClick={() => { 
+                            setEmailTargetCert(c); 
+                            setEmailInput(''); 
+                            setIsEmailModalOpen(true); 
+                         }}
+                         className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold px-3 py-2 rounded-lg shadow-sm transition-all"
                        >
-                         <Mail size={14} />
+                         <Mail size={13} />
+                         Email
                        </button>
+
                        <button 
                          onClick={() => { 
                             const text = `Hola, te comparto tu certificado médico Folio: ${c.folio} expedido por MedIQ.`;
                             window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                          }}
-                         className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-100 hover:text-teal-600 transition-colors flex items-center justify-center bg-white shadow-sm"
-                         title="Compartir WhatsApp"
+                         className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold px-3 py-2 rounded-lg shadow-sm transition-all"
                        >
-                         <MessageCircle size={14} />
+                         <MessageCircle size={13} />
+                         WhatsApp
                        </button>
                     </div>
                   </div>
@@ -220,59 +273,108 @@ export default function CertificatesPage() {
       </div>
 
       {/* Template oculto para jsPDF y html2canvas */}
-      {printingCert && (
-        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-          <div id="certificate-print-template" style={{ width: '794px', backgroundColor: '#fff', color: '#1E293B', fontFamily: 'Arial, sans-serif' }} className="p-12 box-border">
-             <div className="border-b-2 border-slate-100 pb-4 mb-8">
-                <p className="text-xl font-black text-slate-800">MedIQ</p>
-                <p className="text-xs text-slate-500">Expediente Clínico Inteligente</p>
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        {history.map(c => (
+          <div key={`print-${c.id}`} id={`certificate-print-template-${c.id}`} style={{ width: '794px', backgroundColor: '#ffffff', color: '#1E293B', fontFamily: 'Arial, sans-serif', padding: '48px', boxSizing: 'border-box', marginBottom: '40px' }}>
+             <div style={{ borderBottom: '2px solid #E2E8F0', paddingBottom: '16px', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                   <p style={{ fontSize: '20px', fontWeight: '900', color: '#1E293B', margin: 0 }}>MedIQ</p>
+                   <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>Expediente Clínico Inteligente</p>
+                </div>
+                {c.folio && <p style={{ fontSize: '12px', fontWeight: '900', color: '#94A3B8', margin: 0 }}>Folio: {c.folio}</p>}
              </div>
 
-             <p className="text-right text-[10px] text-slate-400 font-bold mb-4">Fecha: {new Date(printingCert.issued_at).toLocaleDateString('es-MX')}</p>
-
-             <h2 className="text-center font-black text-slate-900 text-base uppercase tracking-wider mb-8 py-2 bg-slate-50 rounded-lg">
-                CERTIFICADO MÉDICO — {getTypeName(printingCert.certificate_type)}
-             </h2>
-
-             <div className="mb-6">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Datos del Paciente</p>
-                <p className="text-sm font-medium"><b className="font-bold">Nombre:</b> {printingCert.patients?.name}</p>
-             </div>
-
-             <div className="mb-6 space-y-3">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-1">Certífico que:</p>
-                <p className="text-sm leading-relaxed text-justify">
-                   Habiendo practicado la exploración clínica correspondiente al paciente mencionado, se encuentran los siguientes hallazgos:
-                </p>
-                <p className="text-sm leading-relaxed bg-slate-50 p-4 rounded-lg font-medium text-slate-800">
-                   {printingCert.findings || 'Sin hallazgos clínicos particulares registrados.'}
-                </p>
-                <p className="text-sm">
-                   Este certificado se expide para los fines de: <b className="font-bold">{printingCert.purpose || 'Trámite general'}</b>.
-                </p>
-             </div>
-
-             <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 mb-6">
-                <p className="text-sm font-bold text-slate-900">Conclusión:</p>
-                <p className="text-base font-black text-slate-800">
-                   {printingCert.conclusion}
-                </p>
-             </div>
-
-             <p className="text-xs text-slate-400 italic mb-12">
-                El presente certificado tiene una validez de {printingCert.valid_days} días a partir de la fecha de su expedición.
+             <p style={{ textAlign: 'right', fontSize: '10px', color: '#94A3B8', fontWeight: 'bold', marginBottom: '16px' }}>
+               Fecha: {c.issued_at ? new Date(c.issued_at).toLocaleDateString('es-MX') : 'N/A'}
              </p>
 
-             {printingCert.doctor && (
-               <div className="border-t border-slate-200 pt-6 text-center mt-20 max-w-sm mx-auto">
-                  <div className="h-16"></div>
-                  <p className="text-sm font-black text-slate-900">Dr. {printingCert.doctor.name}</p>
-                  <p className="text-xs text-slate-500">Cédula Profesional: {printingCert.doctor.medical_license || 'N/A'}</p>
-                  {printingCert.doctor.specialty && (
-                     <p className="text-[11px] text-slate-400 mt-0.5">Especialidad: {printingCert.doctor.specialty} | Cédula: {printingCert.doctor.specialty_license}</p>
+             <h2 style={{ textAlign: 'center', fontWeight: '900', color: '#0F172A', fontSize: '16px', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '32px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: '#F8FAFC', borderRadius: '8px' }}>
+                CERTIFICADO MÉDICO — {getTypeName(c.certificate_type)}
+             </h2>
+
+             <div style={{ marginBottom: '24px' }}>
+                <p style={{ fontSize: '12px', fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px', margin: 0 }}>
+                  Datos del Paciente
+                </p>
+                <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>
+                  <b style={{ fontWeight: 'bold' }}>Nombre:</b> {c.patients?.name}
+                </p>
+             </div>
+
+             <div style={{ marginBottom: '24px' }}>
+                <p style={{ fontSize: '12px', fontWeight: '900', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', margin: 0 }}>
+                  Certífico que:
+                </p>
+                <p style={{ fontSize: '14px', lineHeight: '1.6', textAlign: 'justify', marginBottom: '12px', margin: '0 0 12px 0' }}>
+                   Habiendo practicado la exploración clínica correspondiente al paciente mencionado, se encuentran los siguientes hallazgos:
+                </p>
+                <p style={{ fontSize: '14px', lineHeight: '1.6', backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '8px', fontWeight: '500', color: '#1E293B', whiteSpace: 'pre-wrap', marginBottom: '12px', margin: '0 0 12px 0', border: '1px solid #F1F5F9' }}>
+                   {c.findings || 'Sin hallazgos clínicos particulares registrados.'}
+                </p>
+                <p style={{ fontSize: '14px', margin: 0 }}>
+                   Este certificado se expide para los fines de: <b style={{ fontWeight: 'bold' }}>{c.purpose || 'Trámite general'}</b>.
+                </p>
+             </div>
+
+             <div style={{ backgroundColor: '#F1F5F9', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '24px' }}>
+                <p style={{ fontSize: '14px', color: '#0F172A', fontWeight: 'bold', margin: '0 0 4px 0' }}>Conclusión:</p>
+                <p style={{ fontSize: '16px', fontWeight: '900', color: '#1E293B', margin: 0 }}>
+                   {c.conclusion}
+                </p>
+             </div>
+
+             <p style={{ fontSize: '12px', color: '#94A3B8', fontStyle: 'italic', marginBottom: '48px' }}>
+                El presente certificado tiene una validez de {c.valid_days} días a partir de la fecha de su expedición.
+             </p>
+
+             {c.doctor && (
+               <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '24px', textAlign: 'center', marginTop: '80px', maxWidth: '384px', marginLeft: 'auto', marginRight: 'auto' }}>
+                  <div style={{ height: '64px' }}></div>
+                  <p style={{ fontSize: '14px', fontWeight: '900', color: '#0F172A', margin: '0 0 2px 0' }}>Dr. {c.doctor.name}</p>
+                  <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 2px 0' }}>Cédula Profesional: {c.doctor.medical_license || 'N/A'}</p>
+                  {c.doctor.specialty && (
+                     <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px', margin: 0 }}>Especialidad: {c.doctor.specialty} | Cédula: {c.doctor.specialty_license}</p>
                   )}
                </div>
              )}
+          </div>
+        ))}
+      </div>
+
+      {/* Modal para solicitar Email del paciente */}
+      {isEmailModalOpen && emailTargetCert && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-xl">
+             <h3 className="font-bold text-lg text-gray-900 flex items-center gap-1.5"><Mail className="text-blue-500" size={18}/> Enviar Certificado</h3>
+             <p className="text-xs text-gray-500">Ingresa el correo electrónico del paciente para enviarle el PDF del certificado.</p>
+             
+             <div>
+               <label className="block text-xs font-medium text-gray-500 mb-1">Correo Electrónico *</label>
+               <input 
+                 type="email" 
+                 placeholder="ejemplo@correo.com" 
+                 value={emailInput} 
+                 onChange={(e) => setEmailInput(e.target.value)}
+                 className="w-full px-3 py-2 border rounded-xl text-sm focus:outline-none"
+               />
+             </div>
+
+             <div className="flex gap-2 pt-2">
+               <button 
+                 onClick={() => setIsEmailModalOpen(false)}
+                 className="flex-1 py-2 border border-gray-100 font-medium hover:bg-gray-50 rounded-xl text-xs text-gray-700"
+               >
+                 Cancelar
+               </button>
+               <button 
+                 onClick={() => sendEmail(emailTargetCert, emailInput)}
+                 disabled={!emailInput || !!sendingEmail}
+                 className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl text-xs flex items-center justify-center gap-1 disabled:opacity-50"
+               >
+                 {sendingEmail === emailTargetCert.id ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+                 Enviar
+               </button>
+             </div>
           </div>
         </div>
       )}

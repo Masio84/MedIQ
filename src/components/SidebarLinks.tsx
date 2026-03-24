@@ -39,6 +39,12 @@ export default function SidebarLinks() {
       roles: ['doctor'],
     },
     {
+      href: '/dashboard/certificates',
+      label: 'Certificados',
+      icon: FileText,
+      roles: ['doctor', 'assistant'],
+    },
+    {
       href: '/dashboard/billing',
       label: 'Facturación',
       icon: CreditCard,

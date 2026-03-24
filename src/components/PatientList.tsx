@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Phone, Mail, FolderOpen } from 'lucide-react';
+import { Calendar, Phone, Mail, FolderOpen, FileText } from 'lucide-react';
 
 type Patient = {
   id: string;
@@ -143,6 +143,16 @@ export default function PatientList({ role }: { role: 'admin' | 'doctor' | 'assi
                     </div>
                   )}
                 </div>
+                {role === 'doctor' && (
+                  <div className="border-t border-gray-100 pt-4">
+                    <button 
+                      onClick={() => window.location.href = `/dashboard/certificates?patient_id=${selectedPatient.id}`}
+                      className="w-full py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center justify-center gap-1.5"
+                    >
+                      <FileText size={16} /> Emitir Certificado Médico
+                    </button>
+                  </div>
+                )}
               </>
             )}
 

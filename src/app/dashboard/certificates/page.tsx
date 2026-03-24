@@ -39,7 +39,7 @@ export default function CertificatesPage() {
         issued_at,
         expires_at,
         patient_id,
-        patients ( name ),
+        patients ( name, phone ),
         doctor:doctor_id ( name, medical_license, specialty, specialty_license )
       `)
       .order('created_at', { ascending: false });
@@ -262,10 +262,14 @@ export default function CertificatesPage() {
 
                        <button 
                          onClick={() => { 
-                            const text = `Hola, te comparto tu certificado médico Folio: ${c.folio} expedido por MedIQ.`;
-                            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                            const phone = (c.patients as any)?.phone?.replace(/\D/g, '');
+                            const text = `Estimado paciente, le compartimos su certificado médico con folio ${c.folio}. Saludos, Dr. ${c.doctor?.name || ''}`;
+                            const waUrl = `https://wa.me/52${phone}?text=${encodeURIComponent(text)}`;
+                            window.open(waUrl, '_blank');
                          }}
-                         className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold px-3 py-2 rounded-lg shadow-sm transition-all"
+                         disabled={!(c.patients as any)?.phone}
+                         className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold px-3 py-2 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                         title={!(c.patients as any)?.phone ? "El paciente no tiene número registrado" : "Compartir WhatsApp"}
                        >
                          <MessageCircle size={13} />
                          WhatsApp

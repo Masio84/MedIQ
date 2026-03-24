@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Search, Calendar, DollarSign, Loader2, CheckCircle, PlusCircle, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import PatientForm from '@/components/PatientForm';
+import AppointmentReminders from '@/components/AppointmentReminders';
 
 export default function AssistantDashboard() {
   const [loading, setLoading] = useState(true);
@@ -356,6 +357,9 @@ export default function AssistantDashboard() {
         </div>
       </div>
 
+      {/* Recordatorios de Citas de WhatsApp */}
+      <AppointmentReminders />
+
       <div className="flex justify-between items-center mt-6">
         <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
           <DollarSign className="text-gray-400" size={20} />
@@ -483,10 +487,10 @@ export default function AssistantDashboard() {
                     )}
                     {notif.patient_id && (
                       <a
-                        href={`/dashboard/patients?patient_id=${notif.patient_id}`}
+                        href={`/dashboard/agenda?patient_id=${notif.patient_id}&doctor_id=${notif.from_user_id || ''}&date=${notif.suggested_date || ''}&time=${notif.suggested_time?.substring(0,5) || ''}&reason=${encodeURIComponent('Cita de seguimiento')}&patient_name=${encodeURIComponent(patientName)}`}
                         className="flex-1 py-1 rounded-lg text-[10px] font-bold text-center text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
                       >
-                        Ver detalles
+                        Revisar agenda
                       </a>
                     )}
                   </div>

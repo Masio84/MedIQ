@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Calendar, Clock, User, FileText, ChevronLeft, ChevronRight, Search, X, Users, AlertCircle, Ban } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
+import { useSearchParams } from 'next/navigation';
 
 export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
@@ -85,6 +86,47 @@ export default function AgendaPage() {
     const { data } = await supabase.from('patients').select('id, name');
     if (data) setPatients(data);
   };
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const patientId = searchParams.get('patient_id');
+    const doctorId = searchParams.get('doctor_id');
+    const date = searchParams.get('date');
+    const time = searchParams.get('time');
+    const reason = searchParams.get('reason');
+    const patientName = searchParams.get('patient_name');
+
+    if (date) {
+       setSelectedDateString(date);
+       setCurrentDate(new Date(date + 'T00:00:00'));
+
+       if (patientId || time) {
+          setModalMode('create');
+          setApptForm({
+             id: '', 
+             patient_id: patientId || '', 
+             patient_name: patientName || '', 
+             date: date, 
+             start_time: time || '09:00',
+             duration_minutes: 30, 
+             appointment_type: 'follow_up', 
+             reason: reason || 'Cita de seguimiento', 
+             notes: '', 
+             status: 'scheduled',
+             weight: '', blood_pressure: '', temperature: ''
+          });
+          if (doctorId && doctorId !== 'todos') {
+             setSelectedDoctorId(doctorId); // Sets the Doctor dropdown on page
+          }
+          if (patientName) {
+             setQuickPatientSearch(patientName);
+          }
+          setIsApptModalOpen(true);
+       }
+    }
+  }, [searchParams]);
 
   const handleSaveAppointment = async () => {
     try {

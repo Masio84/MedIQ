@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Search, UserPlus, Users, Calendar, DollarSign, Loader2, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { Search, UserPlus, Users, Calendar, DollarSign, Loader2, ChevronLeft, ChevronRight, Clock, FileText, X } from 'lucide-react';
 import PatientForm from '@/components/PatientForm';
+import { useRole } from '@/context/RoleContext';
 
 export default function DoctorDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,6 +19,11 @@ export default function DoctorDashboard() {
   const [filter, setFilter] = useState<'today' | 'weekly' | 'range'>('today');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   
+  // Detalle de Cita Modal States
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedAppt, setSelectedAppt] = useState<any>(null);
+  const { role } = useRole();
+
   // Weekly Calendar States
   const [currentDate, setCurrentDate] = useState(new Date());
   const [weekAppointments, setWeekAppointments] = useState<any[]>([]);
@@ -277,7 +283,7 @@ export default function DoctorDashboard() {
                    if (status === 'follow_up') style = { bg: '#FAEEDA', border: '#854F0B', text: '#854F0B' };
                    
                    return (
-                     <div key={appt.id} className="flex gap-2 p-2 rounded-lg border-[0.5px] border-black/8 hover:bg-gray-50 cursor-pointer items-center">
+                     <div key={appt.id} onClick={() => { setSelectedAppt(appt); setIsDetailModalOpen(true); }} className="flex gap-2 p-2 rounded-lg border-[0.5px] border-black/8 hover:bg-gray-50 cursor-pointer items-center">
                        <div className="text-[10px] font-black text-gray-500 w-10 shrink-0 text-center">{(appt.start_time || appt.time || '').substring(0, 5)}</div>
                        <div className="w-1 h-full rounded-full shrink-0" style={{ backgroundColor: style.border }} />
                        <div className="min-w-0 flex-1">
@@ -540,6 +546,69 @@ export default function DoctorDashboard() {
       </div>
 
       {/* Removed bottom action buttons */}
+
+      {/* MODAL: DETAIL READONLY */}
+      {isDetailModalOpen && selectedAppt && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+           <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 relative">
+              <button onClick={() => setIsDetailModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900"><X size={20}/></button>
+              <div className="flex items-center gap-3 mb-4 border-b border-black/8 pb-4">
+                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-black text-xl">
+                  {(selectedAppt.patients?.name || selectedAppt.patient_name || 'P')[0]}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">{selectedAppt.patients?.name || selectedAppt.patient_name}</h3>
+                  <p className="text-xs text-blue-600 font-bold capitalize">{(selectedAppt.appointment_type || 'consultation').replace('_', ' ')}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                 <div className="flex gap-2 text-sm">
+                   <Calendar size={16} className="text-gray-400 shrink-0"/>
+                   <span className="font-medium text-gray-700">{selectedAppt.date}</span>
+                 </div>
+                 <div className="flex gap-2 text-sm">
+                   <Clock size={16} className="text-gray-400 shrink-0"/>
+                   <span className="font-medium text-gray-700">{(selectedAppt.start_time || selectedAppt.time || '').substring(0,5)} ({selectedAppt.duration_minutes || 30} min)</span>
+                 </div>
+                 {selectedAppt.reason && (
+                   <div className="flex gap-2 text-sm">
+                     <FileText size={16} className="text-gray-400 shrink-0 mt-0.5"/>
+                     <span className="text-gray-600 leading-tight">{selectedAppt.reason}</span>
+                   </div>
+                 )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                  {role !== 'assistant' && role !== 'admin' && (
+                  <button onClick={async () => {
+                     let pId = selectedAppt.patient_id;
+                     if (!pId) {
+                        const { data: newP } = await supabase.from('patients').insert({
+                           name: selectedAppt.patient_name || selectedAppt.patients?.name || 'Paciente Nuevo',
+                           phone: selectedAppt.patient_phone || selectedAppt.patients?.phone || '',
+                           email: selectedAppt.patient_email || selectedAppt.patients?.email || '',
+                           doctor_id: selectedAppt.doctor_id,
+                           clinic_id: selectedAppt.clinic_id
+                        }).select('id').single();
+                        
+                        if (newP) {
+                           pId = newP.id;
+                           await supabase.from('appointments').update({ patient_id: pId }).eq('id', selectedAppt.id);
+                        }
+                     }
+                     if (pId) {
+                        setIsDetailModalOpen(false);
+                        window.location.href = `/dashboard/consultations?patient_id=${pId}&symptoms=${encodeURIComponent(selectedAppt.reason || '')}&weight=${selectedAppt.weight || ''}&blood_pressure=${selectedAppt.blood_pressure || ''}&temperature=${selectedAppt.temperature || ''}`;
+                     } else {
+                        alert('No se pudo crear el registro del paciente para la consulta.');
+                     }
+                  }} className="w-full py-2.5 bg-[#1A4A8A] text-white font-bold text-xs rounded-xl">Ir a Consulta Médica</button>
+                  )}
+              </div>
+           </div>
+        </div>
+      )}
 
       {/* Nuevo Paciente Modal */}
       {isModalOpen && (

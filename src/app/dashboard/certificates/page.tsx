@@ -5,7 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import CertificateForm from '@/components/CertificateForm';
-import { FileText, Download, Printer, Loader2, Sparkles, Plus } from 'lucide-react';
+import { FileText, Download, Printer, Loader2, Sparkles, Plus, Mail, MessageCircle } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function CertificatesPage() {
   const { role, isLoading } = useRole();
@@ -17,6 +19,8 @@ export default function CertificatesPage() {
   
   const [selectedPatientId, setSelectedPatientId] = useState<string | undefined>(initialPatientId);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [printingCert, setPrintingCert] = useState<any>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -35,7 +39,8 @@ export default function CertificatesPage() {
         issued_at,
         expires_at,
         patient_id,
-        patients ( name )
+        patients ( name ),
+        doctor:doctor_id ( name, medical_license, specialty, specialty_license )
       `)
       .order('created_at', { ascending: false });
 
@@ -51,6 +56,35 @@ export default function CertificatesPage() {
   useEffect(() => {
     fetchHistory();
   }, [selectedPatientId, supabase]);
+
+  const generatePDF = async (cert: any) => {
+    setDownloading(cert.id);
+    setPrintingCert(cert);
+
+    await new Promise(r => setTimeout(r, 200)); 
+
+    const element = document.getElementById('certificate-print-template');
+    if (!element) {
+       setDownloading(null);
+       return;
+    }
+
+    try {
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210; 
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`Certificado_${cert.patients?.name?.replace(/ /g, '_') || 'Paciente'}.pdf`);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+    } finally {
+      setDownloading(null);
+      setPrintingCert(null);
+    }
+  };
 
   if (isLoading) return null;
 
@@ -150,11 +184,32 @@ export default function CertificatesPage() {
                        <span>Vigencia: {c.valid_days} días</span>
                     </div>
 
-                    <div className="absolute bottom-4 right-4 flex gap-2">
-                       {/* Se mantiene la descarga client-side generando de nuevo con el Form render simple, 
-                           o alternando un trigger en el Form element */}
-                       {/* Botón dummy de Descarga para replicar funcionalidad si subiese a Bucket, 
-                           en este diseño, se usa para descargar en el editor al guardarlo */}
+                    <div className="absolute bottom-4 right-4 flex gap-1.5">
+                       <button 
+                         onClick={() => generatePDF(c)}
+                         disabled={!!downloading}
+                         className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-100 hover:text-blue-600 transition-colors flex items-center justify-center bg-white shadow-sm"
+                         title="Descargar PDF"
+                       >
+                          {downloading === c.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                       </button>
+                       <button 
+                         onClick={() => { alert('Envío por email en desarrollo (Simulado). El PDF se descargará...'); generatePDF(c); }}
+                         className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-100 hover:text-green-600 transition-colors flex items-center justify-center bg-white shadow-sm"
+                         title="Enviar por Email"
+                       >
+                         <Mail size={14} />
+                       </button>
+                       <button 
+                         onClick={() => { 
+                            const text = `Hola, te comparto tu certificado médico Folio: ${c.folio} expedido por MedIQ.`;
+                            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                         }}
+                         className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-100 hover:text-teal-600 transition-colors flex items-center justify-center bg-white shadow-sm"
+                         title="Compartir WhatsApp"
+                       >
+                         <MessageCircle size={14} />
+                       </button>
                     </div>
                   </div>
                 );
@@ -163,6 +218,64 @@ export default function CertificatesPage() {
           </div>
         )}
       </div>
+
+      {/* Template oculto para jsPDF y html2canvas */}
+      {printingCert && (
+        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+          <div id="certificate-print-template" style={{ width: '794px', backgroundColor: '#fff', color: '#1E293B', fontFamily: 'Arial, sans-serif' }} className="p-12 box-border">
+             <div className="border-b-2 border-slate-100 pb-4 mb-8">
+                <p className="text-xl font-black text-slate-800">MedIQ</p>
+                <p className="text-xs text-slate-500">Expediente Clínico Inteligente</p>
+             </div>
+
+             <p className="text-right text-[10px] text-slate-400 font-bold mb-4">Fecha: {new Date(printingCert.issued_at).toLocaleDateString('es-MX')}</p>
+
+             <h2 className="text-center font-black text-slate-900 text-base uppercase tracking-wider mb-8 py-2 bg-slate-50 rounded-lg">
+                CERTIFICADO MÉDICO — {getTypeName(printingCert.certificate_type)}
+             </h2>
+
+             <div className="mb-6">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Datos del Paciente</p>
+                <p className="text-sm font-medium"><b className="font-bold">Nombre:</b> {printingCert.patients?.name}</p>
+             </div>
+
+             <div className="mb-6 space-y-3">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-1">Certífico que:</p>
+                <p className="text-sm leading-relaxed text-justify">
+                   Habiendo practicado la exploración clínica correspondiente al paciente mencionado, se encuentran los siguientes hallazgos:
+                </p>
+                <p className="text-sm leading-relaxed bg-slate-50 p-4 rounded-lg font-medium text-slate-800">
+                   {printingCert.findings || 'Sin hallazgos clínicos particulares registrados.'}
+                </p>
+                <p className="text-sm">
+                   Este certificado se expide para los fines de: <b className="font-bold">{printingCert.purpose || 'Trámite general'}</b>.
+                </p>
+             </div>
+
+             <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 mb-6">
+                <p className="text-sm font-bold text-slate-900">Conclusión:</p>
+                <p className="text-base font-black text-slate-800">
+                   {printingCert.conclusion}
+                </p>
+             </div>
+
+             <p className="text-xs text-slate-400 italic mb-12">
+                El presente certificado tiene una validez de {printingCert.valid_days} días a partir de la fecha de su expedición.
+             </p>
+
+             {printingCert.doctor && (
+               <div className="border-t border-slate-200 pt-6 text-center mt-20 max-w-sm mx-auto">
+                  <div className="h-16"></div>
+                  <p className="text-sm font-black text-slate-900">Dr. {printingCert.doctor.name}</p>
+                  <p className="text-xs text-slate-500">Cédula Profesional: {printingCert.doctor.medical_license || 'N/A'}</p>
+                  {printingCert.doctor.specialty && (
+                     <p className="text-[11px] text-slate-400 mt-0.5">Especialidad: {printingCert.doctor.specialty} | Cédula: {printingCert.doctor.specialty_license}</p>
+                  )}
+               </div>
+             )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

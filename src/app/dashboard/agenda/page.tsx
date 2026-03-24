@@ -376,7 +376,21 @@ export default function AgendaPage() {
 
         {/* ─── RIGHT MAIN PANEL ─── */}
         <div className="flex-1 min-w-0 bg-white rounded-xl border-[0.5px] border-black/8 shadow-sm p-4 h-[calc(100vh-140px)] flex flex-col">
-           
+           {/* Leyenda */}
+           <div className="flex flex-wrap gap-4 mb-4 pb-3 border-b border-black/5">
+             {[
+               { bg: '#E8F0FB', border: '#1A4A8A', label: 'Cita agendada' },
+               { bg: '#E1F5EE', border: '#0F6E56', label: 'Atendida' },
+               { bg: '#FAEEDA', border: '#854F0B', label: 'Seguimiento' },
+               { bg: '#f3f4f6', border: '#9ca3af', label: 'Disponible' },
+             ].map(item => (
+               <div key={item.label} className="flex items-center gap-1.5">
+                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.bg, border: `1.5px solid ${item.border}` }} />
+                 <span className="text-[10px] text-gray-500 font-medium">{item.label}</span>
+               </div>
+             ))}
+           </div>
+            
            {/* DAY VIEW */}
            {calendarView === 'dia' && (
              <div className="flex flex-col h-full">

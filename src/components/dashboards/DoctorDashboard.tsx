@@ -258,19 +258,39 @@ export default function DoctorDashboard() {
             ))}
           </div>
 
-          <div className="bg-white rounded-xl border-[0.5px] border-black/8 shadow-sm p-4 space-y-2">
-            <p className="text-xs font-bold text-gray-700 mb-2">Leyenda</p>
-            {[
-              { bg: '#E8F0FB', border: '#1A4A8A', label: 'Cita agendada' },
-              { bg: '#E1F5EE', border: '#0F6E56', label: 'Atendida' },
-              { bg: '#FAEEDA', border: '#854F0B', label: 'Seguimiento' },
-              { bg: '#f3f4f6', border: '#9ca3af', label: 'Disponible' },
-            ].map(item => (
-              <div key={item.label} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.bg, border: `1.5px solid ${item.border}` }} />
-                <span className="text-xs text-gray-600">{item.label}</span>
-              </div>
-            ))}
+          {/* Citas del Día */}
+          <div className="bg-white rounded-xl border-[0.5px] border-black/8 shadow-sm p-4 flex flex-col max-h-[300px] space-y-2">
+            <h3 className="text-xs font-bold text-gray-900 mb-2 border-b border-black/8 pb-2 flex items-center justify-between">
+              Citas del día {new Date((selectedDateString || todayStr) + 'T00:00:00').getDate()}
+              <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[9px]">
+                {weekAppointments.filter(a => a.date === (selectedDateString || todayStr) && a.status !== 'cancelled').length}
+              </span>
+            </h3>
+            <div className="overflow-y-auto space-y-2 pr-1 flex-1">
+              {weekAppointments
+                .filter(a => a.date === (selectedDateString || todayStr) && a.status !== 'cancelled')
+                .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''))
+                .map(appt => {
+                   let style = { bg: '#E8F0FB', border: '#1A4A8A', text: '#1A4A8A' };
+                   const status = appt.status || appt.appointment_type;
+                   if (status === 'attended') style = { bg: '#E1F5EE', border: '#0F6E56', text: '#0F6E56' };
+                   if (status === 'follow_up') style = { bg: '#FAEEDA', border: '#854F0B', text: '#854F0B' };
+                   
+                   return (
+                     <div key={appt.id} className="flex gap-2 p-2 rounded-lg border-[0.5px] border-black/8 hover:bg-gray-50 cursor-pointer items-center">
+                       <div className="text-[10px] font-black text-gray-500 w-10 shrink-0 text-center">{(appt.start_time || appt.time || '').substring(0, 5)}</div>
+                       <div className="w-1 h-full rounded-full shrink-0" style={{ backgroundColor: style.border }} />
+                       <div className="min-w-0 flex-1">
+                         <div className="text-xs font-bold text-gray-900 truncate">{appt.patients?.name || appt.patient_name || 'Paciente'}</div>
+                         <div className="text-[9px] text-gray-500 truncate">{appt.notes || 'Consulta'}</div>
+                       </div>
+                     </div>
+                   );
+              })}
+              {weekAppointments.filter(a => a.date === (selectedDateString || todayStr) && a.status !== 'cancelled').length === 0 && (
+                 <p className="text-xs text-gray-400 text-center py-4">Sin citas agendadas</p>
+              )}
+            </div>
           </div>
 
           {/* Botones de acción rápida en tarjeta */}
@@ -308,6 +328,21 @@ export default function DoctorDashboard() {
                 </span>
                 <button onClick={() => changeWeek(1)} className="p-1.5 rounded-lg hover:bg-gray-50 text-gray-500 border-[0.5px] border-black/8"><ChevronRight size={16} /></button>
               </div>
+            </div>
+
+            {/* Leyenda */}
+            <div className="flex flex-wrap gap-4 mb-3 pb-2 border-b border-black/5">
+              {[
+                { bg: '#E8F0FB', border: '#1A4A8A', label: 'Cita agendada' },
+                { bg: '#E1F5EE', border: '#0F6E56', label: 'Atendida' },
+                { bg: '#FAEEDA', border: '#854F0B', label: 'Seguimiento' },
+                { bg: '#f3f4f6', border: '#9ca3af', label: 'Disponible' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.bg, border: `1.5px solid ${item.border}` }} />
+                  <span className="text-[10px] text-gray-500 font-medium">{item.label}</span>
+                </div>
+              ))}
             </div>
 
             <div className="overflow-auto max-h-[500px]">
@@ -414,6 +449,21 @@ export default function DoctorDashboard() {
                 <Calendar size={18} className="text-blue-500" />
                 Horarios del día {selectedDateString && new Date(selectedDateString + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
               </h3>
+            </div>
+
+            {/* Leyenda */}
+            <div className="flex flex-wrap gap-4 mt-3 pb-2 border-b border-black/5">
+              {[
+                { bg: '#E8F0FB', border: '#1A4A8A', label: 'Cita agendada' },
+                { bg: '#E1F5EE', border: '#0F6E56', label: 'Atendida' },
+                { bg: '#FAEEDA', border: '#854F0B', label: 'Seguimiento' },
+                { bg: '#f3f4f6', border: '#9ca3af', label: 'Disponible' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.bg, border: `1.5px solid ${item.border}` }} />
+                  <span className="text-[10px] text-gray-500 font-medium">{item.label}</span>
+                </div>
+              ))}
             </div>
 
             <div className="flex-1 mt-4 overflow-y-auto space-y-2 pr-1">

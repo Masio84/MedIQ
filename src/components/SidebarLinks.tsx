@@ -9,6 +9,18 @@ export default function SidebarLinks() {
 
   const links = [
     {
+      href: '/superadmin',
+      label: 'Panel SuperAdmin',
+      icon: ShieldCheck,
+      roles: ['superadmin'],
+    },
+    {
+      href: '/superadmin/logs',
+      label: 'Auditoría NOM-024',
+      icon: FileText,
+      roles: ['superadmin'],
+    },
+    {
       href: '/dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,

@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { requireSuperAdmin } from '@/lib/permissions';
 import { redirect } from 'next/navigation';
 import SuperAdminDashboard from '@/components/superadmin/SuperAdminDashboard';
+import DashboardShell from '@/components/DashboardShell';
+import { RoleProvider } from '@/context/RoleContext';
 
 export default async function SuperAdminPage() {
   const supabase = await createClient();
@@ -64,6 +66,8 @@ export default async function SuperAdminPage() {
       });
     }
 
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+
     const metrics = {
       totalClinics: totalClinics || 0,
       activeClinics,
@@ -76,16 +80,21 @@ export default async function SuperAdminPage() {
     };
 
     return (
-      <div className="min-h-screen bg-gray-50/10">
-        <SuperAdminDashboard serverMetrics={metrics} />
-      </div>
+      <RoleProvider initialRole="superadmin">
+        <DashboardShell profile={profile} role="superadmin">
+          <SuperAdminDashboard serverMetrics={metrics} />
+        </DashboardShell>
+      </RoleProvider>
     );
   } catch (error) {
     console.error('Superadmin page error:', error);
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
     return (
-      <div className="min-h-screen bg-gray-50/10">
-        <SuperAdminDashboard serverMetrics={defaultMetrics} />
-      </div>
+      <RoleProvider initialRole="superadmin">
+        <DashboardShell profile={profile} role="superadmin">
+          <SuperAdminDashboard serverMetrics={defaultMetrics} />
+        </DashboardShell>
+      </RoleProvider>
     );
   }
 }

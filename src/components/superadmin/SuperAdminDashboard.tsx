@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import GlobalMetrics from './GlobalMetrics';
 import ClinicsTable from './ClinicsTable';
 import CreateClinicModal from './CreateClinicModal';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { PlusCircle, Loader2, Terminal } from 'lucide-react';
+import Link from 'next/link';
 
 export default function SuperAdminDashboard({ serverMetrics }: { serverMetrics: any }) {
   const [clinics, setClinics] = useState<any[]>([]);
@@ -43,13 +44,23 @@ export default function SuperAdminDashboard({ serverMetrics }: { serverMetrics: 
           <p className="text-xs text-gray-400 font-medium">Gestión global de SaaS MedIQ - Jorge</p>
         </div>
         
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-1.5"
-        >
-          <PlusCircle size={16} />
-          Crear Clínica
-        </button>
+        <div className="flex items-center gap-2">
+            <Link 
+              href="/superadmin/logs"
+              className="px-4 py-2 border border-gray-100 bg-white text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-1.5"
+            >
+              <Terminal size={16} className="text-emerald-500" />
+              Bitácora Auditoría
+            </Link>
+            
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-1.5"
+            >
+              <PlusCircle size={16} />
+              Crear Clínica
+            </button>
+        </div>
       </div>
 
       {/* Sección 1: Métricas Globales */}

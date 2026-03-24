@@ -39,7 +39,7 @@ export default function AppointmentReminders() {
 
       if (data) {
         // Cargar nombres de doctores manualmente para evitar problemas de relación directa
-        const { data: doctors } = await supabase.from('profiles').select('id, name');
+        const { data: doctors } = await supabase.from('profiles').select('id, name').eq('is_active', true);
         
         const filtered = data.map((app: any) => {
            const doctor = doctors?.find((d: any) => d.id === app.doctor_id);

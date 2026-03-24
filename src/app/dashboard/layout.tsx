@@ -23,6 +23,10 @@ export default async function DashboardLayout({
      redirect('/login?reason=account_disabled');
   }
 
+  if (profile && profile.setup_completed === false) {
+     redirect('/setup');
+  }
+
   const role = profile?.role || 'assistant';
   const clinicId = profile?.clinic_id || null;
   const doctorId = profile?.doctor_id || null;

@@ -39,6 +39,7 @@ export async function POST(req: Request) {
 
     // 3. Invitar Admin por email
     const { data: invite, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${new URL(req.url).origin}/auth/set-password`,
       data: {
         name: admin_name,
         clinic_id: clinic.id,

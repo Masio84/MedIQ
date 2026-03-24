@@ -119,7 +119,7 @@ export default function AssistantDashboard() {
     }
 
     // 2. Cargar doctores y pacientes
-    const { data: d } = await supabase.from('profiles').select('id, name').eq('role', 'doctor');
+    const { data: d } = await supabase.from('profiles').select('id, name').eq('role', 'doctor').eq('is_active', true);
     const { data: p } = await supabase.from('patients').select('id, name');
     if (d) setDoctors(Array.isArray(d) ? d : []);
     if (p) setPatients(p);

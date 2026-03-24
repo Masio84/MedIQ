@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import CertificateForm from '@/components/CertificateForm';
-import { FileText, Download, Printer, Loader2, Sparkles, Plus, Mail, MessageCircle } from 'lucide-react';
+import { FileText, Download, Printer, Loader2, Sparkles, Plus, Mail, MessageCircle, CheckCircle, XCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -61,13 +61,19 @@ export default function CertificatesPage() {
   const [emailInput, setEmailInput] = useState('');
   const [emailTargetCert, setEmailTargetCert] = useState<any>(null);
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
+
+  const triggerToast = (message: string, type: 'success' | 'error') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+  };
 
   const generatePDF = async (cert: any) => {
     setDownloading(cert.id);
 
     const element = document.getElementById(`certificate-print-template-${cert.id}`);
     if (!element) {
-       alert('Error: No se encontró la plantilla para generar el PDF.');
+       triggerToast('No se encontró la plantilla para generar el PDF.', 'error');
        setDownloading(null);
        return;
     }
@@ -81,9 +87,10 @@ export default function CertificatesPage() {
       
       pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
       pdf.save(`Certificado_${cert.patients?.name?.replace(/ /g, '_') || 'Paciente'}.pdf`);
+      triggerToast('Certificado descargado correctamente', 'success');
     } catch (err) {
       console.error('Error generando PDF:', err);
-      alert('Error al generar el PDF.');
+      triggerToast('Error al generar el PDF.', 'error');
     } finally {
       setDownloading(null);
     }
@@ -93,13 +100,13 @@ export default function CertificatesPage() {
     setSendingEmail(cert.id);
     const element = document.getElementById(`certificate-print-template-${cert.id}`);
     if (!element) {
-       alert('Error: No se encontró la plantilla para adjuntar el PDF.');
+       triggerToast('No se encontró la plantilla para adjuntar el PDF.', 'error');
        setSendingEmail(null);
        return;
     }
     try {
       const canvas = await html2canvas(element, { scale: 1.2, useCORS: true, logging: false });
-      const imgData = canvas.toDataURL('image/jpeg', 0.7); // Compress more for email bandwidth
+      const imgData = canvas.toDataURL('image/jpeg', 0.7); 
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210; 
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -120,14 +127,14 @@ export default function CertificatesPage() {
 
       const res = await response.json();
       if (res.success) {
-         alert('Certificado enviado por correo exitosamente.');
+         triggerToast('Certificado enviado correctamente', 'success');
          setIsEmailModalOpen(false);
       } else {
-         alert(`Error al enviar correo: ${res.error}`);
+         triggerToast('Error al enviar el certificado. Intenta de nuevo.', 'error');
       }
     } catch (err: any) {
       console.error('Error enviando correo:', err);
-      alert('Error técnico al enviar el correo.');
+      triggerToast('Error al enviar el certificado. Intenta de nuevo.', 'error');
     } finally {
       setSendingEmail(null);
     }
@@ -376,6 +383,14 @@ export default function CertificatesPage() {
                </button>
              </div>
           </div>
+        </div>
+      )}
+
+      {/* Notificación Toast */}
+      {toast.show && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-in slide-in-from-bottom-5 duration-300 ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+           {toast.type === 'success' ? <CheckCircle size={18}/> : <XCircle size={18}/>}
+           <span className="text-sm font-medium">{toast.message}</span>
         </div>
       )}
     </div>

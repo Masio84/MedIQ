@@ -32,15 +32,12 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
-              <svg viewBox="0 0 24 24" fill="none" className="h-4.5 w-4.5 text-white" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-            </div>
-            <span className="font-extrabold text-gray-900 text-xl tracking-tight">
-              Med<span className="text-blue-600">IQ</span>
-            </span>
+          <div className="flex items-center">
+            <img
+              src="/Logo_MedIQ_Transp.png"
+              alt="MedIQ"
+              className="h-10 w-auto object-contain"
+            />
           </div>
 
           {/* Desktop Nav */}

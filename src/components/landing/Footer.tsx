@@ -35,16 +35,13 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand column */}
           <div className="lg:col-span-1">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
-                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-white" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-              </div>
-              <span className="font-extrabold text-white text-lg tracking-tight">
-                Med<span className="text-blue-400">IQ</span>
-              </span>
-            </div>
+            <div className="mb-4">
+            <img
+              src="/Logo_MedIQ_Transp.png"
+              alt="MedIQ"
+              className="h-10 w-auto object-contain brightness-0 invert"
+            />
+          </div>
             <p className="text-sm text-gray-500 leading-relaxed">
               Sistema de gestión clínica inteligente, conforme a NOM-004 y NOM-024. Diseñado para el médico mexicano moderno.
             </p>

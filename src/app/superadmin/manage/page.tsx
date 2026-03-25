@@ -216,6 +216,7 @@ export default function SuperAdminManagePage() {
       <UserFormModal 
         user={editingUser}
         clinics={clinics}
+        doctors={users.filter(u => u.role === 'doctor')}
         isOpen={isUserModalOpen}
         onClose={() => setIsUserModalOpen(false)}
         onSave={handleSaveUser}

@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
 
-    const { name, email, role, clinic_id, create_new_space, plan_slug, new_clinic_name } = await req.json();
+    const { name, email, role, clinic_id, doctor_id, create_new_space, plan_slug, new_clinic_name } = await req.json();
 
     if (!email || !name) {
       return NextResponse.json({ error: 'Faltan campos obligatorios (nombre, email)' }, { status: 400 });
@@ -117,6 +117,7 @@ export async function POST(req: Request) {
         name,
         role: role,
         clinic_id: finalClinicId,
+        doctor_id: (role === 'assistant') ? doctor_id : null,
         is_active: true
       }]);
 
@@ -152,7 +153,7 @@ export async function PATCH(req: Request) {
     }
 
     // Never update password or sensitive auth data here, only profile data
-    const allowedUpdates = ['name', 'role', 'clinic_id', 'is_active'];
+    const allowedUpdates = ['name', 'role', 'clinic_id', 'is_active', 'doctor_id'];
     const safeUpdates: Record<string, any> = {};
 
     for (const key of allowedUpdates) {

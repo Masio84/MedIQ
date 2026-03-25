@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     
     let query = supabase
       .from('appointments')
-      .select('*, patients(name, phone, email)');
+      .select('*, patients!appointments_patient_id_fkey(name, phone, email)');
 
     if (profile?.role === 'assistant' && profile.doctor_id) {
        query = query.eq('doctor_id', profile.doctor_id);

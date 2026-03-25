@@ -119,7 +119,7 @@ export default function DoctorDashboard() {
     }
 
     const [todayResult, pCountResult, bCountResult, billingsResult, apptsResult] = await Promise.all([
-      supabase.from('consultations').select('id, patient_id, created_at, status, patients(name)').gte('created_at', today),
+      supabase.from('consultations').select('id, patient_id, created_at, status, patients!consultations_patient_id_fkey(name)').gte('created_at', today),
       supabase.from('patients').select('*', { count: 'exact', head: true }),
       supabase.from('billing').select('*', { count: 'exact', head: true }).eq('paid', false),
       query,

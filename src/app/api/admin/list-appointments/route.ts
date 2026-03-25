@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
     const { data: appointments, error } = await supabaseAdmin
       .from('appointments')
-      .select('*, patients(name), profiles:doctor_id(name)')
+      .select('*, patients!appointments_patient_id_fkey(name), profiles:doctor_id(name)')
       .gte('date', start)
       .lte('date', end)
       .order('time', { ascending: true });

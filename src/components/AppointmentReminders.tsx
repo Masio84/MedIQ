@@ -29,7 +29,7 @@ export default function AppointmentReminders() {
           reason,
           folio:public_token,
           patient_id,
-          patients ( name, phone ),
+          patients!appointments_patient_id_fkey ( name, phone ),
           doctor_id
         `)
         .eq('status', 'scheduled')

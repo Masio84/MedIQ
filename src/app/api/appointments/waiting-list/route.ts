@@ -15,16 +15,16 @@ export async function GET(request: Request) {
 
     if (!targetDoctor) return NextResponse.json({ success: false, error: 'No se encontró doctor asociado' }, { status: 404 });
 
-    const { data, error } = await supabase
+    const { data: waitingList, error } = await supabase
       .from('appointments')
-      .select('*, patients(name, phone, email)')
+      .select('*, patients!appointments_patient_id_fkey(name, phone, email)')
       .eq('doctor_id', targetDoctor)
       .eq('status', 'waiting_list')
       .order('created_at', { ascending: true });
 
     if (error) throw error;
     
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: waitingList });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

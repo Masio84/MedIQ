@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       .from('consultations')
       .select(`
         *,
-        patients ( name, phone )
+        patients!consultations_patient_id_fkey(name, phone)
       `)
       .order('created_at', { ascending: false });
 

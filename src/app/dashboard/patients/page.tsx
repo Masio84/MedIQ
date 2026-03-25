@@ -23,8 +23,8 @@ export default function PatientsPage() {
   return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Módulo de Pacientes</h1>
-          <p className="text-sm text-gray-500">Registrar y visualizar expedientes médicos</p>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Expediente Digital</h1>
+          <p className="text-sm text-gray-500">Registrar y visualizar expedientes médicos de los pacientes</p>
         </div>
 
         {role === 'doctor' && (

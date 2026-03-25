@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, FileText, CreditCard, ShieldCheck, Calendar } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, CreditCard, ShieldCheck, Calendar, FolderOpen, Stethoscope, FileCheck } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 
 export default function SidebarLinks() {
@@ -47,19 +47,19 @@ export default function SidebarLinks() {
     {
       href: '/dashboard/patients',
       label: 'Expediente Digital',
-      icon: FileText,
+      icon: FolderOpen,
       roles: ['doctor'],
     },
     {
       href: '/dashboard/consultations',
       label: 'Consultas',
-      icon: FileText,
+      icon: Stethoscope,
       roles: ['doctor'],
     },
     {
       href: '/dashboard/certificates',
       label: 'Certificados',
-      icon: FileText,
+      icon: FileCheck,
       roles: ['doctor', 'assistant'],
     },
     {

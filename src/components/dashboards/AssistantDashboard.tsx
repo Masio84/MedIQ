@@ -140,7 +140,7 @@ export default function AssistantDashboard() {
     
     const { data: allBillings } = await supabase
       .from('billing')
-      .select('id, normal_fee, discount, extra_charge, created_at, paid, patient_id, patients(name, id), consultations(id, notes, doctor_id)')
+      .select('id, normal_fee, discount, extra_charge, created_at, paid, patient_id, patients!billing_patient_id_fkey(name, id), consultations(id, notes, doctor_id)')
       .order('created_at', { ascending: false });
 
     if (allBillings) {

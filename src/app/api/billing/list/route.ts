@@ -20,8 +20,8 @@ export async function GET() {
         paid,
         created_at,
         patient_id,
-        patients ( name ),
-        consultations ( id, doctor_id, patients ( name ) )
+        patients!billing_patient_id_fkey(name),
+        consultations ( id, doctor_id, patients!consultations_patient_id_fkey(name) )
       `)
       .order('created_at', { ascending: false });
 

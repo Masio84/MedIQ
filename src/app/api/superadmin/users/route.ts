@@ -21,6 +21,7 @@ export async function GET(req: Request) {
       .from('profiles')
       .select(`
         *,
+        is_superadmin,
         clinics(name)
       `)
       .order('created_at', { ascending: false });

@@ -42,7 +42,7 @@ export default function UserFormModal({ user, clinics, isOpen, onClose, onSave }
         name: '',
         email: '',
         role: 'doctor',
-        clinic_id: clinics[0]?.id || '',
+        clinic_id: '',
         is_active: true
       });
     }

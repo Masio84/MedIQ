@@ -9,6 +9,7 @@ interface User {
   email: string;
   role: string;
   is_active: boolean;
+  is_superadmin?: boolean;
   clinic_id: string;
   clinics: { name: string } | null;
 }
@@ -117,7 +118,7 @@ export default function UserTable({ users, clinics, loading, onEdit, onToggleSta
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <RoleBadge role={user.role} />
+                      <RoleBadge role={user.is_superadmin ? 'superadmin' : user.role} />
                     </td>
                     <td className="px-6 py-4">
                       <span className={'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ' + badgeStatusClass}>

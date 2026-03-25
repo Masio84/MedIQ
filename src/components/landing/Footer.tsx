@@ -21,9 +21,9 @@ const columns = [
   {
     title: 'Legal',
     links: [
-      { label: 'Aviso de Privacidad', href: '#' },
-      { label: 'Términos de Uso', href: '#' },
-      { label: 'Cumplimiento NOM', href: '#' },
+      { label: 'Aviso de Privacidad', href: '/legal/privacidad' },
+      { label: 'Términos de Uso', href: '/legal/terminos' },
+      { label: 'Cumplimiento NOM-024', href: '/legal/nom-024' },
     ],
   },
 ];
@@ -69,7 +69,7 @@ export default function Footer() {
 
         <div className="mt-16 pt-8 border-t border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-xs text-gray-600">
-            &copy; {new Date().getFullYear()} MedIQ Inteligencia Clínica, S.A. de C.V. Todos los derechos reservados.
+            &copy; {new Date().getFullYear()} Masio Technologies & Digital Solutions. Todos los derechos reservados.
           </p>
           <div className="flex gap-2">
             <span className="px-2.5 py-1 bg-green-900/30 text-green-400 text-[10px] font-bold rounded-full border border-green-900/50">NOM-004 ✓</span>

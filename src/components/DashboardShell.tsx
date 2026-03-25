@@ -231,11 +231,10 @@ export default function DashboardShell({
             <Image 
               src="/logo_v1.png" 
               alt="MedIQ" 
-              width={140} 
-              height={40} 
-              className="object-contain"
+              width={105} 
+              height={30} 
+              className="h-8 w-auto object-contain"
               priority
-              style={{ width: 'auto', height: 'auto' }}
             />
           </Link>
           <button 

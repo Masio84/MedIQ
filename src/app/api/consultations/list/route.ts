@@ -3,12 +3,12 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { authorizeUser } from '@/lib/auth-helpers';
 
 export async function GET(request: Request) {
-  const auth = await authorizeUser(['admin', 'doctor', 'assistant']);
-  if ('error' in auth) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
-
   try {
+    const auth = await authorizeUser(['admin', 'doctor', 'assistant']);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
     const { user, profile } = auth as any;
     let query = supabaseAdmin
       .from('consultations')

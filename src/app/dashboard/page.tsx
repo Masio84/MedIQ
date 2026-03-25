@@ -4,6 +4,8 @@ import AssistantDashboard from '@/components/dashboards/AssistantDashboard';
 import { getProfile } from '@/lib/get-profile';
 import DoctorDashboard from '@/components/dashboards/DoctorDashboard';
 
+import { redirect } from 'next/navigation';
+
 export default async function DashboardPage() {
   const supabase = await createClient();
 
@@ -14,6 +16,10 @@ export default async function DashboardPage() {
   }
 
   const { data: profile } = await getProfile(user.id);
+
+  if (profile?.is_superadmin) {
+    return redirect('/superadmin');
+  }
 
   const role = profile?.role;
 

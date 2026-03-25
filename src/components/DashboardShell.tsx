@@ -22,8 +22,10 @@ export default function DashboardShell({
   const [loadingStats, setLoadingStats] = useState(false);
   const [onlineDoctors, setOnlineDoctors] = useState(0);
   const [onlineAssistants, setOnlineAssistants] = useState(0);
+  const [onlineAdmins, setOnlineAdmins] = useState(0);
   const [doctorNames, setDoctorNames] = useState<string[]>([]);
   const [assistantNames, setAssistantNames] = useState<string[]>([]);
+  const [adminNames, setAdminNames] = useState<string[]>([]);
   const [doctorAppts, setDoctorAppts] = useState<{ name: string; count: number }[]>([]);
   const [hasLinkedAssistant, setHasLinkedAssistant] = useState(false);
 
@@ -70,9 +72,13 @@ export default function DashboardShell({
         let consultationsData: any[] = [];
         try {
           const res = await fetch('/api/consultations/list');
-          const result = await res.json();
-          if (result?.success && Array.isArray(result.data)) {
-             consultationsData = result.data.filter((c: any) => c.created_at >= startOfToday);
+          if (res.ok) {
+            const result = await res.json();
+            if (result?.success && Array.isArray(result.data)) {
+               consultationsData = result.data.filter((c: any) => c.created_at >= startOfToday);
+            }
+          } else {
+            console.warn('API consultations returned non-ok status:', res.status);
           }
         } catch (e) {
           console.error('Error fetching consultations for header:', e);
@@ -166,25 +172,31 @@ export default function DashboardShell({
           const state = channel.presenceState();
           let dCount = 0;
           let aCount = 0;
+          let admCount = 0;
           const dNames: string[] = [];
           const aNames: string[] = [];
+          const admNames: string[] = [];
           
           Object.values(state).forEach((presenceEvents: any) => {
             const p = presenceEvents?.[0];
             if (p?.role === 'doctor') {
               dCount++;
               if (p.name) dNames.push(p.name);
-            }
-            if (p?.role === 'assistant') {
+            } else if (p?.role === 'assistant') {
               aCount++;
               if (p.name) aNames.push(p.name);
+            } else if (p?.role === 'admin' || p?.role === 'superadmin') {
+              admCount++;
+              if (p.name) admNames.push(p.name);
             }
           });
 
           setOnlineDoctors(dCount);
           setOnlineAssistants(aCount);
+          setOnlineAdmins(admCount);
           setDoctorNames(dNames);
           setAssistantNames(aNames);
+          setAdminNames(admNames);
         })
         .subscribe(async (status: any) => {
           if (status === 'SUBSCRIBED') {
@@ -342,7 +354,7 @@ export default function DashboardShell({
                     <span className="text-sm font-black text-gray-800 leading-none">{stats.appointmentsToday}</span>
                   </div>
 
-                  {role === 'admin' && (
+                  {(role === 'admin' || role === 'superadmin') && (
                     <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[150px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
                       <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Citas por Doctor:</p>
                       <div className="space-y-0.5">
@@ -381,7 +393,7 @@ export default function DashboardShell({
                   </div>
                 )}
 
-                {role === 'admin' && (
+                {(role === 'admin' || role === 'superadmin') && (
                   <>
                     <div className="group relative bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11 hover:bg-gray-100/50 cursor-pointer transition-colors">
                       <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -423,6 +435,30 @@ export default function DashboardShell({
                             assistantNames.map((name, i) => (
                               <p key={i} className="text-[11px] font-medium tracking-tight text-gray-100 flex items-center gap-1">
                                 <span className="w-1 h-1 rounded-full bg-blue-400" />
+                                {name}
+                              </p>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="group relative bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11 hover:bg-gray-100/50 cursor-pointer transition-colors">
+                      <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                      <div className="flex flex-col justify-center">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Admins en línea</span>
+                        <span className="text-sm font-black text-gray-800 leading-none">{onlineAdmins}</span>
+                      </div>
+
+                      <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[120px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
+                        <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Administradores Conectados:</p>
+                        <div className="space-y-0.5">
+                          {!Array.isArray(adminNames) || adminNames.length === 0 ? (
+                            <p className="text-[11px] text-gray-500">Sin usuarios</p>
+                          ) : (
+                            adminNames.map((name, i) => (
+                              <p key={i} className="text-[11px] font-medium tracking-tight text-gray-100 flex items-center gap-1">
+                                <span className="w-1 h-1 rounded-full bg-purple-400" />
                                 {name}
                               </p>
                             ))

@@ -4,7 +4,7 @@ import { authorizeUser } from '@/lib/auth-helpers';
 
 export async function GET() {
   try {
-    const auth = await authorizeUser(['admin', 'doctor', 'assistant']);
+    const auth = await authorizeUser(['admin', 'doctor', 'assistant', 'superadmin']);
     if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
     const { user, profile } = auth as any;

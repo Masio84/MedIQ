@@ -4,7 +4,7 @@ import { authorizeUser } from '@/lib/auth-helpers';
 
 export async function GET(request: Request) {
   try {
-    const auth = await authorizeUser(['admin', 'doctor', 'assistant']);
+    const auth = await authorizeUser(['admin', 'doctor', 'assistant', 'superadmin']);
     if ('error' in auth) return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
 
     const { searchParams } = new URL(request.url);

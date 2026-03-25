@@ -17,7 +17,7 @@ export default function AuditLogViewer() {
     setRefreshing(true);
     try {
       let query = supabase
-        .from('auditoria.logs')
+        .from('logs')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100);
@@ -57,12 +57,21 @@ export default function AuditLogViewer() {
 
     const isInsert = log.action_type === 'INSERT';
     const isUpdate = log.action_type === 'UPDATE';
-    const isDelete = log.action_type === 'DELETE';
+    const isDelete = log.action_type === 'DELETE' || log.action_type === 'SOFT_DELETE';
 
     const Icon = isInsert ? CheckCircle : isUpdate ? FileText : Trash2;
     const badgeColor = isInsert ? 'bg-green-50 text-green-700 border-green-100' : isUpdate ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-red-50 text-red-700 border-red-100';
 
-    if (isUpdate && log.old_data && log.new_data) {
+    if (log.action_type === 'INSERT' && (log.table_name === 'profiles' || log.table_name === 'clinics' || log.table_name === 'patients')) {
+        const name = log.new_data?.name || log.new_data?.email || 'N/A';
+        changes.push(`+ ${log.table_name === 'profiles' ? 'Usuario' : log.table_name === 'clinics' ? 'Clínica' : 'Paciente'} dado de alta: "${name}"`);
+    }
+
+    if (log.table_name === 'consultations' && log.new_data?.treatment) {
+        changes.push(`💊 Tratamiento/Receta: ${log.new_data.treatment.substring(0, 100)}${log.new_data.treatment.length > 100 ? '...' : ''}`);
+    }
+
+    if (isUpdate && log.action_type !== 'SOFT_DELETE' && log.old_data && log.new_data) {
       for (const key in log.new_data) {
         if (['id', 'created_at', 'clinic_id', 'doctor_id'].includes(key)) continue;
 
@@ -77,7 +86,7 @@ export default function AuditLogViewer() {
          const clave = log.new_data.name || log.new_data.symptoms || log.new_data.id;
          changes.push(`+ Registro creado: "${clave}"`);
     } else if (isDelete && log.old_data) {
-         changes.push(`- Registro eliminado permanentemente`);
+         changes.push(`- Registro eliminado ${log.action_type === 'SOFT_DELETE' ? '(Desactivado)' : 'permanentemente'}`);
     }
 
     return (
@@ -149,6 +158,7 @@ export default function AuditLogViewer() {
                 <option value="INSERT">Insertar</option>
                 <option value="UPDATE">Actualizar</option>
                 <option value="DELETE">Eliminar</option>
+                <option value="SOFT_DELETE">Baja (Soft Delete)</option>
             </select>
             <select 
               value={filterTable} 
@@ -156,9 +166,13 @@ export default function AuditLogViewer() {
               className="bg-gray-50 text-gray-700 text-xxs font-bold px-3 py-2 rounded-xl border border-gray-100 focus:outline-none focus:border-blue-500"
             >
                 <option value="all">Todas las Tablas</option>
+                <option value="profiles">Usuarios (Profiles)</option>
+                <option value="clinics">Clínicas</option>
                 <option value="patients">Pacientes</option>
-                <option value="consultations">Consultas</option>
-                <option value="certificates">Certificados</option>
+                <option value="consultations">Consultas y Recetas</option>
+                <option value="appointments">Citas (Agenda)</option>
+                <option value="billing">Facturación</option>
+                <option value="medical_certificates">Certificados</option>
             </select>
             <button 
               onClick={fetchLogs} 

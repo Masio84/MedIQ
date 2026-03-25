@@ -374,7 +374,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
               className="flex items-center gap-1.5 cursor-pointer hover:bg-white/10 px-1.5 py-1 rounded-lg transition-colors"
               onClick={() => setShowUsersDropdown(!showUsersDropdown)}
             >
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              <span className={`w-2 h-2 rounded-full ${selectedUserId && onlineUsers.includes(selectedUserId) ? 'bg-green-400 animate-pulse' : 'bg-gray-300'}`} />
               <span className="text-xs font-bold flex items-center gap-1">
                 {targetProfileName || 'Seleccionar Usuario'}
                 {unreadCount > 0 && (

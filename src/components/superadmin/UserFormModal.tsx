@@ -28,6 +28,11 @@ export default function UserFormModal({ user, clinics, isOpen, onClose, onSave }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // New Space States
+  const [createNewSpace, setCreateNewSpace] = useState(false);
+  const [planSlug, setPlanSlug] = useState('consultorio');
+  const [newClinicName, setNewClinicName] = useState('');
+
   useEffect(() => {
     if (user) {
       setFormData({
@@ -45,6 +50,9 @@ export default function UserFormModal({ user, clinics, isOpen, onClose, onSave }
         clinic_id: '',
         is_active: true
       });
+      setCreateNewSpace(false);
+      setPlanSlug('consultorio');
+      setNewClinicName('');
     }
     setError(null);
   }, [user, clinics, isOpen]);
@@ -57,7 +65,20 @@ export default function UserFormModal({ user, clinics, isOpen, onClose, onSave }
     setError(null);
 
     try {
-      await onSave(formData);
+      if (createNewSpace && !newClinicName) {
+        setError('Especifique un nombre para el nuevo espacio/clínica');
+        setSaving(false);
+        return;
+      }
+
+      const payload = {
+        ...formData,
+        create_new_space: createNewSpace,
+        plan_slug: createNewSpace ? planSlug : undefined,
+        new_clinic_name: createNewSpace ? newClinicName : undefined
+      };
+
+      await onSave(payload);
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error al guardar usuario');
@@ -112,6 +133,52 @@ export default function UserFormModal({ user, clinics, isOpen, onClose, onSave }
             {user && <p className="text-xs text-gray-500 mt-1">El correo no se puede modificar.</p>}
           </div>
 
+          {!user && (
+            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={createNewSpace} 
+                  onChange={(e) => {
+                    setCreateNewSpace(e.target.checked);
+                    if (e.target.checked) setFormData({ ...formData, role: 'admin' });
+                  }}
+                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-blue-900">Crear nuevo espacio (Clínica/Consultorio) para este usuario</span>
+              </label>
+
+              {createNewSpace && (
+                <div className="grid grid-cols-1 gap-4 pt-2 border-t border-blue-100/50 mt-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-800 mb-1">Nombre del Espacio</label>
+                    <input
+                      type="text"
+                      required={createNewSpace}
+                      value={newClinicName}
+                      onChange={(e) => setNewClinicName(e.target.value)}
+                      className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                      placeholder="Ej. Consultorio Dr. Pérez"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-800 mb-1">Plan a Asignar</label>
+                    <select
+                      value={planSlug}
+                      onChange={(e) => setPlanSlug(e.target.value)}
+                      className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+                    >
+                      <option value="consultorio">Plan Consultorio (1 Médico)</option>
+                      <option value="esencial">Plan Clínica Esencial</option>
+                      <option value="pro">Plan Clínica Pro</option>
+                      <option value="enterprise">Plan Enterprise</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Rol en Sistema</label>
@@ -140,20 +207,22 @@ export default function UserFormModal({ user, clinics, isOpen, onClose, onSave }
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Clínica Asignada</label>
-            <select
-              required
-              value={formData.clinic_id}
-              onChange={(e) => setFormData({ ...formData, clinic_id: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            >
-              <option value="" disabled>Seleccione una clínica</option>
-              {clinics.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
+          {!createNewSpace && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Clínica Asignada</label>
+              <select
+                required={!createNewSpace}
+                value={formData.clinic_id}
+                onChange={(e) => setFormData({ ...formData, clinic_id: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="" disabled>Seleccione una clínica</option>
+                {clinics.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 mt-6">
             <button

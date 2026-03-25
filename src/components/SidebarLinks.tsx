@@ -15,6 +15,12 @@ export default function SidebarLinks() {
       roles: ['superadmin'],
     },
     {
+      href: '/superadmin/manage',
+      label: 'Gestión de Plataforma',
+      icon: Users,
+      roles: ['superadmin'],
+    },
+    {
       href: '/superadmin/logs',
       label: 'Auditoría NOM-024',
       icon: FileText,

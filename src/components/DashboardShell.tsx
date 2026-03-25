@@ -138,7 +138,7 @@ export default function DashboardShell({
           .eq('doctor_id', profile.id)
           .eq('role', 'assistant');
         setHasLinkedAssistant(!!count && count > 0);
-      } else if (role === 'assistant') {
+      } else if (role === 'assistant' || role === 'superadmin') {
         setHasLinkedAssistant(true);
       } else {
         setHasLinkedAssistant(false);

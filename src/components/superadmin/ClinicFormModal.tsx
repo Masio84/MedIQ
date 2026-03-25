@@ -133,9 +133,9 @@ export default function ClinicFormModal({ clinic, isOpen, onClose, onSave }: Cli
                 onChange={(e) => setFormData({ ...formData, plan_slug: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               >
-                <option value="esencial">Esencial (1 Med)</option>
-                <option value="consultorio">Consultorio (3 Meds)</option>
-                <option value="enterprise">Enterprise (Ilimitado)</option>
+                <option value="esencial">Esencial (1 Dr)</option>
+                <option value="consultorio">Consultorio (1 Dr + 1 Asist)</option>
+                <option value="enterprise">Enterprise (2+ Drs / 2+ Asist)</option>
               </select>
             </div>
 

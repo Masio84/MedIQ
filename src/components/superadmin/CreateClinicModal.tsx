@@ -83,9 +83,9 @@ export default function CreateClinicModal({ isOpen, onClose, onSuccess }: { isOp
               onChange={(e) => setForm({ ...form, plan_slug: e.target.value })}
               className="w-full bg-gray-50/50 px-3 py-2 text-sm border border-gray-100 rounded-md focus:outline-none focus:border-blue-500 font-black text-gray-800"
             >
-              <option value="esencial">Esencial ($599/mes)</option>
-              <option value="consultorio">Consultorio ($1,299/mes)</option>
-              <option value="enterprise">Enterprise (Cotización)</option>
+              <option value="esencial">Esencial (1 Dr)</option>
+              <option value="consultorio">Consultorio (1 Dr + 1 Asist)</option>
+              <option value="enterprise">Enterprise (2+ Drs / 2+ Asist)</option>
             </select>
           </div>
 

@@ -172,10 +172,9 @@ export default function UserFormModal({ user, clinics, doctors, isOpen, onClose,
                       onChange={(e) => setPlanSlug(e.target.value)}
                       className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
                     >
-                      <option value="consultorio">Plan Consultorio (1 Médico)</option>
-                      <option value="esencial">Plan Clínica Esencial</option>
-                      <option value="pro">Plan Clínica Pro</option>
-                      <option value="enterprise">Plan Enterprise</option>
+                      <option value="esencial">Plan Esencial (1 Dr)</option>
+                      <option value="consultorio">Plan Consultorio (1 Dr + 1 Asist)</option>
+                      <option value="enterprise">Plan Enterprise (2+ Drs / 2+ Asist)</option>
                     </select>
                   </div>
                 </div>

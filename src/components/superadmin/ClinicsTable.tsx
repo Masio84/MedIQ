@@ -162,9 +162,9 @@ export default function ClinicsTable({ clinics = [], isLoading, onRefresh }: { c
                         onChange={(e) => handlePlanChange(c.id, e.target.value)}
                         className="bg-transparent text-xs font-bold text-gray-700 capitalize border border-gray-100 rounded-lg p-1"
                       >
-                        <option value="esencial">Esencial</option>
-                        <option value="consultorio">Consultorio</option>
-                        <option value="enterprise">Enterprise</option>
+                        <option value="esencial">Esencial (1 Dr)</option>
+                        <option value="consultorio">Consultorio (1 Dr + 1 Asist)</option>
+                        <option value="enterprise">Enterprise (2+ Drs / 2+ Asist)</option>
                       </select>
                     </td>
                     <td className="px-6 py-4">

@@ -126,11 +126,35 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
     fetchMessages();
   }, [profile?.id, selectedUserId]);
 
-  // 3. Suscripción Global a mensajes para Notificaciones
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+
+  // 3. Suscripción Global a mensajes para Notificaciones y Presencia
   useEffect(() => {
     if (!profile?.id) return;
 
-    const channel = supabase
+    // Presencia
+    const presenceChannel = supabase.channel('online-users', {
+        config: { presence: { key: profile.id } }
+    });
+
+    presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = presenceChannel.presenceState();
+          const onlineIds = Object.keys(state);
+          setOnlineUsers(onlineIds);
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await presenceChannel.track({
+              id: profile.id,
+              role: role,
+              name: profile.name
+            });
+          }
+        });
+
+    // Mensajes
+    const msgChannel = supabase
       .channel(`public:all_messages:${profile.id}`)
       .on('postgres_changes', { 
         event: 'INSERT', 
@@ -168,7 +192,8 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(presenceChannel);
+      supabase.removeChannel(msgChannel);
     };
   }, [profile?.id]);
 
@@ -364,7 +389,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
             {/* Users Dropdown */}
             {showUsersDropdown && (
               <div className="absolute top-11 left-2 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-100 z-50 w-60 max-h-48 overflow-y-auto divide-y divide-gray-50 flex flex-col animate-in fade-in-0 zoom-in-95 duration-150">
-                {Array.isArray(users) && users.map((u) => {
+                {Array.isArray(users) && users.filter(u => onlineUsers.includes(u.id)).map((u) => {
                   const uCount = unreadCounts[u.id] || 0;
                   return (
                     <button 

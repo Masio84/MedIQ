@@ -6,7 +6,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import SidebarLinks from '@/components/SidebarLinks';
 import SidebarChat from '@/components/SidebarChat';
-import FeatureGate from '@/components/FeatureGate';
 
 export default function DashboardShell({
   children,
@@ -21,17 +20,22 @@ export default function DashboardShell({
   const [stats, setStats] = useState({ earnedToday: 0, appointmentsToday: 0 });
   const [weatherTemp, setWeatherTemp] = useState<number | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [onlineDoctors, setOnlineDoctors] = useState(0);
+  const [onlineAssistants, setOnlineAssistants] = useState(0);
+  const [doctorNames, setDoctorNames] = useState<string[]>([]);
+  const [assistantNames, setAssistantNames] = useState<string[]>([]);
+  const [doctorAppts, setDoctorAppts] = useState<{ name: string; count: number }[]>([]);
+  const [hasLinkedAssistant, setHasLinkedAssistant] = useState(false);
 
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        // Coordenadas para Aguascalientes, México (basado en prefijos) o CDMX
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=21.8853&longitude=-102.2916&current_weather=true');
         const data = await res.json();
         if (data?.current_weather?.temperature) {
           setWeatherTemp(Math.round(data.current_weather.temperature));
         } else {
-          setWeatherTemp(24); // Fallback discreto
+          setWeatherTemp(24);
         }
       } catch (error) {
         setWeatherTemp(24);
@@ -39,14 +43,8 @@ export default function DashboardShell({
     };
     fetchWeather();
   }, []);
-  const [onlineDoctors, setOnlineDoctors] = useState(0);
-  const [onlineAssistants, setOnlineAssistants] = useState(0);
-  const [doctorNames, setDoctorNames] = useState<string[]>([]);
-  const [assistantNames, setAssistantNames] = useState<string[]>([]);
-  const [doctorAppts, setDoctorAppts] = useState<{ name: string; count: number }[]>([]);
 
   useEffect(() => {
-
     const fetchStats = async () => {
       setLoadingStats(true);
       const { createClient } = await import('@/lib/supabase/client');
@@ -69,8 +67,6 @@ export default function DashboardShell({
           0
         ) || 0;
 
-        const filterDoctorId = role === 'doctor' ? profile?.id : profile?.doctor_id;
-        
         let consultationsData: any[] = [];
         try {
           const res = await fetch('/api/consultations/list');
@@ -93,7 +89,6 @@ export default function DashboardShell({
           appointees = data;
         }
 
-        // Group appointments breakdown
         const counts: { [key: string]: number } = {};
         if (appointees) {
           appointees.forEach((a: any) => {
@@ -128,6 +123,30 @@ export default function DashboardShell({
 
     fetchStats();
   }, [role, profile?.id]);
+
+  useEffect(() => {
+    const checkAssistantLink = async () => {
+      if (!profile?.id) return;
+      
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      if (role === 'doctor') {
+        const { count } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('doctor_id', profile.id)
+          .eq('role', 'assistant');
+        setHasLinkedAssistant(!!count && count > 0);
+      } else if (role === 'assistant') {
+        setHasLinkedAssistant(true);
+      } else {
+        setHasLinkedAssistant(false);
+      }
+    };
+    
+    checkAssistantLink();
+  }, [profile?.id, role]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -182,7 +201,6 @@ export default function DashboardShell({
 
     return () => {
       if (channel) {
-        // Safe channel removal
         const remove = async () => {
           const { createClient } = await import('@/lib/supabase/client');
           const supabase = createClient();
@@ -220,7 +238,6 @@ export default function DashboardShell({
 
   return (
     <div className="flex h-screen bg-gray-100 text-gray-900 overflow-hidden relative">
-      {/* Sidebar - Desktop & Mobile */}
       <aside className={`
         fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-100 flex flex-col h-full transform 
         md:relative md:translate-x-0 transition-transform duration-300 ease-in-out shadow-lg md:shadow-none
@@ -245,17 +262,14 @@ export default function DashboardShell({
           </button>
         </div>
 
-        {/* Sidebar Navigation */}
         <SidebarLinks />
 
-        {/* Footer/Aviso Legal */}
         <div className="p-4 border-t border-gray-50 text-center mt-auto">
           <Link href="/legal" className="text-xs text-gray-400 hover:text-gray-900 transition-colors">
             Aviso Legal
           </Link>
         </div>
 
-        {/* Logout Button Section at Bottom */}
         <div className="p-3 border-t border-gray-100 bg-gray-50/50">
           <Link href="/auth/signout" className="flex items-center justify-center gap-2 py-2 px-3 w-full hover:bg-red-50/80 rounded-lg text-gray-500 hover:text-red-600 transition-all font-semibold text-xs border border-transparent hover:border-red-100">
             <LogOut size={14} />
@@ -264,8 +278,6 @@ export default function DashboardShell({
         </div>
       </aside>
 
-
-      {/* Backdrop for Mobile */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/25 backdrop-blur-sm z-30 md:hidden"
@@ -273,7 +285,6 @@ export default function DashboardShell({
         />
       )}
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="h-16 bg-white border-b border-gray-50/80 flex items-center justify-between px-4 md:px-8 shrink-0">
           <div className="flex items-center gap-3">
@@ -331,7 +342,6 @@ export default function DashboardShell({
                     <span className="text-sm font-black text-gray-800 leading-none">{stats.appointmentsToday}</span>
                   </div>
 
-                  {/* Tooltip appointments breakdown for Admins only */}
                   {role === 'admin' && (
                     <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[150px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
                       <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Citas por Doctor:</p>
@@ -339,7 +349,7 @@ export default function DashboardShell({
                         {!Array.isArray(doctorAppts) || doctorAppts.length === 0 ? (
                           <p className="text-[11px] text-gray-500">Sin citas hoy</p>
                         ) : (
-                          Array.isArray(doctorAppts) && doctorAppts.map((da, i) => (
+                          doctorAppts.map((da, i) => (
                             <p key={i} className="text-[11px] font-medium tracking-tight text-gray-100 flex items-center justify-between gap-2">
                               <span>{da.name}</span>
                               <span className="font-bold text-blue-400">{da.count}</span>
@@ -380,14 +390,13 @@ export default function DashboardShell({
                         <span className="text-sm font-black text-gray-800 leading-none">{onlineDoctors}</span>
                       </div>
                       
-                      {/* Tooltip list names on hover */}
                       <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[120px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
                         <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Doctores Conectados:</p>
                         <div className="space-y-0.5">
                           {!Array.isArray(doctorNames) || doctorNames.length === 0 ? (
                             <p className="text-[11px] text-gray-500">Sin usuarios</p>
                           ) : (
-                            Array.isArray(doctorNames) && doctorNames.map((name, i) => (
+                            doctorNames.map((name, i) => (
                               <p key={i} className="text-[11px] font-medium tracking-tight text-gray-100 flex items-center gap-1">
                                 <span className="w-1 h-1 rounded-full bg-emerald-400" />
                                 {name}
@@ -405,14 +414,13 @@ export default function DashboardShell({
                         <span className="text-sm font-black text-gray-800 leading-none">{onlineAssistants}</span>
                       </div>
 
-                      {/* Tooltip list names on hover */}
                       <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[120px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
                         <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Asistentes Conectados:</p>
                         <div className="space-y-0.5">
                           {!Array.isArray(assistantNames) || assistantNames.length === 0 ? (
                             <p className="text-[11px] text-gray-500">Sin usuarios</p>
                           ) : (
-                            Array.isArray(assistantNames) && assistantNames.map((name, i) => (
+                            assistantNames.map((name, i) => (
                               <p key={i} className="text-[11px] font-medium tracking-tight text-gray-100 flex items-center gap-1">
                                 <span className="w-1 h-1 rounded-full bg-blue-400" />
                                 {name}
@@ -425,12 +433,6 @@ export default function DashboardShell({
                   </>
                 )}
               </div>
-
-            {profile?.avatar_url && role !== 'doctor' && role !== 'assistant' && (
-              <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-100">
-                <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-              </div>
-            )}
           </div>
         </header>
 
@@ -438,12 +440,11 @@ export default function DashboardShell({
           {children}
         </main>
         
-        {/* Chat Flotante habilitado mediante Feature Gate */}
-        <FeatureGate feature="chat_realtime">
+        {/* Chat Flotante: Solo visible si hay asistente vinculado o es rol asistente */}
+        {hasLinkedAssistant && (
            <SidebarChat profile={profile} role={role} />
-        </FeatureGate>
+        )}
       </div>
     </div>
   );
 }
-

@@ -27,7 +27,7 @@ export default async function DashboardLayout({
      redirect('/setup');
   }
 
-  const role = profile?.role || 'assistant';
+  const role = profile?.is_superadmin ? 'superadmin' : (profile?.role || 'assistant') as any;
   const clinicId = profile?.clinic_id || null;
   const doctorId = profile?.doctor_id || null;
 

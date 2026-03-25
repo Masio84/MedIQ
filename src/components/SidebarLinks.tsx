@@ -40,8 +40,8 @@ export default function SidebarLinks() {
     },
     {
       href: '/dashboard/patients',
-      label: 'Pacientes',
-      icon: Users,
+      label: 'Expediente Digital',
+      icon: FileText,
       roles: ['doctor'],
     },
     {

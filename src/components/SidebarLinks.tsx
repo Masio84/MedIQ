@@ -1,11 +1,36 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, FileText, CreditCard, ShieldCheck, Calendar, FolderOpen, Stethoscope, FileCheck } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Users, 
+  FileText, 
+  CreditCard, 
+  ShieldCheck, 
+  Calendar, 
+  FolderOpen, 
+  Stethoscope, 
+  FileCheck, 
+  Archive,
+  ChevronDown,
+  ChevronRight,
+  FilePenLine
+} from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 
 export default function SidebarLinks() {
   const { role } = useRole();
   const pathname = usePathname();
+  const [isPrescriptionsOpen, setIsPrescriptionsOpen] = useState(false);
+
+  // Auto-expand if the current path is within prescriptions
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard/prescriptions')) {
+      setIsPrescriptionsOpen(true);
+    }
+  }, [pathname]);
 
   const links = [
     {
@@ -63,6 +88,26 @@ export default function SidebarLinks() {
       roles: ['doctor', 'assistant'],
     },
     {
+      label: 'Recetas',
+      icon: FileText,
+      roles: ['doctor'],
+      isSubmenu: true,
+      isOpen: isPrescriptionsOpen,
+      onToggle: () => setIsPrescriptionsOpen(!isPrescriptionsOpen),
+      subItems: [
+        {
+          href: '/dashboard/prescriptions/archive',
+          label: 'Recetas Emitidas',
+          icon: Archive,
+        },
+        {
+          href: '/dashboard/prescriptions',
+          label: 'Edición de Plantillas',
+          icon: FilePenLine,
+        },
+      ]
+    },
+    {
       href: '/dashboard/billing',
       label: 'Facturación',
       icon: CreditCard,
@@ -82,12 +127,60 @@ export default function SidebarLinks() {
         .filter((link) => link.roles.includes(role))
         .map((link) => {
           const Icon = link.icon;
+          
+          if (link.isSubmenu) {
+            const hasActiveSubItem = link.subItems?.some(sub => pathname === sub.href);
+            
+            return (
+              <div key={link.label} className="space-y-1">
+                <button
+                  onClick={link.onToggle}
+                  className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                    hasActiveSubItem || link.isOpen
+                      ? 'bg-gray-50 text-blue-600'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon size={20} className={hasActiveSubItem ? 'text-blue-500' : 'text-gray-400'} />
+                    {link.label}
+                  </div>
+                  {link.isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </button>
+                
+                {link.isOpen && (
+                  <div className="ml-4 space-y-1 border-l border-gray-100 pl-2">
+                    {link.subItems?.map((sub) => {
+                      const SubIcon = sub.icon;
+                      const isSubActive = pathname === sub.href;
+                      
+                      return (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-lg transition-colors ${
+                            isSubActive
+                              ? 'bg-blue-50 text-blue-600'
+                              : 'text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          <SubIcon size={16} className={isSubActive ? 'text-blue-500' : 'text-gray-400'} />
+                          {sub.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           const isActive = pathname === link.href;
 
           return (
             <Link
               key={link.href}
-              href={link.href}
+              href={link.href as string}
               className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 isActive
                   ? 'bg-blue-50 text-blue-600'
@@ -102,4 +195,5 @@ export default function SidebarLinks() {
     </nav>
   );
 }
+
 

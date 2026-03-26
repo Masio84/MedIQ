@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Loader2, AlertTriangle, Sparkles, X, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import cie10Catalogue from '@/lib/cie10_comunes.json';
 
-export default function ConsultationForm({ doctorId, initialPatientId, initialSymptoms, initialWeight, initialPressure, initialTemperature, onPatientChange }: { doctorId: string; initialPatientId?: string; initialSymptoms?: string; initialWeight?: string; initialPressure?: string; initialTemperature?: string; onPatientChange?: (id: string) => void }) {
+export default function ConsultationForm({ doctorId, initialPatientId, initialSymptoms, initialWeight, initialPressure, initialTemperature, onPatientChange, editingId, onComplete }: { doctorId: string; initialPatientId?: string; initialSymptoms?: string; initialWeight?: string; initialTemperature?: string; initialPressure?: string; onPatientChange?: (id: string) => void; editingId?: string; onComplete?: () => void }) {
   const [patients, setPatients] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -171,6 +171,63 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
     };
     fetchPatientData();
   }, [formData.patient_id, supabase]);
+
+  // Load consultation data if editingId is provided
+  useEffect(() => {
+    if (!editingId) return;
+
+    const fetchConsultation = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('consultations')
+          .select('*')
+          .eq('id', editingId)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setFormData({
+            patient_id: data.patient_id,
+            weight: data.weight?.toString() || '',
+            blood_pressure: data.blood_pressure || '',
+            temperature: data.temperature?.toString() || '',
+            symptoms: '', // will be handled by symptomsList if it was a joined string
+            diagnosis: data.diagnosis || '',
+            treatment: data.treatment || '',
+            notes: data.notes || '',
+            needs_follow_up: false, // reset or keep as logic dictates
+            follow_up_date: '',
+            follow_up_time: '',
+            follow_up_notes: '',
+            cie10_code: data.cie10_code || '',
+            cie10_description: data.cie10_description || '',
+            physical_examination: data.physical_examination || '',
+            prognosis: data.prognosis || '',
+            interconsultation_note: data.interconsultation_note || '',
+            informed_consent_id: data.informed_consent_id || ''
+          });
+
+          if (data.symptoms) {
+            setSymptomsList(data.symptoms.split(',').map((s: string) => s.trim()));
+          }
+
+          if (data.systems_review) {
+            setSystemsReview(data.systems_review);
+          }
+
+          setCie10Search(data.cie10_code ? `${data.cie10_code} - ${data.cie10_description}` : '');
+        }
+      } catch (err: any) {
+        setError("Error al cargar la consulta: " + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchConsultation();
+  }, [editingId, supabase]);
 
   useEffect(() => {
     if (onPatientChange && formData.patient_id) {
@@ -369,13 +426,21 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
     setError(null);
 
     try {
-      // 1. Insert Consultation
-      const { data: consultation, error: consultationError } = await supabase
-        .from('consultations')
-        .insert([
-          {
-            patient_id: formData.patient_id,
-            doctor_id: doctorId,
+      // 0. Fetch the doctor's prescription template snapshot
+      const { data: templateData } = await supabase
+        .from('prescription_templates')
+        .select('config')
+        .eq('doctor_id', doctorId)
+        .single();
+      
+      const templateSnapshot = templateData?.config || {};
+
+      // 1. Insert or Update Consultation
+      let consultation;
+      if (editingId) {
+        const { data, error: updateError } = await supabase
+          .from('consultations')
+          .update({
             symptoms: symptomsList.length > 0 ? symptomsList.join(', ') : (formData.symptoms || null),
             diagnosis: formData.diagnosis || null,
             treatment: formData.treatment || null,
@@ -388,14 +453,43 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
             physical_examination: formData.physical_examination || null,
             prognosis: formData.prognosis || null,
             interconsultation_note: formData.interconsultation_note || null,
-            systems_review: systemsReview,
-            informed_consent_id: formData.informed_consent_id || null
-          },
-        ])
-        .select()
-        .single();
+            systems_review: systemsReview
+          })
+          .eq('id', editingId)
+          .select()
+          .single();
+        
+        if (updateError) throw updateError;
+        consultation = data;
+      } else {
+        const { data, error: insertError } = await supabase
+          .from('consultations')
+          .insert([
+            {
+              patient_id: formData.patient_id,
+              doctor_id: doctorId,
+              symptoms: symptomsList.length > 0 ? symptomsList.join(', ') : (formData.symptoms || null),
+              diagnosis: formData.diagnosis || null,
+              treatment: formData.treatment || null,
+              weight: formData.weight ? parseFloat(formData.weight) : null,
+              blood_pressure: formData.blood_pressure || null,
+              temperature: formData.temperature ? parseFloat(formData.temperature) : null,
+              notes: (formData.notes || '') + ( (formData as any).needs_follow_up ? `\n\n[SEGUIMIENTO]: Fecha sugerida: ${(formData as any).follow_up_date || 'N/A'}. Notas de médico: ${(formData as any).follow_up_notes || 'N/A'}` : ''),
+              cie10_code: formData.cie10_code || null,
+              cie10_description: formData.cie10_description || null,
+              physical_examination: formData.physical_examination || null,
+              prognosis: formData.prognosis || null,
+              interconsultation_note: formData.interconsultation_note || null,
+              systems_review: systemsReview,
+              informed_consent_id: formData.informed_consent_id || null
+            },
+          ])
+          .select()
+          .single();
 
-      if (consultationError) throw consultationError;
+        if (insertError) throw insertError;
+        consultation = data;
+      }
 
       // Calculate discount and increment based on paymentType selection for billing update
       let discount = 0;
@@ -403,22 +497,81 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
       if (paymentType === 'discount') discount = Math.max(0, doctorSettings.base_price - finalPrice);
       if (paymentType === 'increment') extra_charge = Math.max(0, finalPrice - doctorSettings.base_price);
 
-      // 2. Insert Billing Record (triggers sync action back to flow)
-      const { error: billingError } = await supabase
-        .from('billing')
-        .insert([
-          {
-            consultation_id: consultation.id,
+      // 2. Insert Billing Record (only for new consultations)
+      if (!editingId) {
+        const { error: billingError } = await supabase
+          .from('billing')
+          .insert([
+            {
+              consultation_id: consultation.id,
+              patient_id: formData.patient_id,
+              normal_fee: doctorSettings.base_price,
+              discount: discount,
+              extra_charge: extra_charge,
+            },
+          ]);
+
+        if (billingError) throw billingError;
+      }
+
+      // 3. Update Prescription Content Snapshot if editing
+      if (editingId) {
+        const updatedContentSnapshot = {
+          symptoms: symptomsList.length > 0 ? symptomsList.join(', ') : (formData.symptoms || null),
+          diagnosis: formData.diagnosis || null,
+          treatment: formData.treatment || null,
+          notes: formData.notes || null,
+          vitals: {
+            weight: formData.weight,
+            blood_pressure: formData.blood_pressure,
+            temperature: formData.temperature
+          }
+        };
+
+        const { error: prescriptionUpdateError } = await supabase
+          .from('prescriptions')
+          .update({
+            content_snapshot: updatedContentSnapshot
+          })
+          .eq('consultation_id', editingId);
+        
+        // Non-critical if fails for old consultations without prescription record
+      } else {
+        // 3. Crear Receta Automática (Prescription) - for new consultations
+        const generateFolio = () => {
+          const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
+          const shortDoc = doctorId.split('-')[0].toUpperCase();
+          const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+          return `REC-${shortDoc}-${date}-${rand}`;
+        };
+
+        const contentSnapshot = {
+          symptoms: symptomsList.length > 0 ? symptomsList.join(', ') : (formData.symptoms || null),
+          diagnosis: formData.diagnosis || null,
+          treatment: formData.treatment || null,
+          notes: formData.notes || null,
+          vitals: {
+            weight: formData.weight,
+            blood_pressure: formData.blood_pressure,
+            temperature: formData.temperature
+          }
+        };
+
+        const { error: prescriptionError } = await supabase
+          .from('prescriptions')
+          .insert([{
+            folio: generateFolio(),
             patient_id: formData.patient_id,
-            normal_fee: doctorSettings.base_price,
-            discount: discount,
-            extra_charge: extra_charge,
-          },
-        ]);
+            consultation_id: consultation.id,
+            doctor_id: doctorId,
+            template_snapshot: templateSnapshot,
+            content_snapshot: contentSnapshot
+          }]);
 
-      if (billingError) throw billingError;
+        if (prescriptionError) throw prescriptionError;
+      }
 
-      // 3. Insert follow-up notification if needed
+      // 4. Insert follow-up notification if needed
       if ((formData as any).needs_follow_up && (formData as any).follow_up_date) {
         // Find assistant linked to this doctor
         const { data: doctorProfile } = await supabase
@@ -455,13 +608,26 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
         }
       }
 
-      setFeedback({ isOpen: true, title: '¡Éxito!', message: 'Consulta guardada y enviada a facturación.', type: 'success' });
+      setFeedback({ 
+        isOpen: true, 
+        title: editingId ? '¡Actualizado!' : '¡Éxito!', 
+        message: editingId ? 'La consulta ha sido actualizada y los cambios registrados en el historial.' : 'Consulta y receta generadas con éxito y enviadas a facturación.', 
+        type: 'success' 
+      });
       setIsModalOpen(false);
-      setFormData({
-        patient_id: '', weight: '', blood_pressure: '', temperature: '',
-        symptoms: '', diagnosis: '', treatment: '', notes: '',
-        needs_follow_up: false, follow_up_date: '', follow_up_time: '',
-      } as any);
+      
+      if (onComplete) {
+        onComplete();
+      }
+
+      if (!editingId) {
+        setFormData({
+          patient_id: '', weight: '', blood_pressure: '', temperature: '',
+          symptoms: '', diagnosis: '', treatment: '', notes: '',
+          needs_follow_up: false, follow_up_date: '', follow_up_time: '',
+        } as any);
+        setSymptomsList([]);
+      }
     } catch (err: any) {
       setError(err.message || 'Error al guardar la consulta');
     } finally {
@@ -471,8 +637,13 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
 
   return (
     <>
-      <form onSubmit={triggerSave} className="space-y-6 bg-white p-6 rounded-xl border border-gray-100/50 shadow-sm">
-        <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2">Registrar Consulta</h3>
+      <form onSubmit={triggerSave} className="space-y-6 bg-white p-6 rounded-xl border border-gray-100/50 shadow-sm transition-all duration-300">
+        <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+          <h3 className="text-lg font-bold text-gray-900">{editingId ? 'Editar Consulta' : 'Registrar Consulta'}</h3>
+          {editingId && (
+            <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-black rounded uppercase tracking-widest border border-amber-100">Modo Edición</span>
+          )}
+        </div>
         
         {error && (
           <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
@@ -840,7 +1011,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
                   disabled={loading}
                   className="w-full py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-sm font-medium disabled:opacity-50"
                 >
-                  {loading ? 'Guardando...' : 'Confirmar'}
+                  {loading ? 'Guardando...' : editingId ? 'Actualizar' : 'Confirmar'}
                 </button>
               </div>
             </div>

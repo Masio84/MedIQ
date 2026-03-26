@@ -16,9 +16,9 @@ export async function POST(request: Request) {
       .single();
 
     const clinicId = profile?.clinic_id;
-    if (!clinicId) return NextResponse.json({ success: false, error: 'Clínica no vinculada' }, { status: 400 });
-
-    await requireFeature(clinicId, 'ai_followup');
+    if (clinicId) {
+      await requireFeature(clinicId, 'ai_followup');
+    }
 
     const { diagnosis, treatment, symptoms } = await request.json();
     const apiKey = process.env.ANTHROPIC_API_KEY;

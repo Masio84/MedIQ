@@ -15,14 +15,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Ids Invalidos' }, { status: 400 });
     }
 
-    const { profile } = auth as any;
+    const { user, profile } = auth as any;
     const supabase = await createClient();
 
-    const { data: patients, error } = await supabase
+    let query = supabase
       .from('patients')
       .select('id, name')
       .in('id', ids)
-      .eq('clinic_id', profile.clinic_id); // Filtro clinic_id explícito
+      .eq('clinic_id', profile.clinic_id);
+
+    if (profile.role === 'doctor') {
+      query = query.eq('doctor_id', user.id);
+    } else if (profile.role === 'assistant') {
+      query = query.eq('doctor_id', profile.doctor_id);
+    }
+
+    const { data: patients, error } = await query;
 
     if (error) throw error;
 

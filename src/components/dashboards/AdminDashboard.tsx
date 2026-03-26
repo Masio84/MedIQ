@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Users, FileText, Activity, ShieldCheck, UserPlus, AlertTriangle, Loader2, CheckCircle, Mail, HelpCircle, Server } from 'lucide-react';
 import TrendsPanel from './TrendsPanel';
+import { toast } from 'sonner';
 
 interface AdminDashboardProps {
   profile: any;
@@ -134,7 +135,7 @@ export default function AdminDashboard({ profile, plan, stats }: AdminDashboardP
            clinic_id: profile.clinic_id,
            message: `La clínica ${profile.clinic_name || 'tu clínica'} solicita una actualización de plan.`
       }]);
-      alert('Solicitud enviada al Super Administrador.');
+      toast.success('Solicitud enviada', { description: 'Solicitud enviada al Super Administrador.' });
   };
 
   if (loading) return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-gray-400" /></div>;

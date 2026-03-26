@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Send, Smile, Paperclip, MessageSquare, ChevronDown } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function SidebarChat({ profile, role }: { profile: any; role: string }) {
   const [messages, setMessages] = useState<any[]>([]);
@@ -14,8 +15,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
-
+  const supabase = useMemo(() => createClient(), []);
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showUsersDropdown, setShowUsersDropdown] = useState(false);
@@ -133,7 +133,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
     if (!profile?.id) return;
 
     // Presencia
-    const presenceChannel = supabase.channel('online-users', {
+    const presenceChannel = supabase.channel('online-users-chat', {
         config: { presence: { key: profile.id } }
     });
 
@@ -152,7 +152,6 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
             });
           }
         });
-
     // Mensajes
     const msgChannel = supabase
       .channel(`public:all_messages:${profile.id}`)
@@ -195,8 +194,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
       supabase.removeChannel(presenceChannel);
       supabase.removeChannel(msgChannel);
     };
-  }, [profile?.id]);
-
+  }, [profile?.id, role, profile?.name, selectedUserId, supabase]);
   // Calcular unreadCount global
   useEffect(() => {
      const total = Object.values(unreadCounts).reduce((acc, count) => acc + count, 0);
@@ -299,7 +297,7 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
 
     if (error) {
        console.error("Error sending message:", error);
-       alert("Error al enviar mensaje (posible restricción RLS): " + (error.message || "Insert fallido"));
+       toast.error('Error al enviar mensaje', { description: error.message || "Insert fallido" });
        setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
     }
   };

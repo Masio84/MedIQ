@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Search, UserPlus, Users, Calendar, DollarSign, Loader2, ChevronLeft, ChevronRight, Clock, FileText, X } from 'lucide-react';
 import PatientForm from '@/components/PatientForm';
 import { useRole } from '@/context/RoleContext';
+import { toast } from 'sonner';
 
 export default function DoctorDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -601,7 +602,7 @@ export default function DoctorDashboard() {
                         setIsDetailModalOpen(false);
                         window.location.href = `/dashboard/consultations?patient_id=${pId}&symptoms=${encodeURIComponent(selectedAppt.reason || '')}&weight=${selectedAppt.weight || ''}&blood_pressure=${selectedAppt.blood_pressure || ''}&temperature=${selectedAppt.temperature || ''}`;
                      } else {
-                        alert('No se pudo crear el registro del paciente para la consulta.');
+                        toast.error('Error', { description: 'No se pudo crear el registro del paciente para la consulta.' });
                      }
                   }} className="w-full py-2.5 bg-[#1A4A8A] text-white font-bold text-xs rounded-xl">Ir a Consulta Médica</button>
                   )}

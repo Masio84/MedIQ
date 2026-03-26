@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 import { Calendar, Clock, User, FileText, ChevronLeft, ChevronRight, Search, X, Users, AlertCircle, Ban } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
@@ -25,6 +27,8 @@ export default function AgendaPage() {
   const [isApptModalOpen, setIsApptModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
+  const [apptToCancel, setApptToCancel] = useState<{id: string, reason?: string} | null>(null);
   
   const [selectedAppt, setSelectedAppt] = useState<any>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -155,7 +159,14 @@ export default function AgendaPage() {
   };
 
   const handleCancelAppointment = async (id: string, reason?: string) => {
-    if (!confirm('¿Estás seguro de cancelar esta cita?')) return;
+    setApptToCancel({ id, reason });
+    setIsConfirmCancelOpen(true);
+  };
+
+  const confirmCancelAppointment = async () => {
+    if (!apptToCancel) return;
+    const { id, reason } = apptToCancel;
+    
     try {
       const res = await fetch('/api/appointments/cancel', {
         method: 'DELETE',
@@ -164,11 +175,20 @@ export default function AgendaPage() {
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
+      
+      toast.success('Cita cancelada', {
+        description: 'La cita ha sido eliminada de la agenda correctamente.'
+      });
+      
       setIsDetailModalOpen(false);
       setIsApptModalOpen(false);
       fetchData();
     } catch (e: any) {
-      alert(e.message);
+      toast.error('Error al cancelar', {
+        description: e.message
+      });
+    } finally {
+      setApptToCancel(null);
     }
   };
 
@@ -842,7 +862,7 @@ export default function AgendaPage() {
                      if (pId) {
                         setIsDetailModalOpen(false);                         window.location.href = `/dashboard/consultations?patient_id=${pId}&symptoms=${encodeURIComponent(selectedAppt.reason || '')}&weight=${selectedAppt.weight || ''}&blood_pressure=${selectedAppt.blood_pressure || ''}&temperature=${selectedAppt.temperature || ''}`;
                      } else {
-                        alert('No se pudo crear el registro del paciente para la consulta.');
+                        toast.error('Error', { description: 'No se pudo crear el registro del paciente para la consulta.' });
                      }
                   }} className="w-full py-2.5 bg-[#1A4A8A] text-white font-bold text-xs rounded-xl">Ir a Consulta Médica</button>
                   )}
@@ -886,6 +906,16 @@ export default function AgendaPage() {
         </div>
       )}
 
+      <ConfirmModal
+        isOpen={isConfirmCancelOpen}
+        onClose={() => setIsConfirmCancelOpen(false)}
+        onConfirm={confirmCancelAppointment}
+        title="Cancelar Cita"
+        message="¿Estás seguro de que deseas cancelar esta cita? Esta acción no se puede deshacer."
+        confirmText="Sí, Cancelar"
+        cancelText="No, Mantener"
+        variant="danger"
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { Menu, X, LogOut, Calendar, Clock, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -16,6 +17,7 @@ export default function DashboardShell({
   profile: any;
   role: string;
 }) {
+  const supabase = useMemo(() => createClient(), []);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [stats, setStats] = useState({ earnedToday: 0, appointmentsToday: 0 });
   const [weatherTemp, setWeatherTemp] = useState<number | null>(null);
@@ -158,15 +160,10 @@ export default function DashboardShell({
     if (!profile?.id) return;
 
     let channel: any;
-
     const setupPresence = async () => {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-
       channel = supabase.channel('online-users', {
         config: { presence: { key: profile.id } }
       });
-
       channel
         .on('presence', { event: 'sync' }, () => {
           const state = channel.presenceState();
@@ -213,15 +210,10 @@ export default function DashboardShell({
 
     return () => {
       if (channel) {
-        const remove = async () => {
-          const { createClient } = await import('@/lib/supabase/client');
-          const supabase = createClient();
-          supabase.removeChannel(channel);
-        };
-        remove();
+        supabase.removeChannel(channel);
       }
     };
-  }, [profile?.id, role, profile?.name]);
+  }, [profile?.id, role, profile?.name, supabase]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();

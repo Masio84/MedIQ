@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2, PlusCircle, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function ClinicsTable({ clinics = [], isLoading, onRefresh }: { clinics: any[]; isLoading: boolean; onRefresh: () => void }) {
   const [selectedClinic, setSelectedClinic] = useState<any>(null);
@@ -63,7 +64,7 @@ export default function ClinicsTable({ clinics = [], isLoading, onRefresh }: { c
       if (!res.ok) throw new Error('Error al actualizar status');
       onRefresh();
     } catch (err: any) {
-      alert(err.message);
+      toast.error('Error', { description: err.message });
     } finally {
       setIsUpdating(false);
     }
@@ -81,7 +82,7 @@ export default function ClinicsTable({ clinics = [], isLoading, onRefresh }: { c
       if (!res.ok) throw new Error('Error al cambiar plan');
       onRefresh();
     } catch (err: any) {
-      alert(err.message);
+      toast.error('Error', { description: err.message });
     } finally {
       setIsUpdating(false);
     }
@@ -98,13 +99,13 @@ export default function ClinicsTable({ clinics = [], isLoading, onRefresh }: { c
         .update({ custom_limits: parsed })
         .eq('clinic_id', selectedClinic.id);
 
-      if (error) alert('Error: ' + error.message);
+      if (error) toast.error('Error', { description: error.message });
       else {
         onRefresh();
         setIsDrawerOpen(false);
       }
     } catch (e) {
-      alert('JSON Inválido: Asegúrate de que los límites estén bien estructurados.');
+      toast.error('JSON Inválido', { description: 'Asegúrate de que los límites estén bien estructurados.' });
     } finally {
       setIsUpdating(false);
     }

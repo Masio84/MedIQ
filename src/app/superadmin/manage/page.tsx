@@ -8,6 +8,7 @@ import UserFormModal from '@/components/superadmin/UserFormModal';
 import ClinicTable from '@/components/superadmin/ClinicTable';
 import ClinicFormModal from '@/components/superadmin/ClinicFormModal';
 import { toast } from 'sonner';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 export default function SuperAdminManagePage() {
   const router = useRouter();
@@ -24,6 +25,9 @@ export default function SuperAdminManagePage() {
   
   const [isClinicModalOpen, setIsClinicModalOpen] = useState(false);
   const [editingClinic, setEditingClinic] = useState<any | null>(null);
+
+  const [isConfirmStatusOpen, setIsConfirmStatusOpen] = useState(false);
+  const [userToToggle, setUserToToggle] = useState<any | null>(null);
 
   const fetchClinics = async () => {
     try {
@@ -85,12 +89,16 @@ export default function SuperAdminManagePage() {
   };
 
   // Handler for Soft Delete / Reactivate User
-  const handleToggleUserStatus = async (user: any) => {
-    const newStatus = !user.is_active;
-    const actionName = newStatus ? 'Reactivar' : 'Suspender';
-    
-    if (!confirm('¿Estás seguro que deseas ' + actionName.toLowerCase() + ' al usuario ' + user.name + '?')) return;
+  const handleToggleUserStatus = (user: any) => {
+    setUserToToggle(user);
+    setIsConfirmStatusOpen(true);
+  };
 
+  const confirmToggleStatus = async () => {
+    if (!userToToggle) return;
+    const user = userToToggle;
+    const newStatus = !user.is_active;
+    
     try {
       const res = await fetch('/api/superadmin/users', {
         method: 'PATCH',
@@ -108,6 +116,8 @@ export default function SuperAdminManagePage() {
       fetchUsers();
     } catch (err: any) {
       toast.error('Error al actualizar estado', { description: err.message });
+    } finally {
+      setUserToToggle(null);
     }
   };
 
@@ -227,6 +237,15 @@ export default function SuperAdminManagePage() {
         isOpen={isClinicModalOpen}
         onClose={() => setIsClinicModalOpen(false)}
         onSave={handleSaveClinic}
+      />
+      <ConfirmModal
+        isOpen={isConfirmStatusOpen}
+        onClose={() => setIsConfirmStatusOpen(false)}
+        onConfirm={confirmToggleStatus}
+        title={userToToggle?.is_active ? 'Suspender Usuario' : 'Reactivar Usuario'}
+        message={`¿Estás seguro que deseas ${userToToggle?.is_active ? 'suspender' : 'reactivar'} al usuario ${userToToggle?.name}?`}
+        confirmText={userToToggle?.is_active ? 'Suspender' : 'Reactivar'}
+        variant={userToToggle?.is_active ? 'danger' : 'info'}
       />
     </div>
   );

@@ -82,10 +82,14 @@ export default function DoctorDashboard() {
         setSearchResults([]);
         return;
       }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       setSearching(true);
       const { data } = await supabase
         .from('patients')
         .select('id, name')
+        .eq('doctor_id', user.id)
         .or(`name.ilike.%${searchTerm}%`);
       setSearchResults(Array.isArray(data) ? data : []);
       setSearching(false);
@@ -103,8 +107,14 @@ export default function DoctorDashboard() {
     const startCount = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
     const endCount = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     // 2. Fetch Billing according to filter (Only paid ones)
-    let query = supabase.from('billing').select('normal_fee, discount, extra_charge, created_at').eq('paid', true);
+    let query = supabase.from('billing')
+      .select('normal_fee, discount, extra_charge, created_at')
+      .eq('doctor_id', user.id)
+      .eq('paid', true);
     
     const startOfToday = new Date();
     startOfToday.setHours(0,0,0,0);
@@ -120,9 +130,17 @@ export default function DoctorDashboard() {
     }
 
     const [todayResult, pCountResult, bCountResult, billingsResult, apptsResult] = await Promise.all([
-      supabase.from('consultations').select('id, patient_id, created_at, status, patients!consultations_patient_id_fkey(name)').gte('created_at', today),
-      supabase.from('patients').select('*', { count: 'exact', head: true }),
-      supabase.from('billing').select('*', { count: 'exact', head: true }).eq('paid', false),
+      supabase.from('consultations')
+        .select('id, patient_id, created_at, status, patients!consultations_patient_id_fkey(name)')
+        .eq('doctor_id', user.id)
+        .gte('created_at', today),
+      supabase.from('patients')
+        .select('*', { count: 'exact', head: true })
+        .eq('doctor_id', user.id),
+      supabase.from('billing')
+        .select('*', { count: 'exact', head: true })
+        .eq('doctor_id', user.id)
+        .eq('paid', false),
       query,
       fetch(`/api/appointments/list?date_from=${startCount}&date_to=${endCount}`).then(res => res.json())
     ]);

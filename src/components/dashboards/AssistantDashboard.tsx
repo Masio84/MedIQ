@@ -95,9 +95,15 @@ export default function AssistantDashboard() {
     const startCount = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
     const endCount = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: prof } = await supabase.from('profiles').select('doctor_id').eq('id', user.id).single();
+    if (!prof?.doctor_id) return;
+
     const { data } = await supabase
       .from('appointments')
       .select('date, time, doctor_id')
+      .eq('doctor_id', prof.doctor_id)
       .gte('date', startCount)
       .lte('date', endCount);
 
@@ -115,32 +121,47 @@ export default function AssistantDashboard() {
         if (prof.doctor_id) {
           setNewAppointment(prev => ({ ...prev, doctor_id: prof.doctor_id }));
         }
+
+        // 2. Cargar doctores y pacientes
+        const { data: d } = await supabase.from('profiles')
+          .select('id, name')
+          .eq('role', 'doctor')
+          .eq('is_active', true)
+          .eq('id', prof.doctor_id);
+        
+        const { data: p } = await supabase.from('patients')
+          .select('id, name')
+          .eq('doctor_id', prof.doctor_id);
+
+        if (d) setDoctors(Array.isArray(d) ? d : []);
+        if (p) setPatients(p);
+
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const { count } = await supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .eq('doctor_id', prof.doctor_id)
+          .eq('date', todayStr)
+          .eq('status', 'scheduled');
+        
+        if (count !== null) setAppointmentsToday(count);
       }
     }
-
-    // 2. Cargar doctores y pacientes
-    const { data: d } = await supabase.from('profiles').select('id, name').eq('role', 'doctor').eq('is_active', true);
-    const { data: p } = await supabase.from('patients').select('id, name');
-    if (d) setDoctors(Array.isArray(d) ? d : []);
-    if (p) setPatients(p);
-
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const { count } = await supabase
-      .from('appointments')
-      .select('*', { count: 'exact', head: true })
-      .eq('date', todayStr)
-      .eq('status', 'scheduled');
-    
-    if (count !== null) setAppointmentsToday(count);
   };
 
   const fetchPendingBillings = async () => {
     setLoading(true);
     
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
+    const { data: prof } = await supabase.from('profiles').select('doctor_id').eq('id', user.id).single();
+    if (!prof?.doctor_id) { setLoading(false); return; }
+    
     const { data: allBillings } = await supabase
       .from('billing')
       .select('id, normal_fee, discount, extra_charge, created_at, paid, patient_id, patients!billing_patient_id_fkey(name, id), consultations(id, notes, doctor_id)')
+      .eq('doctor_id', prof.doctor_id)
       .order('created_at', { ascending: false });
 
     if (allBillings) {

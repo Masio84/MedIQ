@@ -1,0 +1,26 @@
+Activar MEDIQ SAFE MODE.
+
+1. Leer completamente:
+/ai/SAFE_MODE.md
+
+2. Antes de cualquier acción:
+- Analizar estado actual de RLS
+- Detectar duplicados o inconsistencias
+
+3. Restricciones:
+- No modificar RLS
+- No modificar auditoría
+- No duplicar políticas
+- No usar OR en seguridad
+- No usar clinic_id como filtro de seguridad
+
+4. Flujo obligatorio:
+- Explicar estado actual
+- Explicar cambios propuestos
+- Esperar validación si toca seguridad
+
+5. Contexto:
+Este sistema ya fue auditado y endurecido.
+Cualquier modificación incorrecta rompe cumplimiento NOM.
+
+Confirmar activación de SAFE MODE antes de continuar.

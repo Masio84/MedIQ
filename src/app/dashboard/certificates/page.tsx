@@ -27,8 +27,9 @@ export default function CertificatesPage() {
   const fetchHistory = async () => {
     setLoadingHistory(true);
     
-    // Obtener usuario actual para filtrar por doctor
+    // Obtener usuario actual y perfil para identificar al doctor
     const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase.from('profiles').select('doctor_id').eq('id', user?.id).single();
 
     let query = supabase
       .from('medical_certificates')
@@ -54,6 +55,8 @@ export default function CertificatesPage() {
     
     if (role === 'doctor' && user) {
       query = query.eq('doctor_id', user.id);
+    } else if (role === 'assistant' && profile?.doctor_id) {
+      query = query.eq('doctor_id', profile.doctor_id);
     }
 
     const { data } = await query;

@@ -20,7 +20,13 @@ export default function AssistantDashboard() {
   const [currentProfile, setCurrentProfile] = useState<any>(null);
 
   // Simple appointment state for direct actions
-  const [newAppointment, setNewAppointment] = useState({ patient_id: '', doctor_id: '', date: '', time: '', notes: '' });
+  const [newAppointment, setNewAppointment] = useState({ 
+    patient_id: '', 
+    doctor_id: '', 
+    date: '', 
+    start_time: '', 
+    notes: '' 
+  });
 
   // Direct Calendar Modal states
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -31,7 +37,7 @@ export default function AssistantDashboard() {
   const [selectedBilling, setSelectedBilling] = useState<any>(null);
   const [followUpInfo, setFollowUpInfo] = useState<{ date: string; notes: string } | null>(null);
   
-  const [agendaData, setAgendaData] = useState({ date: '', time: '', notes: '' });
+  const [agendaData, setAgendaData] = useState({ date: '', start_time: '', notes: '' });
   const [modalError, setModalError] = useState<string | null>(null);
   const [patientSearch, setPatientSearch] = useState('');
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
@@ -197,12 +203,12 @@ export default function AssistantDashboard() {
       });
       setAgendaData({
         date: match[1]?.trim() !== 'N/A' ? match[1] : '',
-        time: '09:00', // Default hour
+        start_time: '09:00', // Default hour
         notes: `Seguimiento: ${match[2]?.trim() !== 'N/A' ? match[2] : ''}`
       });
     } else {
       setFollowUpInfo(null);
-      setAgendaData({ date: '', time: '', notes: 'Generando sugerencia del sistema...' });
+      setAgendaData({ date: '', start_time: '', notes: 'Generando sugerencia del sistema...' });
 
       // Cargar sugerencia vía IA
       if (consultation) {
@@ -224,7 +230,7 @@ export default function AssistantDashboard() {
             setAgendaData(prev => ({ ...prev, notes: 'Cita de control' }));
          });
       } else {
-         setAgendaData({ date: '', time: '', notes: 'Cita de control' });
+         setAgendaData({ date: '', start_time: '', notes: 'Cita de control' });
       }
     }
 
@@ -254,7 +260,7 @@ export default function AssistantDashboard() {
     }
 
     // 2. If should Schedule appointment
-    if (agendaData.date && agendaData.time) {
+    if (agendaData.date && agendaData.start_time) {
       const patientId = selectedBilling?.consultations?.patient_id || selectedBilling?.consultations?.[0]?.patient_id;
       const doctorId = selectedBilling?.consultations?.doctor_id || selectedBilling?.consultations?.[0]?.doctor_id;
 
@@ -265,9 +271,9 @@ export default function AssistantDashboard() {
             patient_id: patientId,
             doctor_id: doctorId,
             date: agendaData.date,
-            start_time: agendaData.time,
+            start_time: agendaData.start_time,
             end_time: (() => {
-               const [hours, minutes] = agendaData.time.split(':').map(Number);
+               const [hours, minutes] = agendaData.start_time.split(':').map(Number);
                const endDate = new Date(0, 0, 0, hours, minutes + 30);
                return `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}:00`;
             })(),
@@ -294,7 +300,7 @@ export default function AssistantDashboard() {
   };
 
   const confirmNewAppointment = async () => {
-    if (!newAppointment.patient_id || !newAppointment.doctor_id || !newAppointment.date || !newAppointment.time) {
+    if (!newAppointment.patient_id || !newAppointment.doctor_id || !newAppointment.date || !newAppointment.start_time) {
       setModalError('Rellena todos los campos obligatorios.');
       return;
     }
@@ -303,9 +309,19 @@ export default function AssistantDashboard() {
     const { error } = await supabase
       .from('appointments')
       .insert([{
-        ...newAppointment,
-        type: 'first_visit',
-        status: 'scheduled'
+        patient_id: newAppointment.patient_id,
+        doctor_id: newAppointment.doctor_id,
+        date: newAppointment.date,
+        start_time: newAppointment.start_time,
+        end_time: (() => {
+           const [hours, minutes] = newAppointment.start_time.split(':').map(Number);
+           const endDate = new Date(0, 0, 0, hours, minutes + 30);
+           return `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}:00`;
+        })(),
+        duration_minutes: 30,
+        appointment_type: 'consultation',
+        status: 'scheduled',
+        notes: newAppointment.notes
       }]);
       
     if (error) {
@@ -316,7 +332,7 @@ export default function AssistantDashboard() {
         patient_id: '', 
         doctor_id: prev.doctor_id, // Preservar el doctor vinculado por defecto
         date: '', 
-        time: '', 
+        start_time: '', 
         notes: '' 
       }));
       setPatientSearch('');
@@ -329,8 +345,15 @@ export default function AssistantDashboard() {
         patient_id: notif.patient_id,
         doctor_id: notif.from_user_id,
         date: notif.suggested_date,
-        time: notif.suggested_time || '09:00',
-        type: 'follow_up',
+        start_time: notif.suggested_time || '09:00',
+        end_time: (() => {
+           const timeStr = notif.suggested_time || '09:00';
+           const [hours, minutes] = timeStr.split(':').map(Number);
+           const endDate = new Date(0, 0, 0, hours, minutes + 30);
+           return `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}:00`;
+        })(),
+        duration_minutes: 30,
+        appointment_type: 'follow_up',
         status: 'scheduled',
         notes: notif.message || 'Seguimiento sugerido por médico',
       }]);
@@ -559,8 +582,8 @@ export default function AssistantDashboard() {
                   <label className="block text-xxs text-gray-400">Hora</label>
                   <input 
                     type="time" 
-                    value={agendaData.time}
-                    onChange={(e) => setAgendaData({ ...agendaData, time: e.target.value })}
+                    value={agendaData.start_time}
+                    onChange={(e) => setAgendaData({ ...agendaData, start_time: e.target.value })}
                     className="w-full p-2 border border-gray-100 rounded-lg text-xs focus:outline-none"
                   />
                 </div>
@@ -762,7 +785,7 @@ export default function AssistantDashboard() {
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1 flex justify-between">
                     <span>Selecciona Hora</span>
-                    {newAppointment.time && <span className="text-blue-600 font-bold">({newAppointment.time})</span>}
+                    {newAppointment.start_time && <span className="text-blue-600 font-bold">({newAppointment.start_time})</span>}
                   </label>
                   {!newAppointment.date ? (
                     <p className="text-xxs text-gray-400">Selecciona una fecha en el calendario.</p>
@@ -775,17 +798,17 @@ export default function AssistantDashboard() {
                           slots.push(`${String(h).padStart(2, '0')}:30`);
                         }
                         return slots.map(slot => {
-                          const isTaken = monthAppointments.some(
-                            a => a.date === newAppointment.date && a.time.substring(0, 5) === slot && (!newAppointment.doctor_id || a.doctor_id === newAppointment.doctor_id)
-                          );
-                          const isSelected = newAppointment.time === slot;
+                            const isTaken = monthAppointments.some(
+                              a => a.date === newAppointment.date && (a.start_time || '').substring(0, 5) === slot && (!newAppointment.doctor_id || a.doctor_id === newAppointment.doctor_id)
+                            );
+                            const isSelected = newAppointment.start_time === slot;
 
                           return (
                             <button
                               key={slot}
                               type="button"
                               disabled={isTaken}
-                              onClick={() => setNewAppointment({ ...newAppointment, time: slot })}
+                              onClick={() => setNewAppointment({ ...newAppointment, start_time: slot })}
                               className={`p-1.5 text-xxs font-bold rounded-lg border text-center transition-colors ${
                                 isSelected 
                                   ? 'bg-blue-600 border-blue-600 text-white' 

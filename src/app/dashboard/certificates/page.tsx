@@ -44,7 +44,7 @@ export default function CertificatesPage() {
         expires_at,
         patient_id,
         patients ( name, phone ),
-        doctor:doctor_id ( name, medical_license, specialty, specialty_license )
+        doctor:profiles!medical_certificates_doctor_id_fkey ( name, medical_license, specialty, specialty_license )
       `)
       .order('created_at', { ascending: false });
 

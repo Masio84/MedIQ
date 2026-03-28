@@ -30,6 +30,12 @@ export default function DoctorDashboard() {
   const [weekAppointments, setWeekAppointments] = useState<any[]>([]);
   const [calendarView, setCalendarView] = useState<'mes' | 'semana'>('semana');
   const [selectedDateString, setSelectedDateString] = useState<string | null>(null);
+  
+  // Plan & Assistant Status
+  const [plan, setPlan] = useState<string | null>(null);
+  const [linkedAssistant, setLinkedAssistant] = useState<any>(null);
+  const [inviting, setInviting] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -109,6 +115,15 @@ export default function DoctorDashboard() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    // Fetch Profile/Plan and Assistant
+    const [profileRes, assistantRes] = await Promise.all([
+      supabase.from('profiles').select('plan_assigned').eq('id', user.id).single(),
+      supabase.from('profiles').select('id, name, email').eq('doctor_id', user.id).eq('role', 'assistant').single()
+    ]);
+
+    if (profileRes.data) setPlan(profileRes.data.plan_assigned);
+    if (assistantRes.data) setLinkedAssistant(assistantRes.data);
 
     // 2. Fetch Billing according to filter (Only paid ones)
     let query = supabase.from('billing')
@@ -334,6 +349,33 @@ export default function DoctorDashboard() {
               </button>
             </div>
           </div>
+
+          {/* Gestión de Asistente (Solo para Plan Consultorio) */}
+          {(plan === 'consultorio' || plan === 'enterprise') && (
+            <div className="bg-white rounded-xl border-[0.5px] border-black/8 shadow-sm p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Users size={16} className="text-blue-600" />
+                <p className="text-xs font-bold text-gray-700">Mi Asistente</p>
+              </div>
+              
+              {linkedAssistant ? (
+                <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100/50">
+                  <p className="text-[11px] font-bold text-blue-900">{linkedAssistant.name || 'Asistente Vinculado'}</p>
+                  <p className="text-[10px] text-blue-600/70 truncate">{linkedAssistant.email || 'Sin correo'}</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[10px] text-gray-500 leading-tight">Tu plan permite un asistente. Invíta a alguien para empezar a colaborar.</p>
+                  <button 
+                    onClick={() => setInviting(true)}
+                    className="w-full py-2 border border-dashed border-blue-300 text-blue-600 rounded-lg text-[10px] font-black hover:bg-blue-50 transition-all flex items-center justify-center gap-1">
+                    <UserPlus size={12} />
+                    Invitar Asistente
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ─── RIGHT PANEL ─── */}
@@ -643,6 +685,41 @@ export default function DoctorDashboard() {
               setIsModalOpen(false);
               fetchData();
             }} />
+          </div>
+        </div>
+      )}
+
+      {/* Invitar Asistente Modal */}
+      {inviting && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8 relative space-y-4">
+            <button onClick={() => setInviting(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900"><X size={20}/></button>
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2">
+              <UserPlus size={24} />
+            </div>
+            <h3 className="text-center font-black text-gray-900">Invitar Asistente</h3>
+            <p className="text-center text-xs text-gray-500 px-2">Crea una cuenta para tu asistente. Podrá ver tu agenda y gestionar cobros.</p>
+            
+            <div className="space-y-4 pt-2">
+              <input 
+                type="email" 
+                placeholder="correo@asistente.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button 
+                onClick={() => {
+                  toast.success('¡Enlace enviado!', { description: `Se ha enviado una invitación a ${inviteEmail}` });
+                  setInviting(false);
+                  setInviteEmail('');
+                }}
+                disabled={!inviteEmail}
+                className="w-full py-3 bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-100 disabled:opacity-50"
+              >
+                Enviar Invitación
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -70,6 +70,10 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
          if (defaultTarget) {
             setSelectedUserId(defaultTarget.id);
             setTargetProfileName(defaultTarget.name);
+         } else if (data.length > 0) {
+            // Si no hay doctor vinculado especificado, elegir el primero de la lista
+            setSelectedUserId(data[0].id);
+            setTargetProfileName(data[0].name);
          }
       }
     };
@@ -387,8 +391,9 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
             {/* Users Dropdown */}
             {showUsersDropdown && (
               <div className="absolute top-11 left-2 bg-white text-gray-800 rounded-xl shadow-2xl border border-gray-100 z-50 w-60 max-h-48 overflow-y-auto divide-y divide-gray-50 flex flex-col animate-in fade-in-0 zoom-in-95 duration-150">
-                {Array.isArray(users) && users.filter(u => onlineUsers.includes(u.id)).map((u) => {
+                {Array.isArray(users) && users.map((u) => {
                   const uCount = unreadCounts[u.id] || 0;
+                  const isOnline = onlineUsers.includes(u.id);
                   return (
                     <button 
                       key={u.id} 
@@ -398,15 +403,16 @@ export default function SidebarChat({ profile, role }: { profile: any; role: str
                       }} 
                       className={`w-full text-left px-3 py-2 text-xs hover:bg-[#F4F7FB] flex items-center justify-between transition-colors ${selectedUserId === u.id ? 'bg-blue-50/70 font-bold text-[#1A4A8A]' : 'text-gray-700'}`}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <span>{u.name}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isOnline ? 'bg-green-500' : 'bg-gray-300'}`} />
+                        <span className="truncate">{u.name}</span>
                         {uCount > 0 && (
                           <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black scale-90 shadow-sm animate-pulse">
                             {uCount}
                           </span>
                         )}
                       </div>
-                      <span className="text-[9px] uppercase font-bold text-gray-400">
+                      <span className="text-[9px] uppercase font-bold text-gray-400 ml-2">
                         {u.role === 'doctor' ? 'Doc' : u.role === 'assistant' ? 'Asis' : u.role}
                       </span>
                     </button>

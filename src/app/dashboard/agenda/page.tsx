@@ -384,7 +384,12 @@ export default function AgendaPage() {
                          <div className="w-1 h-full rounded-full shrink-0" style={{ backgroundColor: style.border }} />
                          <div className="min-w-0">
                            <div className="text-xs font-bold text-gray-900 truncate">{appt.patients?.name || appt.patient_name}</div>
-                           <div className="text-[9px] text-gray-500 truncate">{appt.reason || 'Sin motivo'}</div>
+                           <div className="text-[9px] text-gray-500 truncate">
+                             {role === 'assistant' 
+                               ? (appt.appointment_type === 'consultation' ? 'Consulta General' : appt.appointment_type === 'follow_up' ? 'Seguimiento' : appt.appointment_type === 'emergency' ? 'Urgencia' : 'Cita Agendada')
+                               : (appt.reason || 'Sin motivo')
+                             }
+                           </div>
                          </div>
                        </div>
                      );
@@ -505,7 +510,12 @@ export default function AgendaPage() {
                                     <span className="text-xs font-black" style={{ color: style.text }}>{appt.patients?.name || appt.patient_name}</span>
                                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/50">{appt.duration_minutes} min</span>
                                   </div>
-                                  <div className="text-[10px] text-gray-600 mt-1 line-clamp-1">{appt.reason || 'Consulta General'}</div>
+                                  <div className="text-[10px] text-gray-600 mt-1 line-clamp-1">
+                                    {role === 'assistant'
+                                      ? (appt.appointment_type === 'consultation' ? 'Consulta General' : appt.appointment_type === 'follow_up' ? 'Seguimiento' : appt.appointment_type === 'emergency' ? 'Urgencia' : 'Cita')
+                                      : (appt.reason || 'Consulta General')
+                                    }
+                                  </div>
                                </div>
                              </div>
                            </div>
@@ -589,7 +599,12 @@ export default function AgendaPage() {
                                        style={{ backgroundColor: style.bg, borderLeftColor: style.border }}
                                       >
                                          <div className="text-[10px] font-black truncate" style={{ color: style.text }}>{appt.patients?.name || appt.patient_name}</div>
-                                         <div className="text-[8px] text-gray-600 line-clamp-1">{appt.reason || 'Consulta'}</div>
+                                         <div className="text-[8px] text-gray-600 line-clamp-1">
+                                           {role === 'assistant'
+                                             ? (appt.appointment_type === 'follow_up' ? 'Seguimiento' : 'Consulta')
+                                             : (appt.reason || 'Consulta')
+                                           }
+                                         </div>
                                       </div>
                                     </td>
                                   );
@@ -832,7 +847,7 @@ export default function AgendaPage() {
                    <Clock size={16} className="text-gray-400 shrink-0"/>
                    <span className="font-medium text-gray-700">{selectedAppt.start_time.substring(0,5)} ({selectedAppt.duration_minutes} min)</span>
                  </div>
-                 {selectedAppt.reason && (
+                 {selectedAppt.reason && role !== 'assistant' && (
                    <div className="flex gap-2 text-sm">
                      <FileText size={16} className="text-gray-400 shrink-0 mt-0.5"/>
                      <span className="text-gray-600 leading-tight">{selectedAppt.reason}</span>

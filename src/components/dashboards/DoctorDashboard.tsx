@@ -119,7 +119,7 @@ export default function DoctorDashboard() {
     // Fetch Profile/Plan and Assistant
     const [profileRes, assistantRes] = await Promise.all([
       supabase.from('profiles').select('plan_assigned').eq('id', user.id).single(),
-      supabase.from('profiles').select('id, name, email').eq('doctor_id', user.id).eq('role', 'assistant').single()
+      supabase.from('profiles').select('id, name').eq('doctor_id', user.id).eq('role', 'assistant').single()
     ]);
 
     if (profileRes.data) setPlan(profileRes.data.plan_assigned);

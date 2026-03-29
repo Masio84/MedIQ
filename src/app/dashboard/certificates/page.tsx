@@ -153,6 +153,20 @@ export default function CertificatesPage() {
 
   if (isLoading) return null;
 
+  if (role === 'admin') {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center space-y-3">
+        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
+          <XCircle size={32} className="text-red-400" />
+        </div>
+        <h2 className="text-lg font-bold text-gray-900">Acceso Restringido</h2>
+        <p className="text-sm text-gray-500 max-w-sm">
+          Los certificados médicos son documentos clínicos privados. Solo el médico tratante y su asistente tienen acceso a esta información.
+        </p>
+      </div>
+    );
+  }
+
   const isExpired = (expiresAt: string) => {
     if (!expiresAt) return false;
     return new Date(expiresAt) < new Date();

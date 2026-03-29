@@ -12,10 +12,16 @@ export default function PatientsPage() {
 
   if (isLoading) return null;
 
-  if (role !== 'doctor' && role !== 'admin') {
+  if (role !== 'doctor') {
     return (
-      <div className="p-8 text-center bg-white rounded-xl">
-        <p className="text-gray-500">Acceso restringido. Solo Médicos y Administradores tienen acceso a este módulo.</p>
+      <div className="flex flex-col items-center justify-center h-64 text-center space-y-3">
+        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
+          <ChevronDown size={32} className="text-red-400" />
+        </div>
+        <h2 className="text-lg font-bold text-gray-900">Acceso Restringido</h2>
+        <p className="text-sm text-gray-500 max-w-sm">
+          El expediente digital contiene información clínica privada. Solo el médico tratante puede acceder a este módulo.
+        </p>
       </div>
     );
   }

@@ -31,8 +31,21 @@ export const PRESCRIPTION_VARIABLES = {
  */
 export function replaceVariables(text: string, data: Record<string, string>): string {
   if (!text) return '';
-  return text.replace(/\{\{([^{}]+)\}\}/g, (match) => {
-    return data[match] || match;
+  return text.replace(/\{\{([^{}]+)\}\}/g, (match, innerKey) => {
+    const cleanKey = innerKey.trim().toLowerCase();
+    const upperKey = innerKey.trim().toUpperCase();
+    
+    // Check exact match e.g. '{{CLINIC_NAME}}'
+    if (data[match] !== undefined) return data[match];
+    
+    // Check lowercase with brackets e.g. '{{clinic_name}}'
+    if (data[`{{${cleanKey}}}`] !== undefined) return data[`{{${cleanKey}}}`];
+    
+    // Check without brackets uppercase/lowercase e.g. 'CLINIC_NAME' or 'clinic_name'
+    if (data[upperKey] !== undefined) return data[upperKey];
+    if (data[cleanKey] !== undefined) return data[cleanKey];
+
+    return match;
   });
 }
 

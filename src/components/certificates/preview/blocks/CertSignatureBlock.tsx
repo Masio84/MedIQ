@@ -1,40 +1,18 @@
-import { useContext } from 'react';
-import { usePrescriptionStore } from '../../store/prescription-template.store';
-import { replaceVariables, getVariableDataMap } from '../../utils/variable-engine';
-import { DEFAULT_TEMPLATE } from '../../mock/prescription-template.mock';
-import { PrescriptionTemplate } from '../../types/prescription-template.types';
-import { PreviewTemplateContext, PreviewDataContext } from '../PreviewContext';
+import { useCertificateStore } from '../../store/certificate-template.store';
+import { replaceCertificateVariables, getCertificateVariableDataMap } from '../../utils/cert-variable-engine';
 
-export default function SignatureBlock() {
-  const storeTemplate = usePrescriptionStore(state => state.template);
-  const contextTemplate = useContext(PreviewTemplateContext);
-  const contextData = useContext(PreviewDataContext);
-
-  const template: PrescriptionTemplate = {
-    ...DEFAULT_TEMPLATE,
-    ...(contextTemplate || storeTemplate),
-    // Ensure critical nested objects are also merged
-    blocks: (contextTemplate || storeTemplate)?.blocks || DEFAULT_TEMPLATE.blocks,
-    styles: {
-      ...DEFAULT_TEMPLATE.styles,
-      ...((contextTemplate || storeTemplate)?.styles || {})
-    },
-    branding: {
-      ...DEFAULT_TEMPLATE.branding,
-      ...((contextTemplate || storeTemplate)?.branding || {})
-    }
-  };
-
+export default function CertSignatureBlock({ mockData }: { mockData?: any }) {
+  const { template } = useCertificateStore();
   const block = template.blocks.find(b => b.type === 'signature');
   const { signature, seal } = template.branding;
-  const dataMap = contextData || getVariableDataMap();
 
   if (!block || !block.enabled) return null;
 
-  // Alignment from contentConfig or default
-  const alignment = block.contentConfig.alignment || 'center';
-  const showSeal = block.contentConfig.showSeal !== false;
-  const showName = block.contentConfig.showName !== false;
+  const contentConfig = block.contentConfig || {};
+  const alignment = contentConfig.position || 'center';
+  const showSeal = contentConfig.showSeal !== false;
+
+  const dataMap = getCertificateVariableDataMap(mockData);
 
   const alignmentWrapper = {
     left: 'justify-start',
@@ -48,18 +26,18 @@ export default function SignatureBlock() {
     right: 'text-right'
   }[alignment as 'left' | 'center' | 'right'] || 'text-center';
 
-  const sealSize = seal?.width || 60;
+  const sealSize = seal?.width || 120;
 
   return (
-    <div className={`mt-10 flex w-full ${alignmentWrapper} gap-8 items-end`}>
-      <div className={`relative flex flex-col items-center min-w-[200px] ${textAlignment}`}>
+    <div className={`mt-12 flex w-full ${alignmentWrapper} gap-8 items-end`}>
+      <div className={`relative flex flex-col items-center min-w-[250px] ${textAlignment}`}>
         {/* Seal */}
         {showSeal && seal?.enabled !== false && (seal?.url || seal?.textConfig) && (
           <div 
             className="absolute z-0 mix-blend-multiply opacity-80 pointer-events-none select-none transition-transform flex-shrink-0"
             style={{ 
-              width: `${sealSize}px`,
-              height: `${sealSize}px`,
+              width: `${seal?.width || 120}px`,
+              height: `${seal?.width || 120}px`,
               top: '50%',
               left: '50%',
               transform: `translate(calc(-50% + ${seal?.offsetX || 60}px), calc(-50% - ${seal?.offsetY || 60}px)) rotate(${seal?.rotation || 0}deg)`
@@ -94,7 +72,7 @@ export default function SignatureBlock() {
 
         {/* Signature */}
         <div 
-           className="border-b-2 border-gray-100 w-full mb-2 flex justify-center h-20 items-end pb-1 relative z-10 box-content transition-transform"
+           className="border-b-2 border-gray-800 w-full mb-2 flex justify-center h-24 items-end pb-1 relative z-10 box-content transition-transform"
            style={{
              transform: `translate(${signature?.offsetX || 0}px, ${signature?.offsetY || 0}px)`
            }}
@@ -104,7 +82,7 @@ export default function SignatureBlock() {
               src={signature.url} 
               alt="Firma" 
               style={{ 
-                width: `${signature?.width || 120}px`,
+                width: `${signature.width || 140}px`,
                 maxHeight: '100%'
               }}
               className="object-contain"
@@ -115,19 +93,22 @@ export default function SignatureBlock() {
         </div>
 
         {/* Name and Professional Details */}
-        {showName && (
-          <div className="space-y-0.5 mt-2">
-            <p className="text-sm font-black text-gray-900 leading-tight uppercase tracking-tight">
-              {replaceVariables('{{doctor_name}}', dataMap)}
+        <div className="space-y-0.5 mt-2">
+          <p className="text-sm font-black text-gray-900 leading-tight uppercase tracking-tight">
+            {dataMap['{{doctor_name}}']}
+          </p>
+          <p className="text-[10px] font-bold text-[var(--primary-color)] uppercase tracking-widest whitespace-nowrap">
+            {dataMap['{{doctor_specialty}}']}
+          </p>
+          <p className="text-[9px] font-mono text-gray-500 font-bold">
+            CÉDULA: {dataMap['{{doctor_cedula}}']}
+          </p>
+          {dataMap['{{doctor_cedula_esc}}'] && (
+            <p className="text-[9px] font-mono text-gray-500 font-bold">
+              CÉDULA ESP: {dataMap['{{doctor_cedula_esc}}']}
             </p>
-            <p className="text-[9px] font-bold text-[var(--primary-color)] uppercase tracking-widest whitespace-nowrap">
-              {replaceVariables('{{doctor_specialty}}', dataMap)}
-            </p>
-            <p className="text-[8px] font-mono text-gray-500 font-bold">
-              CÉDULA: {replaceVariables('{{doctor_cedula}}', dataMap)}
-            </p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

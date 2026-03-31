@@ -147,6 +147,14 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
           discount_max: Number(data.discount_max || 0),
           increment_min: Number(data.increment_min || 0),
           increment_max: Number(data.increment_max || 0),
+          // Doctor identity fields for prescription snapshot
+          name: data.name || '',
+          specialty: data.specialty || '',
+          cedula: data.cedula || '',
+          cedula_especialidad: data.cedula_especialidad || '',
+          clinic_name: data.clinic_name || '',
+          clinic_phone: data.clinic_phone || '',
+          clinic_address: data.clinic_address || '',
         });
         setFinalPrice(Number(data.base_price || 0));
       }
@@ -587,7 +595,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
           return `REC-${shortDoc}-${date}-${rand}`;
         };
 
-        const contentSnapshot = {
+        const contentSnapshot: Record<string, any> = {
           symptoms: symptomsList.length > 0 ? symptomsList.join(', ') : (formData.symptoms || null),
           diagnosis: formData.diagnosis || null,
           treatment: formData.treatment || null,
@@ -596,7 +604,20 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
             weight: formData.weight,
             blood_pressure: formData.blood_pressure,
             temperature: formData.temperature
-          }
+          },
+          // Variable map for prescription blocks to render correctly
+          '{{doctor_name}}': doctorSettings.name || '',
+          '{{doctor_specialty}}': doctorSettings.specialty || '',
+          '{{doctor_cedula}}': doctorSettings.cedula || '',
+          '{{doctor_cedula_esc}}': doctorSettings.cedula_especialidad || '',
+          '{{clinic_name}}': doctorSettings.clinic_name || '',
+          '{{clinic_phone}}': doctorSettings.clinic_phone || '',
+          '{{clinic_address}}': doctorSettings.clinic_address || '',
+          '{{patient_name}}': patientContext ? `${patientContext.name || ''} ${patientContext.last_name || ''}`.trim() : '',
+          '{{patient_age}}': patientContext?.dob ? String(Math.floor((Date.now() - new Date(patientContext.dob).getTime()) / 31557600000)) : '',
+          '{{patient_gender}}': patientContext?.gender || '',
+          '{{patient_id}}': patientContext?.id || '',
+          '{{date}}': new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' }),
         };
 
         const { error: prescriptionError } = await supabase

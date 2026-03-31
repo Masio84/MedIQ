@@ -7,17 +7,6 @@ export interface Margins {
   left: number;
 }
 
-export interface PrescriptionPageConfig {
-  size: 'LETTER' | 'HALF' | 'QUARTER'; // Carta, Media Carta, 1/4 Carta
-  orientation: 'PORTRAIT' | 'LANDSCAPE'; // Vertical, Horizontal
-  margins: {
-    top: number;
-    right: number;
-    bottom: number;
-    left: number;
-  };
-}
-
 export interface PageConfig {
   size: PageSize;
   margins: Margins;
@@ -44,23 +33,28 @@ export interface BrandingConfig {
     url: string;
     width: number;
     height: number;
-    enabled?: boolean;
     offsetX?: number;
     offsetY?: number;
+    enabled?: boolean;
   } | null;
   seal: {
-    url: string;
-    textConfig?: { line1: string; line2: string; line3: string; color: string; };
-    width: number;
-    height: number;
-    enabled?: boolean;
+    url?: string;
+    width?: number;
+    height?: number;
     offsetX?: number;
     offsetY?: number;
     rotation?: number;
+    enabled?: boolean;
+    textConfig?: {
+      color?: string;
+      line1?: string;
+      line2?: string;
+      line3?: string;
+    };
   } | null;
 }
 
-export type BlockType = 'header' | 'patient' | 'diagnosis' | 'treatment' | 'notes' | 'signature' | 'footer';
+export type BlockType = 'header' | 'doctor' | 'patient' | 'body' | 'signature' | 'footer';
 
 export interface TemplateBlock {
   id: string;
@@ -71,7 +65,7 @@ export interface TemplateBlock {
   contentConfig: Record<string, any>;
 }
 
-export interface PrescriptionTemplate {
+export interface CertificateTemplate {
   id: string;
   doctorId: string;
   name: string;

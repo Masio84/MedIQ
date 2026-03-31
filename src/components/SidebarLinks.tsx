@@ -16,7 +16,8 @@ import {
   Archive,
   ChevronDown,
   ChevronRight,
-  FilePenLine
+  FilePenLine,
+  FilePlus2
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 
@@ -24,11 +25,19 @@ export default function SidebarLinks() {
   const { role } = useRole();
   const pathname = usePathname();
   const [isPrescriptionsOpen, setIsPrescriptionsOpen] = useState(false);
+  const [isCertificatesOpen, setIsCertificatesOpen] = useState(false);
 
   // Auto-expand if the current path is within prescriptions
   useEffect(() => {
     if (pathname.startsWith('/dashboard/prescriptions')) {
       setIsPrescriptionsOpen(true);
+    }
+  }, [pathname]);
+
+  // Auto-expand if the current path is within certificates
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard/certificates')) {
+      setIsCertificatesOpen(true);
     }
   }, [pathname]);
 
@@ -82,10 +91,29 @@ export default function SidebarLinks() {
       roles: ['doctor'],
     },
     {
-      href: '/dashboard/certificates',
       label: 'Certificados',
       icon: FileCheck,
       roles: ['doctor', 'assistant'],
+      isSubmenu: true,
+      isOpen: isCertificatesOpen,
+      onToggle: () => setIsCertificatesOpen(!isCertificatesOpen),
+      subItems: [
+        {
+          href: '/dashboard/certificates/new',
+          label: 'Certificado Médico',
+          icon: FilePlus2,
+        },
+        {
+          href: '/dashboard/certificates/archive',
+          label: 'Historial',
+          icon: Archive,
+        },
+        {
+          href: '/dashboard/certificates/editor',
+          label: 'Editor de Plantillas',
+          icon: FilePenLine,
+        },
+      ]
     },
     {
       label: 'Recetas',

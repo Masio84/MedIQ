@@ -119,80 +119,84 @@ export default function PrescriptionsArchivePage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Folio</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Paciente</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha Emisión</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredPrescriptions.map((p) => (
-                  <tr key={p.id} className="hover:bg-blue-50/30 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-                          <Hash size={14} />
-                        </div>
-                        <span className="font-mono text-xs font-bold text-gray-700">{p.folio}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                          <User size={14} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-gray-900 leading-tight">
-                            {p.patients?.name} {p.patients?.last_name}
-                          </p>
-                          <p className="text-[10px] text-gray-400 font-medium">Paciente MedIQ</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-gray-500 text-xs">
-                        <Calendar size={14} className="text-gray-400" />
-                        {new Intl.DateTimeFormat('es-MX', { 
-                          day: '2-digit', 
-                          month: 'short', 
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        }).format(new Date(p.created_at))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => handleView(p)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                          title="Ver Receta"
-                        >
-                          <Eye size={18} />
-                        </button>
-                        <button 
-                          onClick={() => handleDownload(p)}
-                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                          title="Descargar PDF"
-                        >
-                          <Download size={18} />
-                        </button>
-                        <button className="p-2 text-gray-400 hover:bg-gray-50 rounded-lg transition-all">
-                          <ChevronRight size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Header Row */}
+          <div className="grid grid-cols-12 gap-4 px-5 py-3 bg-gray-50/70 border-b border-gray-100">
+            <div className="col-span-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Folio</div>
+            <div className="col-span-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Paciente</div>
+            <div className="col-span-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha Emisión</div>
+            <div className="col-span-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</div>
+          </div>
+
+          {/* Rows */}
+          <div className="divide-y divide-gray-50">
+            {filteredPrescriptions.map((p) => {
+              const patientName = `${p.patients?.name || ''} ${p.patients?.last_name || ''}`.trim();
+              const initials = patientName.split(' ').slice(0, 2).map((n: string) => n[0]).join('').toUpperCase();
+              const folioShort = p.folio?.split('-').slice(-2).join('-') || p.folio;
+              const folioPrefix = p.folio?.split('-').slice(0, -2).join('-') || '';
+              return (
+                <div key={p.id} className="grid grid-cols-12 gap-4 px-5 py-3.5 items-center hover:bg-blue-50/20 transition-colors">
+                  {/* Folio */}
+                  <div className="col-span-3 flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 shrink-0">
+                      <Hash size={12} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[9px] font-medium text-gray-400 block leading-none truncate">{folioPrefix}</span>
+                      <span className="font-mono text-xs font-black text-gray-800 leading-tight">{folioShort}</span>
+                    </div>
+                  </div>
+
+                  {/* Paciente */}
+                  <div className="col-span-4 flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 flex items-center justify-center text-blue-700 text-[10px] font-black shrink-0 border border-blue-100">
+                      {initials || <User size={12} />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-gray-900 leading-tight truncate">{patientName || 'Paciente'}</p>
+                      <p className="text-[10px] text-gray-400 font-medium">Paciente MedIQ</p>
+                    </div>
+                  </div>
+
+                  {/* Fecha */}
+                  <div className="col-span-2">
+                    <p className="text-xs font-bold text-gray-700">
+                      {new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(p.created_at))}
+                    </p>
+                    <p className="text-[10px] text-gray-400 font-medium">
+                      {new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit' }).format(new Date(p.created_at))}
+                    </p>
+                  </div>
+
+                  {/* Acciones — Siempre visibles */}
+                  <div className="col-span-3 flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => handleView(p)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-all border border-blue-100"
+                    >
+                      <Eye size={13} /> Ver
+                    </button>
+                    <button
+                      onClick={() => handleDownload(p)}
+                      disabled={isGenerating}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-all border border-emerald-100 disabled:opacity-50"
+                    >
+                      {isGenerating ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} PDF
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          <div className="px-5 py-3 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+            <span className="text-[10px] font-medium text-gray-400">{filteredPrescriptions.length} receta{filteredPrescriptions.length !== 1 ? 's' : ''} en el archivo</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Historial Inmutable</span>
           </div>
         </div>
       )}
+
 
       {/* Modal de Vista Previa */}
       {isPreviewOpen && selectedPrescription && (

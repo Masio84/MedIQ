@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { usePrescriptionStore } from '../store/prescription-template.store';
+import { useCertificateStore } from '../store/certificate-template.store';
 import { 
   Layout, 
   Type, 
@@ -9,19 +9,17 @@ import {
   Palette, 
   ImagePlus, 
   Link2,
-  ZoomIn,
-  ZoomOut,
   Settings
 } from 'lucide-react';
-import { PrescriptionPageConfig } from '../types/prescription-template.types';
+import { PageConfig } from '../types/certificate-template.types';
 
 const FONTS = ['Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana'];
 
-export default function ConfigPanel() {
+export default function CertConfigPanel() {
   const [activeTab, setActiveTab] = useState<'general' | 'typo' | 'brand' | 'colors'>('general');
-  const { template, updatePage, updateStyles, updateBranding } = usePrescriptionStore();
+  const { template, updatePage, updateStyles, updateBranding } = useCertificateStore();
 
-  const handlePageUpdate = (field: keyof PrescriptionPageConfig, value: any) => {
+  const handlePageUpdate = (field: keyof PageConfig, value: any) => {
     updatePage({ ...template.page, [field]: value });
   };
 
@@ -57,9 +55,9 @@ export default function ConfigPanel() {
   };
 
   return (
-    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
+    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden flex flex-col h-full items-start">
       {/* Tabs Header */}
-      <div className="flex border-b border-gray-100 bg-gray-100">
+      <div className="flex border-b border-gray-100 w-full bg-gray-100">
         <button
           onClick={() => setActiveTab('general')}
           className={`flex-1 py-3 px-2 flex flex-col items-center gap-1 transition-colors ${
@@ -99,7 +97,7 @@ export default function ConfigPanel() {
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-6 w-full text-left">
         {activeTab === 'general' && (
           <div className="space-y-4 animate-in fade-in slide-in-from-left-2 duration-300">
             <div>
@@ -157,7 +155,7 @@ export default function ConfigPanel() {
               <div className="grid grid-cols-2 gap-3">
                  {Object.keys(template.page.margins).map((m) => (
                     <div key={m} className="space-y-1">
-                      <label className="text-[9px] text-gray-500 font-bold uppercase ml-1">{m === 'top' ? 'Superior' : m === 'bottom' ? 'Inferior' : m === 'left' ? 'Izquierdo' : 'Derecho'}</label>
+                      <label className="text-[9px] text-gray-500 font-bold uppercase ml-1 block text-left">{m === 'top' ? 'Superior' : m === 'bottom' ? 'Inferior' : m === 'left' ? 'Izquierdo' : 'Derecho'}</label>
                       <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg p-2 focus-within:bg-white focus-within:border-blue-400 transition-all">
                         <input 
                           type="number" 
@@ -177,7 +175,7 @@ export default function ConfigPanel() {
         )}
 
         {activeTab === 'typo' && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-left-2 duration-300">
+          <div className="space-y-4 animate-in fade-in slide-in-from-left-2 duration-300 text-left">
              <div>
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Familia Tipográfica</label>
                 <select
@@ -224,14 +222,14 @@ export default function ConfigPanel() {
         )}
 
         {activeTab === 'brand' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300 pb-8">
+          <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300 pb-8 text-left">
             <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-4">
                <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
                   <ImagePlus size={20} />
                </div>
                <div>
                   <h4 className="text-[11px] font-black text-blue-900 uppercase tracking-widest leading-none mb-1">Cisterna de Branding</h4>
-                  <p className="text-[10px] text-blue-600 font-medium">Vincula tus activos de marca para la receta.</p>
+                  <p className="text-[10px] text-blue-600 font-medium">Vincula tus activos de marca para el certificado.</p>
                </div>
             </div>
 
@@ -256,6 +254,18 @@ export default function ConfigPanel() {
                    <Link2 size={16} />
                  </button>
               </div>
+              <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-lg">
+                <span className="text-[9px] font-bold text-gray-400 uppercase ml-2 w-16">Alineación</span>
+                <select 
+                  value={template.branding.logo?.position || 'left'}
+                  onChange={(e) => handleLogoUpdate('position', e.target.value)}
+                  className="flex-1 px-2 py-1 text-xs border rounded outline-none"
+                >
+                  <option value="left">Izquierda</option>
+                  <option value="center">Centro</option>
+                  <option value="right">Derecha</option>
+                </select>
+              </div>
             </div>
 
             {/* FIRMA SECTION */}
@@ -265,19 +275,22 @@ export default function ConfigPanel() {
                    FIRMA DEL MÉDICO (DIGITAL)
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" 
-                    checked={template.branding.signature?.enabled !== false} 
-                    onChange={(e) => handleSignatureUpdate('enabled', e.target.checked)} />
-                  <div className="w-7 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={template.branding.signature?.enabled !== false}
+                    onChange={(e) => handleSignatureUpdate('enabled', e.target.checked)}
+                  />
+                  <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
               </div>
               
-              <div className="grid grid-cols-2 gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <div className="col-span-1 space-y-2">
-                  <span className="text-[9px] font-bold text-gray-500 uppercase ml-1">Ancho</span>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="flex flex-col bg-gray-50 p-2 rounded-lg">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase mb-1">Ancho</span>
                   <div className="flex items-center gap-2">
                     <input 
-                      type="range" min="50" max="250" 
+                      type="range" min="50" max="350" 
                       className="flex-1 accent-blue-600 h-1"
                       value={template.branding.signature?.width || 120}
                       onChange={(e) => handleSignatureUpdate('width', parseInt(e.target.value))}
@@ -285,11 +298,12 @@ export default function ConfigPanel() {
                     <span className="text-[9px] font-mono font-bold text-gray-600 w-6 text-right">{template.branding.signature?.width || 120}</span>
                   </div>
                 </div>
-                <div className="col-span-1 space-y-2">
-                  <span className="text-[9px] font-bold text-gray-500 uppercase ml-1">Eje X (Mover)</span>
+
+                <div className="flex flex-col bg-gray-50 p-2 rounded-lg">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase mb-1">Eje X (Mover)</span>
                   <div className="flex items-center gap-2">
                     <input 
-                      type="range" min="-100" max="100" 
+                      type="range" min="-150" max="150" 
                       className="flex-1 accent-blue-600 h-1"
                       value={template.branding.signature?.offsetX || 0}
                       onChange={(e) => handleSignatureUpdate('offsetX', parseInt(e.target.value))}
@@ -297,11 +311,12 @@ export default function ConfigPanel() {
                     <span className="text-[9px] font-mono font-bold text-gray-600 w-6 text-right">{template.branding.signature?.offsetX || 0}</span>
                   </div>
                 </div>
-                <div className="col-span-2 space-y-2">
-                  <span className="text-[9px] font-bold text-gray-500 uppercase ml-1">Eje Y (Mover)</span>
+
+                <div className="flex flex-col bg-gray-50 p-2 rounded-lg col-span-2">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase mb-1">Eje Y (Mover)</span>
                   <div className="flex items-center gap-2">
                     <input 
-                      type="range" min="-100" max="100" 
+                      type="range" min="-150" max="150" 
                       className="flex-1 accent-blue-600 h-1"
                       value={template.branding.signature?.offsetY || 0}
                       onChange={(e) => handleSignatureUpdate('offsetY', parseInt(e.target.value))}
@@ -319,28 +334,32 @@ export default function ConfigPanel() {
                    SELLO PROFESIONAL / CLÍNICA
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" 
-                    checked={template.branding.seal?.enabled !== false} 
-                    onChange={(e) => handleSealUpdate('enabled', e.target.checked)} />
-                  <div className="w-7 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={template.branding.seal?.enabled !== false}
+                    onChange={(e) => handleSealUpdate('enabled', e.target.checked)}
+                  />
+                  <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <div className="col-span-1 space-y-2">
-                  <span className="text-[9px] font-bold text-gray-500 uppercase ml-1">Tamaño</span>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="flex flex-col bg-gray-50 p-2 rounded-lg">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase mb-1">Tamaño</span>
                   <div className="flex items-center gap-2">
                     <input 
                       type="range" min="30" max="250" 
                       className="flex-1 accent-blue-600 h-1"
-                      value={template.branding.seal?.width || 60}
+                      value={template.branding.seal?.width || 120}
                       onChange={(e) => handleSealUpdate('width', parseInt(e.target.value))}
                     />
-                    <span className="text-[9px] font-mono font-bold text-gray-600 w-6 text-right">{template.branding.seal?.width || 60}</span>
+                    <span className="text-[9px] font-mono font-bold text-gray-600 w-6 text-right">{template.branding.seal?.width || 120}</span>
                   </div>
                 </div>
-                <div className="col-span-1 space-y-2">
-                  <span className="text-[9px] font-bold text-gray-500 uppercase ml-1">Rotación</span>
+
+                <div className="flex flex-col bg-gray-50 p-2 rounded-lg">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase mb-1">Rotación</span>
                   <div className="flex items-center gap-2">
                     <input 
                       type="range" min="-180" max="180" 
@@ -351,28 +370,30 @@ export default function ConfigPanel() {
                     <span className="text-[9px] font-mono font-bold text-gray-600 w-6 text-right">{template.branding.seal?.rotation || 0}°</span>
                   </div>
                 </div>
-                <div className="col-span-1 space-y-2">
-                  <span className="text-[9px] font-bold text-gray-500 uppercase ml-1">Eje X</span>
+
+                <div className="flex flex-col bg-gray-50 p-2 rounded-lg">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase mb-1">Eje X</span>
                   <div className="flex items-center gap-2">
                     <input 
-                      type="range" min="-300" max="300" 
+                      type="range" min="-250" max="250" 
                       className="flex-1 accent-blue-600 h-1"
-                      value={template.branding.seal?.offsetX || 60}
+                      value={template.branding.seal?.offsetX || 0}
                       onChange={(e) => handleSealUpdate('offsetX', parseInt(e.target.value))}
                     />
-                    <span className="text-[9px] font-mono font-bold text-gray-600 w-6 text-right">{template.branding.seal?.offsetX || 60}</span>
+                    <span className="text-[9px] font-mono font-bold text-gray-600 w-6 text-right">{template.branding.seal?.offsetX || 0}</span>
                   </div>
                 </div>
-                <div className="col-span-1 space-y-2">
-                  <span className="text-[9px] font-bold text-gray-500 uppercase ml-1">Eje Y</span>
+
+                <div className="flex flex-col bg-gray-50 p-2 rounded-lg">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase mb-1">Eje Y</span>
                   <div className="flex items-center gap-2">
                     <input 
-                      type="range" min="-300" max="300" 
+                      type="range" min="-250" max="250" 
                       className="flex-1 accent-blue-600 h-1"
-                      value={template.branding.seal?.offsetY || 60}
+                      value={template.branding.seal?.offsetY || 0}
                       onChange={(e) => handleSealUpdate('offsetY', parseInt(e.target.value))}
                     />
-                    <span className="text-[9px] font-mono font-bold text-gray-600 w-6 text-right">{template.branding.seal?.offsetY || 60}</span>
+                    <span className="text-[9px] font-mono font-bold text-gray-600 w-6 text-right">{template.branding.seal?.offsetY || 0}</span>
                   </div>
                 </div>
               </div>
@@ -382,7 +403,7 @@ export default function ConfigPanel() {
 
         {activeTab === 'colors' && (
           <div className="space-y-4 animate-in fade-in slide-in-from-left-2 duration-300">
-             <div className="space-y-4">
+             <div className="space-y-4 text-left">
                 {[
                   { label: 'Color Primario', key: 'primaryColor', desc: 'Títulos y acentos' },
                   { label: 'Color Secundario', key: 'secondaryColor', desc: 'Subtítulos y etiquetas' },
@@ -407,7 +428,7 @@ export default function ConfigPanel() {
              
              <div className="pt-2">
                 <p className="text-[9px] text-gray-400 italic text-center leading-relaxed">
-                  Los colores se aplican a los bloques compatibles como encabezados y etiquetas de paciente.
+                  Los colores se aplican a los bloques compatibles como encabezados y etiquetas de paciente y médico.
                 </p>
              </div>
           </div>
@@ -415,9 +436,9 @@ export default function ConfigPanel() {
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-gray-100 bg-gray-100 flex items-center justify-center">
+      <div className="p-3 border-t border-gray-100 bg-gray-100 flex items-center justify-center w-full">
          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-            <Settings size={10} /> Panel de Control de Estilo
+            <Settings size={10} /> Panel de Control de Certificados
          </span>
       </div>
     </div>

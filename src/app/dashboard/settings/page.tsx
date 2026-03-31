@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2, Camera, User } from 'lucide-react';
 import Image from 'next/image';
+import DigitalSignatureManager from '@/components/settings/DigitalSignatureManager';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
@@ -22,6 +23,8 @@ export default function SettingsPage() {
     increment_min: 0,
     increment_max: 0,
     avatar_url: '',
+    signature_data: '',
+    seal_config: null,
   });
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -133,6 +136,8 @@ export default function SettingsPage() {
         updateData.increment_min = profile.increment_min || 0;
         updateData.increment_max = profile.increment_max || 0;
         updateData.slug = profile.slug || '';
+        updateData.signature_data = profile.signature_data || '';
+        updateData.seal_config = profile.seal_config || null;
       }
 
       const { error: updateError } = await supabase
@@ -445,6 +450,16 @@ export default function SettingsPage() {
                   <input type="text" readOnly value={`${typeof window !== 'undefined' ? window.location.origin : ''}/book/${profile.slug || profile.id}`} className="flex-1 bg-white px-3 py-1.5 text-xs border border-blue-100 rounded-lg outline-none text-blue-900 font-bold" />
                   <button type="button" onClick={() => { const url = window.location.origin + '/book/' + (profile.slug || profile.id); navigator.clipboard.writeText(url); setFeedback({ isOpen: true, title: '¡Copiado!', message: 'El enlace se copió al portapapeles.', type: 'success' }); }} className="px-3 py-1.5 bg-[#1A4A8A] text-white text-xs font-bold rounded-lg hover:bg-[#1A4A8A]/90">Copiar</button>
                </div>
+            </div>
+            
+            <div className="mt-8 border-t border-gray-50 pt-8">
+               <DigitalSignatureManager 
+                 doctorId={profile.id}
+                 signatureUrl={profile.signature_data || ''}
+                 sealConfig={profile.seal_config || {}}
+                 onChangeSignature={(url) => setProfile((prev: any) => ({ ...prev, signature_data: url }))}
+                 onChangeSeal={(config) => setProfile((prev: any) => ({ ...prev, seal_config: config }))}
+               />
             </div>
           </div>
         )}

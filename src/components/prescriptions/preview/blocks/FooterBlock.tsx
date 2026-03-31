@@ -1,10 +1,13 @@
 import { usePrescriptionStore } from '../../store/prescription-template.store';
 import { replaceVariables, getVariableDataMap } from '../../utils/variable-engine';
+import { useContext } from 'react';
+import { PreviewDataContext } from '../PreviewContext';
 
 export default function FooterBlock() {
   const { template } = usePrescriptionStore();
+  const contextData = useContext(PreviewDataContext);
   const block = template.blocks.find(b => b.type === 'footer');
-  const dataMap = getVariableDataMap();
+  const dataMap = contextData || getVariableDataMap();
 
   if (!block || !block.enabled) return null;
 

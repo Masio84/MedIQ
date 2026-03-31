@@ -1,24 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usePrescriptionStore } from '@/components/prescriptions/store/prescription-template.store';
-import DocumentPreview from '@/components/prescriptions/preview/DocumentPreview';
-import BlockEditor from '@/components/prescriptions/editor/BlockEditor';
-import ConfigPanel from '@/components/prescriptions/editor/ConfigPanel';
-import { generatePrescriptionPDF } from '@/components/prescriptions/utils/pdf-generator';
-import { getWhatsAppLink, directPrintPrescription } from '@/components/prescriptions/utils/sharing-engine';
-import { MOCK_PATIENT_DATA } from '@/components/prescriptions/mock/prescription-template.mock';
-import { FileText, Save, RotateCcw, Layout, Type, Search, ZoomIn, ZoomOut, ChevronUp, ChevronDown, Settings, GripVertical, Check, Download, Loader2, Printer, MessageSquare, Mail } from 'lucide-react';
+import { useCertificateStore } from '@/components/certificates/store/certificate-template.store';
+import CertDocumentPreview from '@/components/certificates/preview/CertDocumentPreview';
+import CertBlockEditor from '@/components/certificates/editor/CertBlockEditor';
+import CertConfigPanel from '@/components/certificates/editor/CertConfigPanel';
+import { generateCertificatePDF } from '@/components/certificates/utils/cert-pdf-generator';
+import { shareCertificateViaWhatsApp, directPrintCertificate } from '@/components/certificates/utils/cert-sharing-engine';
+import { MOCK_CERTIFICATE_DATA } from '@/components/certificates/mock/certificate-template.mock';
+import { FileText, Save, RotateCcw, Search, ZoomIn, ZoomOut, ChevronUp, ChevronDown, Download, Loader2, Printer, MessageSquare, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 
-export default function PrescriptionsPage() {
+export default function CertificateEditorPage() {
   const [zoom, setZoom] = useState(0.8);
   const [showRules, setShowRules] = useState(true);
   const [showGrid, setShowGrid] = useState(false);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
-  const hasPhone = !!(MOCK_PATIENT_DATA as any).phone;
-  const hasEmail = !!(MOCK_PATIENT_DATA as any).email;
+  const hasPhone = true; // In real app, fetch from patient data
+  const hasEmail = true; // In real app, fetch from patient data
   const [leftView, setLeftView] = useState<'config' | 'blocks'>('config');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -32,7 +32,7 @@ export default function PrescriptionsPage() {
     reorderBlocks, 
     resetTemplate,
     loadTemplate
-  } = usePrescriptionStore();
+  } = useCertificateStore();
 
   useEffect(() => {
     const fetchTemplate = async () => {
@@ -41,39 +41,50 @@ export default function PrescriptionsPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const [templateResult, profileResult] = await Promise.all([
-          supabase
-            .from('prescription_templates')
-            .select('config')
-            .eq('doctor_id', user.id)
-            .single(),
-          supabase
-            .from('profiles')
-            .select('signature_data, seal_config')
-            .eq('id', user.id)
-            .single()
-        ]);
+        // 1. Obtener la plantilla guardada
+        const { data: tpl } = await supabase
+          .from('certificate_templates')
+          .select('id, name, page_config, styles, branding, blocks')
+          .eq('doctor_id', user.id)
+          .maybeSingle();
 
-        const baseConfig = templateResult.data?.config;
-        const profile = profileResult.data;
+        // 2. Obtener la firma y sello del perfil
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('signature_data, seal_config')
+          .eq('id', user.id)
+          .single();
 
-        if (baseConfig) {
-          // Inject doctor's seal and signature into the template branding
-          const enrichedConfig = {
-            ...baseConfig,
+        if (tpl) {
+          const loadedTemplate = {
+            id: tpl.id,
+            doctorId: user.id,
+            name: tpl.name,
+            page: tpl.page_config,
+            styles: tpl.styles,
             branding: {
-              ...baseConfig.branding,
-              signature: profile?.signature_data
-                ? { ...(baseConfig.branding?.signature || {}), url: profile.signature_data, enabled: true }
-                : baseConfig.branding?.signature,
-              seal: profile?.seal_config
-                ? { ...(baseConfig.branding?.seal || {}), textConfig: profile.seal_config, enabled: true }
-                : baseConfig.branding?.seal,
-            }
+              ...tpl.branding,
+              signature: profile?.signature_data ? { ...tpl.branding?.signature, url: profile.signature_data } : tpl.branding?.signature,
+              seal: profile?.seal_config ? { ...tpl.branding?.seal, textConfig: profile.seal_config } : tpl.branding?.seal
+            },
+            blocks: tpl.blocks,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           };
-          loadTemplate(enrichedConfig);
-          toast.success('Plantilla cargada desde la nube');
+          loadTemplate(loadedTemplate as any);
+        } else if (profile) {
+          // Inyectar firma en la plantilla por defecto si es su primera vez
+          const currentTemplate = useCertificateStore.getState().template;
+          loadTemplate({
+            ...currentTemplate,
+            branding: {
+              ...currentTemplate.branding,
+              signature: profile.signature_data ? { ...currentTemplate.branding.signature, url: profile.signature_data } : currentTemplate.branding.signature,
+              seal: profile.seal_config ? { ...currentTemplate.branding.seal, textConfig: profile.seal_config } : currentTemplate.branding.seal
+            }
+          } as any);
         }
+        
       } catch (err) {
         console.error('Error fetching template:', err);
       } finally {
@@ -84,10 +95,9 @@ export default function PrescriptionsPage() {
     fetchTemplate();
   }, [loadTemplate, supabase]);
 
-
   const handleSaveTemplate = async () => {
     setIsSaving(true);
-    const t = toast.loading('Guardando plantilla...');
+    const t = toast.loading('Guardando plantilla de certificado...');
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -95,13 +105,28 @@ export default function PrescriptionsPage() {
         return;
       }
 
+      // Buscar si el doctor ya tiene una plantilla
+      const { data: existing } = await supabase
+        .from('certificate_templates')
+        .select('id')
+        .eq('doctor_id', user.id)
+        .maybeSingle();
+
+      const payload = {
+        ...(existing?.id ? { id: existing.id } : {}),
+        doctor_id: user.id,
+        name: template.name || 'Plantilla Predeterminada',
+        page_config: template.page,
+        styles: template.styles,
+        branding: template.branding,
+        blocks: template.blocks,
+        is_default: true,
+        updated_at: new Date().toISOString()
+      };
+
       const { error } = await supabase
-        .from('prescription_templates')
-        .upsert({
-          doctor_id: user.id,
-          config: template,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'doctor_id' });
+        .from('certificate_templates')
+        .upsert(payload);
 
       if (error) throw error;
       toast.success('Plantilla guardada correctamente', { id: t });
@@ -114,14 +139,13 @@ export default function PrescriptionsPage() {
   };
 
   const handleWhatsAppShare = () => {
-    const link = getWhatsAppLink(template);
-    window.open(link, '_blank');
-    toast.success('Mensaje configurado para WhatsApp');
+    shareCertificateViaWhatsApp('+525555555555', 'DEMO-12345', 'Paciente Prueba');
+    toast.success('Mensaje de prueba configurado para WhatsApp');
   };
 
   const handlePrint = async () => {
     toast.loading('Preparando impresión...');
-    await directPrintPrescription('prescription-canvas');
+    await directPrintCertificate('certificate-canvas');
   };
 
   const handleEmailShare = () => {
@@ -135,7 +159,7 @@ export default function PrescriptionsPage() {
     setIsGenerating(true);
     const t = toast.loading('Generando PDF...');
     try {
-      await generatePrescriptionPDF(template, 'prescription-canvas');
+      await generateCertificatePDF(template, 'certificate-canvas', 'PREVIEW-0000', 'Paciente de Muestra');
       toast.success('PDF descargado con éxito', { id: t });
     } catch (error) {
        toast.error('Error al generar el PDF', { id: t });
@@ -144,19 +168,15 @@ export default function PrescriptionsPage() {
     }
   };
 
-  useEffect(() => {
-    console.log('Prescription Template State Updated:', template);
-  }, [template]);
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="text-blue-600" /> Generador de Recetas
+            <FileText className="text-blue-600" /> Editor de Plantillas
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Módulo de personalización de plantillas médicas
+            Módulo de personalización de plantillas para Certificados Médicos
           </p>
         </div>
         <div className="flex gap-2">
@@ -183,7 +203,7 @@ export default function PrescriptionsPage() {
             disabled={!hasPhone}
             className={`p-2.5 rounded-xl border transition-all shadow-sm ${
               hasPhone 
-              ? 'text-gray-600 bg-white border-gray-200 hide-gray-50 hover:text-emerald-500' 
+              ? 'text-gray-600 bg-white border-gray-200 hover:text-emerald-500' 
               : 'text-gray-300 bg-gray-50 border-gray-100 cursor-not-allowed opacity-60'
             }`}
             title={hasPhone ? "Enviar por WhatsApp" : "El paciente no tiene número de teléfono"}
@@ -252,9 +272,9 @@ export default function PrescriptionsPage() {
           <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
             {leftView === 'config' ? (
               <div className="space-y-4 pb-4">
-                <ConfigPanel />
+                <CertConfigPanel />
 
-                {/* Ayudas Visuales moved here for better accessibility */}
+                {/* Ayudas Visuales */}
                 <div className="bg-white p-4 rounded-xl border border-gray-100 space-y-4">
                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                      <Search size={12} /> Ayudas de Diseño
@@ -295,7 +315,7 @@ export default function PrescriptionsPage() {
             ) : (
               <div className="space-y-4 pb-4">
                 <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-6">
-                  <h3 className="font-bold text-gray-900 border-b pb-2 text-sm uppercase tracking-tight">Estructura del Documento</h3>
+                  <h3 className="font-bold text-gray-900 border-b pb-2 text-sm uppercase tracking-tight">Estructura del Certificado</h3>
                   
                   <div className="space-y-2">
                     {[...template.blocks].sort((a, b) => a.order - b.order).map((block, index) => (
@@ -311,14 +331,14 @@ export default function PrescriptionsPage() {
                                 <button 
                                   disabled={index === 0}
                                   onClick={() => reorderBlocks(index, index - 1)}
-                                  className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-30"
+                                  className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-30 flex items-center justify-center p-1"
                                 >
                                   <ChevronUp size={12} />
                                 </button>
                                 <button 
                                   disabled={index === template.blocks.length - 1}
                                   onClick={() => reorderBlocks(index, index + 1)}
-                                  className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-30"
+                                  className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-30 flex items-center justify-center p-1"
                                 >
                                   <ChevronDown size={12} />
                                 </button>
@@ -330,7 +350,7 @@ export default function PrescriptionsPage() {
                                   block.enabled ? 'bg-emerald-500 border-emerald-600' : 'bg-white border-gray-300'
                                 }`}
                               >
-                                {block.enabled && <Check size={10} className="text-white" />}
+                                {block.enabled && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                               </button>
                               
                               <span className={`${block.enabled ? 'text-gray-900 font-bold' : 'text-gray-400 italic font-medium'} text-[11px] uppercase tracking-tight`}>
@@ -338,21 +358,19 @@ export default function PrescriptionsPage() {
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-1">
-                               <button 
-                                onClick={() => setEditingBlockId(editingBlockId === block.id ? null : block.id)}
-                                className={`p-1.5 rounded-md transition-colors ${
-                                  editingBlockId === block.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                                }`}
-                               >
-                                 <Settings size={14} />
-                               </button>
-                            </div>
+                            <button 
+                              onClick={() => setEditingBlockId(editingBlockId === block.id ? null : block.id)}
+                              className={`p-1.5 rounded-md transition-colors ${
+                                editingBlockId === block.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                              }`}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
                           </div>
                         </div>
                         {editingBlockId === block.id && (
                           <div className="px-1">
-                            <BlockEditor block={block} />
+                            <CertBlockEditor block={block} />
                           </div>
                         )}
                       </div>
@@ -362,7 +380,7 @@ export default function PrescriptionsPage() {
 
                 <div className="bg-gray-900 rounded-xl p-4 overflow-hidden border border-gray-800 shadow-xl flex flex-col h-48">
                   <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2 block">Debug State</span>
-                  <div className="flex-1 overflow-y-auto text-[10px] font-mono text-emerald-600 custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto text-[10px] font-mono text-emerald-600 custom-scrollbar text-left">
                     <pre>{JSON.stringify({ styles: template.styles, margins: template.page.margins }, null, 2)}</pre>
                   </div>
                 </div>
@@ -380,7 +398,7 @@ export default function PrescriptionsPage() {
            
            <div className="flex-1 overflow-auto p-4 custom-scrollbar bg-gray-50/50">
               <div className="pb-[400px]">
-                <DocumentPreview zoom={zoom} showRules={showRules} showGrid={showGrid} />
+                <CertDocumentPreview zoom={zoom} showRules={showRules} showGrid={showGrid} />
               </div>
            </div>
         </div>

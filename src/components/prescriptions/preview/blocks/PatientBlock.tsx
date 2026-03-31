@@ -1,5 +1,5 @@
 import { usePrescriptionStore } from '../../store/prescription-template.store';
-import { getVariableDataMap } from '../../utils/variable-engine';
+import { getVariableDataMap, replaceVariables } from '../../utils/variable-engine';
 import { useContext } from 'react';
 import { PreviewTemplateContext, PreviewDataContext } from '../PreviewContext';
 
@@ -21,31 +21,31 @@ export default function PatientBlock() {
       {fields.includes('name') && (
         <div className="col-span-2">
           <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wider">Paciente</span>
-          <span className="font-bold text-sm">{dataMap['{{patient_name}}']}</span>
+          <span className="font-bold text-sm">{replaceVariables('{{patient_name}}', dataMap)}</span>
         </div>
       )}
       {fields.includes('age') && (
         <div>
           <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wider">Edad</span>
-          <span className="text-xs">{dataMap['{{patient_age}}']} años</span>
+          <span className="text-xs">{replaceVariables('{{patient_age}}', dataMap)} años</span>
         </div>
       )}
       {fields.includes('gender') && (
         <div>
           <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wider">Sexo</span>
-          <span className="text-xs">{dataMap['{{patient_gender}}']}</span>
+          <span className="text-xs">{replaceVariables('{{patient_gender}}', dataMap)}</span>
         </div>
       )}
       {fields.includes('date') && (
         <div>
           <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wider">Fecha</span>
-          <span className="text-xs">{dataMap['{{date}}']}</span>
+          <span className="text-xs">{replaceVariables('{{date}}', dataMap)}</span>
         </div>
       )}
       {fields.includes('folio') && (
         <div>
           <span className="text-[9px] uppercase font-bold text-gray-400 block tracking-wider">Folio</span>
-          <span className="font-mono text-blue-600 font-bold text-xs">{dataMap['{{folio}}']}</span>
+          <span className="font-mono text-blue-600 font-bold text-xs">{replaceVariables('{{folio}}', dataMap)}</span>
         </div>
       )}
     </div>

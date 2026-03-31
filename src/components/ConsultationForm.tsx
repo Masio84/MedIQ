@@ -146,12 +146,12 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
           discount_min: Number(data.discount_min || 0),
           discount_max: Number(data.discount_max || 0),
           increment_min: Number(data.increment_min || 0),
-          increment_max: Number(data.increment_max || 0),
+          clinic_id: data.clinic_id || null,
           // Doctor identity fields for prescription snapshot
           name: data.name || '',
           specialty: data.specialty || '',
-          cedula: data.cedula || '',
-          cedula_especialidad: data.cedula_especialidad || '',
+          cedula: data.medical_license || '',
+          cedula_especialidad: data.specialty_license || '',
           clinic_name: data.clinic_name || '',
           clinic_phone: data.clinic_phone || '',
           clinic_address: data.clinic_address || '',
@@ -503,7 +503,8 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
             physical_examination: formData.physical_examination || null,
             prognosis: formData.prognosis || null,
             interconsultation_note: formData.interconsultation_note || null,
-            systems_review: systemsReview
+            systems_review: systemsReview,
+            clinic_id: doctorSettings.clinic_id
           })
           .eq('id', editingId)
           .select()
@@ -518,6 +519,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
             {
               patient_id: formData.patient_id,
               doctor_id: doctorId,
+              clinic_id: doctorSettings.clinic_id,
               symptoms: symptomsList.length > 0 ? symptomsList.join(', ') : (formData.symptoms || null),
               diagnosis: formData.diagnosis || null,
               treatment: formData.treatment || null,
@@ -555,6 +557,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
             {
               consultation_id: consultation.id,
               patient_id: formData.patient_id,
+              clinic_id: doctorSettings.clinic_id,
               normal_fee: doctorSettings.base_price,
               discount: discount,
               extra_charge: extra_charge,
@@ -1011,13 +1014,27 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
           )}
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-sm font-medium shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-        >
-          Guardar Consulta
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-50">
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {editingId ? 'Actualizar Consulta' : 'Finalizar & Abrir Caja'}
+          </button>
+          
+           {!editingId && (
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              disabled={loading || !formData.patient_id}
+              className="flex-1 py-3 bg-white border-2 border-gray-100 hover:border-gray-200 text-gray-700 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+            >
+              <Sparkles size={16} className="text-blue-500 group-hover:scale-110 transition-transform" />
+              Generar Receta
+            </button>
+          )}
+        </div>
       </form>
 
       {/* Confirmation Rules Pricing Modal */}
@@ -1025,6 +1042,12 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Confirmar Pago de Consulta</h3>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs font-medium rounded-lg flex items-center gap-2">
+                <AlertTriangle size={14} /> {error}
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>

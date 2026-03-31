@@ -50,6 +50,7 @@ export default function PatientForm({ onSuccess }: { onSuccess: () => void }) {
           address: data.address || null,
           allergies: data.allergies || null,
           medical_history: data.medical_history || null,
+          gender: data.gender || null,
           curp: curp || null,
           blood_type: data.blood_type || null,
           hereditary_background: backgrounds.hereditary,
@@ -92,13 +93,28 @@ export default function PatientForm({ onSuccess }: { onSuccess: () => void }) {
           />
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Fecha de Nacimiento</label>
-          <input
-            type="date"
-            name="birthdate"
-            className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900"
-          />
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Fecha de Nacimiento</label>
+            <input
+              type="date"
+              name="birthdate"
+              className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Género *</label>
+            <select
+              name="gender"
+              required
+              className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
+            >
+              <option value="">Seleccionar...</option>
+              <option value="Masculino">Masculino</option>
+              <option value="Femenino">Femenino</option>
+              <option value="Otro">Otro / No especificado</option>
+            </select>
+          </div>
         </div>
       </div>
 

@@ -10,6 +10,7 @@ export default function AuditLogViewer() {
   const [refreshing, setRefreshing] = useState(false);
   const [filterAction, setFilterAction] = useState<string>('all');
   const [filterTable, setFilterTable] = useState<string>('all');
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
   const logEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
@@ -32,7 +33,24 @@ export default function AuditLogViewer() {
       const { data, error } = await query;
 
       if (!error && data) {
-        setLogs(data); // Dejar orden descendente (el más reciente arriba) para diseño de tarjetas
+        setLogs(data);
+
+        // Fetch user names for the logs retrieved
+        const userIds = Array.from(new Set(data.map((log: any) => log.user_id).filter(Boolean)));
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, name')
+            .in('id', userIds);
+          
+          if (profiles) {
+            const names: Record<string, string> = {};
+            profiles.forEach((p: any) => {
+              names[p.id] = p.name;
+            });
+            setUserNames(prev => ({ ...prev, ...names }));
+          }
+        }
       }
     } catch (error) {
       console.error('Error cargando logs:', error);
@@ -118,7 +136,7 @@ export default function AuditLogViewer() {
         {/* Detalles Técnicos */}
         <div className="text-gray-400 text-[10px] font-mono bg-gray-50/50 p-1.5 rounded-lg border border-gray-100 flex justify-between">
             <span>RECORD: {log.record_id}</span>
-            {log.user_id && <span className="hidden md:inline">USER: {log.user_id.split('-')[0]}</span>}
+            {log.user_id && <span className="hidden md:inline">USUARIO: {userNames[log.user_id] || log.user_id.split('-')[0]}</span>}
         </div>
 
         {/* Cambios Visuales Legibles */}

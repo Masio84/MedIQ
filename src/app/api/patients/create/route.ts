@@ -37,6 +37,13 @@ export async function POST(request: Request) {
         address: data.address || null,
         allergies: data.allergies || null,
         medical_history: data.medical_history || null,
+        gender: data.gender || null,
+        curp: data.curp || null,
+        blood_type: data.blood_type || null,
+        hereditary_background: data.hereditary_background || null,
+        personal_pathological_background: data.personal_pathological_background || null,
+        non_pathological_background: data.non_pathological_background || null,
+        gyneco_obstetric_background: data.gyneco_obstetric_background || null,
       }])
       .select()
       .single();

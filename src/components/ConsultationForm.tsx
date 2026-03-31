@@ -32,9 +32,6 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
     general: '', respiratory: '', digestive: '', cardiovascular: '', other: ''
   });
 
-  const [cie10Search, setCie10Search] = useState('');
-  const [cie10Suggestions, setCie10Suggestions] = useState<{ code: string; description: string }[]>([]);
-  
   const [collapsed, setCollapsed] = useState({
     systems: true
   });
@@ -46,6 +43,9 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
   }>({ symptoms: [], diagnosis: [], treatment: [] });
 
   // AI Integration States
+  const [cie10Search, setCie10Search] = useState('');
+  const [cie10Suggestions, setCie10Suggestions] = useState<{ code: string; description: string }[]>([]);
+  const [isSearchingCie10, setIsSearchingCie10] = useState(false);
   const [symptomsList, setSymptomsList] = useState<string[]>([]);
   const [symptomInput, setSymptomInput] = useState('');
   const [isDiagnosing, setIsDiagnosing] = useState(false);
@@ -75,6 +75,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
             blood_pressure: formData.blood_pressure,
             temperature: formData.temperature,
             age: patientContext?.dob ? Math.floor((Date.now() - new Date(patientContext.dob).getTime()) / 31557600000) : 'Desconocida',
+            gender: patientContext?.gender || 'Desconocido',
             medical_history: patientContext?.medical_history
           })
         });
@@ -245,17 +246,57 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
     });
   }, [symptomInput, symptomsList]);
 
+  // Efecto para búsqueda CIE-10 (Local + AI Fallback)
   useEffect(() => {
-    if (!cie10Search.trim()) {
-      setCie10Suggestions([]);
-      return;
-    }
-    const filtered = cie10Catalogue.filter(item => 
-      item.code.toLowerCase().includes(cie10Search.toLowerCase()) || 
-      item.description.toLowerCase().includes(cie10Search.toLowerCase())
-    ).slice(0, 5); // limitar a 5
-    setCie10Suggestions(filtered as any);
-  }, [cie10Search]);
+    const timer = setTimeout(async () => {
+      if (!cie10Search.trim() || cie10Search.length < 2) {
+        setCie10Suggestions([]);
+        return;
+      }
+
+      // 1. Búsqueda Local (Rápida)
+      const localResults = cie10Catalogue.filter(item => 
+        item.code.toLowerCase().includes(cie10Search.toLowerCase()) || 
+        item.description.toLowerCase().includes(cie10Search.toLowerCase())
+      ).slice(0, 5);
+
+      if (localResults.length > 0) {
+        setCie10Suggestions(localResults as any);
+      }
+
+      // 2. Búsqueda AI (Catálogo Completo con filtros demográficos)
+      setIsSearchingCie10(true);
+      try {
+        const age = patientContext?.dob ? Math.floor((Date.now() - new Date(patientContext.dob).getTime()) / 31557600000) : null;
+        const res = await fetch('/api/ai/cie10/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: cie10Search,
+            gender: patientContext?.gender || 'Desconocido',
+            age
+          })
+        });
+        const data = await res.json();
+        if (data.codes) {
+          // Combinar resultados locales y AI evitando duplicados por código
+          const combined = [...localResults];
+          data.codes.forEach((aiItem: any) => {
+            if (!combined.some(c => c.code === aiItem.code)) {
+              combined.push(aiItem);
+            }
+          });
+          setCie10Suggestions(combined.slice(0, 10));
+        }
+      } catch (err) {
+        console.error('Error en búsqueda AI CIE-10:', err);
+      } finally {
+        setIsSearchingCie10(false);
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+  }, [cie10Search, patientContext]);
 
   const handleAddSymptom = (s: string) => {
     if (!s.trim()) return;
@@ -281,6 +322,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
           blood_pressure: formData.blood_pressure,
           temperature: formData.temperature,
           age: patientContext?.dob ? Math.floor((new Date().getTime() - new Date(patientContext.dob).getTime()) / 31557600000) : null,
+          gender: patientContext?.gender || 'Desconocido',
           medical_history: patientContext?.medical_history || ''
         })
       });
@@ -811,27 +853,43 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
           )}
 
           <div className="relative mb-2">
-            <input
-              type="text"
-              value={cie10Search}
-              onChange={(e) => setCie10Search(e.target.value)}
-              className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900"
-              placeholder="Buscar por código o nombre CIE-10..."
-            />
+            <div className="relative">
+              <input
+                type="text"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 transition-all font-medium"
+                placeholder="Buscar por nombre o código CIE-10..."
+                value={cie10Search}
+                onChange={(e) => setCie10Search(e.target.value)}
+              />
+              {isSearchingCie10 && (
+                <div className="absolute right-3 top-3.5">
+                  <Loader2 className="animate-spin text-gray-400" size={18} />
+                </div>
+              )}
+            </div>
+
             {cie10Suggestions.length > 0 && (
-              <div className="absolute top-full z-10 w-full shadow-lg rounded-xl mt-1 p-2 bg-white border border-gray-100">
-                {cie10Suggestions.map(item => (
+              <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="p-2 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Sugerencias Inteligentes (CIE-10)</span>
+                  {isSearchingCie10 && <span className="text-[10px] text-gray-400 animate-pulse">Consultando catálogo completo...</span>}
+                </div>
+                {cie10Suggestions.map((item, idx) => (
                   <button
-                    key={item.code}
+                    key={idx}
                     type="button"
+                    className="w-full text-left p-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 group"
                     onClick={() => {
                       setFormData(prev => ({ ...prev, cie10_code: item.code, cie10_description: item.description, diagnosis: item.description }));
                       setCie10Search(`${item.code} - ${item.description}`);
                       setCie10Suggestions([]);
                     }}
-                    className="w-full text-left p-2 hover:bg-gray-50 text-xs rounded-md"
                   >
-                    <span className="font-bold text-blue-600">{item.code}</span> - {item.description}
+                    <div className="flex justify-between items-start">
+                      <span className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors uppercase">{item.code}</span>
+                      <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold">Oficial</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{item.description}</p>
                   </button>
                 ))}
               </div>

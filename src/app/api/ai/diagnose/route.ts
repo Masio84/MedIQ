@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       await requireFeature(clinicId, 'ai_diagnosis');
     }
 
-    const { symptoms, weight, blood_pressure, temperature, age, medical_history } = await req.json();
+    const { symptoms, weight, blood_pressure, temperature, age, gender, medical_history } = await req.json();
     const apiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!apiKey) {
@@ -37,23 +37,32 @@ export async function POST(req: Request) {
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1000,
       temperature: 0.1,
-      system: `Eres un asistente de medicina clínica. Se te proporcionan datos y síntomas de un paciente.
+      system: `Eres un asistente de medicina clínica experto. Se te proporcionan datos y síntomas de un paciente.
 Tu tarea es sugerir de 3 a 5 diagnósticos médicos con sus correspondientes códigos CIE-10 corregidos.
+
+DEBES APLICAR LAS SIGUIENTES REGLAS CLÍNICAS:
+1. VALIDACIÓN DE GÉNERO: Solo sugiere códigos CIE-10 que apliquen al género del paciente (${gender || 'Desconocido'}). Por ejemplo, no sugieras patología prostática en mujeres ni patología obstétrica/ginecológica en hombres.
+2. VALIDACIÓN DE EDAD: 
+   - Si es menor de 18 años, prioriza diagnósticos y códigos de PEDIATRÍA.
+   - Si es mayor de 60 años, prioriza diagnósticos y códigos de GERIATRÍA y enfermedades crónico-degenerativas.
+3. PRECISIÓN CIE-10: Asegúrate de que los códigos sean válidos y precisos según el catálogo internacional.
+
 La respuesta DEBE ser únicamente un array JSON válido (sin bloque markdown \`\`\`, sin texto antes ni después) con esta estructura:
 [
   {
     "codigo": "Código CIE-10",
     "descripcion": "Nombre oficial de la afección",
     "probabilidad": "alta" o "media" o "baja",
-    "razon": "Explicación breve de por qué los síntomas coinciden"
+    "razon": "Explicación breve de por qué los síntomas coinciden considerando el perfil demográfico"
   }
 ]`,
       messages: [
         {
           role: 'user',
           content: `
-            Datos del Paciente:
+            Perfil del Paciente:
             Edad: ${age || 'Desconocida'}
+            Género: ${gender || 'Desconocido'}
             Historial Médico: ${medical_history || 'Sin historial relevante'}
             
             Signos Vitales:
@@ -64,7 +73,7 @@ La respuesta DEBE ser únicamente un array JSON válido (sin bloque markdown \`\
             Síntomas reportados:
             ${Array.isArray(symptoms) ? symptoms.join(', ') : symptoms}
 
-            Genera sugerencias diagnósticas con código CIE-10 formateadas EXACTAMENTE como el array JSON solicitado. No incluyas texto explicativo antes ni después.
+            Genera sugerencias diagnósticas con código CIE-10 que cumplan estrictamente con las validaciones de género y edad solicitadas.
           `
         }
       ]

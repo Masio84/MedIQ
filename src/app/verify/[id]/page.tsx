@@ -71,7 +71,7 @@ export default async function DocumentVerificationPage({ params }: { params: { i
               <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-0.5">Tipo de Documento</p>
               <p className="text-sm font-black text-gray-900">
                 {isCertificate 
-                  ? \`Certificado Médico - \${dataPayload.certificate_type === 'incapacidad' ? 'Incapacidad' : 'Salud General'}\` 
+                  ? 'Certificado Médico - ' + (dataPayload?.certificate_type === 'incapacidad' ? 'Incapacidad' : 'Salud General')
                   : 'Receta Médica'}
               </p>
             </div>

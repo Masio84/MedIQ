@@ -38,8 +38,8 @@ export default function Footer() {
             <div className="mb-4">
             <img
               src="/Logo_MedIQ_Transp.png"
-              alt="MedIQ"
-              className="h-10 w-auto object-contain brightness-0 invert"
+              alt="MedIQ Logo"
+              className="h-16 md:h-32 w-auto object-contain brightness-0 invert transition-opacity hover:opacity-80"
             />
           </div>
             <p className="text-sm text-gray-500 leading-relaxed">

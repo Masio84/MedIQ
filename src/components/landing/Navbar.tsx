@@ -30,13 +30,13 @@ export default function Navbar() {
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100' : 'bg-transparent'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-24 md:h-40">
           {/* Logo */}
           <div className="flex items-center">
             <img
               src="/Logo_MedIQ_Transp.png"
-              alt="MedIQ"
-              className="h-10 w-auto object-contain"
+              alt="MedIQ Logo"
+              className="h-16 md:h-32 w-auto object-contain transition-all duration-500 hover:scale-105 filter drop-shadow-md"
             />
           </div>
 

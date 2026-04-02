@@ -49,7 +49,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <div className="text-sm font-bold text-gray-900">Correo electrónico</div>
-                  <div className="text-xs text-blue-600">contacto@mediq.mx</div>
+                  <div className="text-xs text-blue-600">contacto@mymediq.app</div>
                 </div>
               </div>
 

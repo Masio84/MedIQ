@@ -15,7 +15,7 @@ const columns = [
     links: [
       { label: 'Contacto', href: '#contacto' },
       { label: 'WhatsApp', href: 'https://wa.me/524492347305' },
-      { label: 'contacto@mediq.mx', href: 'mailto:contacto@mediq.mx' },
+      { label: 'contacto@mymediq.app', href: 'mailto:contacto@mymediq.app' },
     ],
   },
   {

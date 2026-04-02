@@ -12,7 +12,7 @@ export const PRESCRIPTION_VARIABLES = {
     { key: '{{doctor_name}}', label: 'Nombre del Doctor', value: 'Dr. Alejandro Martínez' },
     { key: '{{doctor_specialty}}', label: 'Especialidad', value: 'Medicina General' },
     { key: '{{doctor_cedula}}', label: 'Cédula Profesional', value: '9876543210' },
-    { key: '{{doctor_email}}', label: 'Correo Electrónico', value: 'alejandro.martinez@mediq.mx' },
+    { key: '{{doctor_email}}', label: 'Correo Electrónico', value: 'alejandro.martinez@mymediq.app' },
   ],
   patient: [
     { key: '{{patient_name}}', label: 'Nombre del Paciente', value: 'Juan Pérez García' },

@@ -274,15 +274,25 @@ export default function DashboardShell({
       } ${
         isMini ? 'md:w-[72px]' : 'md:w-64'
       }`}>
-        <div className={`p-4 border-b border-gray-50 bg-white flex items-center ${isMini ? 'justify-center' : 'justify-between'}`}>
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="relative w-8 h-8 flex-shrink-0">
-              <Image src="/logo.png" alt="MedIQ Logo" fill sizes="32px" className="object-contain" priority />
+        <div className={`transition-all duration-500 border-b border-gray-50 bg-white flex items-center justify-center ${
+          isMini ? 'p-2 h-16' : 'p-6 h-32'
+        }`}>
+          <Link href="/dashboard" className="flex items-center justify-center w-full group">
+            <div className={`relative transition-all duration-500 ease-in-out flex-shrink-0 ${
+              isMini ? 'w-12 h-12' : 'w-44 h-24'
+            }`}>
+              <Image 
+                src="/logo.png" 
+                alt="MedIQ Logo" 
+                fill 
+                sizes={isMini ? "48px" : "176px"} 
+                className="object-contain transition-transform duration-500 group-hover:scale-105" 
+                priority 
+              />
             </div>
-            {!isMini && <span className="text-xl font-black tracking-tight text-blue-600">MedIQ</span>}
           </Link>
           {!isMini && (
-            <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 hover:bg-gray-50 rounded-lg text-gray-500">
+            <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 hover:bg-gray-50 rounded-lg text-gray-500 absolute right-4">
               <X size={20} />
             </button>
           )}

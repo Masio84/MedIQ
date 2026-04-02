@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authorizeUser } from '@/lib/auth-helpers';
+import { getDynamicPrompt } from '@/lib/ai-prompts';
 
 const rateLimitMap = new Map<string, { count: number; reset: number }>();
 
@@ -34,12 +35,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'API Key no configurada' }, { status: 500 });
     }
 
-    const prompt = `Considere el siguiente diagnóstico Médico y notas:
-DIAGNÓSTICO: ${diagnosis || 'No especificado'}
-SÍNTOMAS: ${symptoms || 'No especificado'}
-NOTAS: ${notes || 'No especificado'}
-
-Tu tarea es actuar como un gestor de citas administrativo. Sugiere una nota corta (máximo 4 palabras) para agendar la siguiente cita. 
+    // Obtener prompt dinámico
+    const systemPrompt = await getDynamicPrompt('assistant_summary', user.id, `Tu tarea es actuar como un gestor de citas administrativo. Sugiere una nota corta (máximo 4 palabras) para agendar la siguiente cita. 
 Debe ser entendible por personal de recepción (asistencia), y NO debe revelar datos médicos sensibles que expongan la privacidad del paciente (ej: no uses nombres de enfermedades graves o detalles íntimos).
 
 Ejemplos de salidas válidas:
@@ -49,14 +46,21 @@ Ejemplos de salidas válidas:
 - Curación de heridas
 - Seguimiento general
 
-Devuelve ÚNICAMENTE las palabras de la nota sugerida, sin comillas, sin introducciones ni saludos.`;
+Devuelve ÚNICAMENTE las palabras de la nota sugerida, sin comillas, sin introducciones ni saludos.`);
 
     const payload = {
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 50,
       temperature: 0.3,
+      system: systemPrompt,
       messages: [
-        { role: 'user', content: prompt }
+        { 
+          role: 'user', 
+          content: `Considere el siguiente diagnóstico Médico y notas:
+DIAGNÓSTICO: ${diagnosis || 'No especificado'}
+SÍNTOMAS: ${symptoms || 'No especificado'}
+NOTAS: ${notes || 'No especificado'}` 
+        }
       ]
     };
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireFeature } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
+import { getDynamicPrompt } from '@/lib/ai-prompts';
 
 export async function POST(request: Request) {
   try {
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     const startTs = `${date_from} 00:00:00`;
     const endTs = `${date_to} 23:59:59`;
 
-    // 1. Consultas para diagnóstico y pacientes crónicos
+    // ... (query logic remains same)
     let diagnosesQuery = supabase
       .from('consultations')
       .select('diagnosis, patient_id')
@@ -38,7 +39,6 @@ export async function POST(request: Request) {
 
     if (doctor_id) diagnosesQuery = diagnosesQuery.eq('doctor_id', doctor_id);
 
-    // 2. Tasa cumplimiento (appointments)
     let apptQuery = supabase
       .from('appointments')
       .select('status')
@@ -53,7 +53,6 @@ export async function POST(request: Request) {
         apptQuery
     ]);
 
-    // Calcular estadísticas en memoria para pasar a la IA
     const diagnosisCounts: Record<string, number> = {};
     const patientCounts: Record<string, number> = {};
 
@@ -105,10 +104,15 @@ export async function POST(request: Request) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new Error('API Key de Anthropic no configurada');
 
-    const prompt = `Establece un análisis de esta clínica mexicana:
-    ${statsContext}
-
-    Genera el reporte solicitado.`;
+    // Obtener prompt dinámico
+    const systemPrompt = await getDynamicPrompt('trend_analysis', user.id, `Eres un analista clínico de apoyo para consultorios médicos en México. Recibirás estadísticas operativas reales de una clínica. Genera un reporte ejecutivo en español con estas secciones exactas en formato JSON:
+{
+  "summary": "string (2-3 oraciones resumen ejecutivo)",
+  "trends": [{ "diagnosis": "string", "frequency": 1, "note": "string" }],
+  "alerts": [{ "message": "string", "severity": "high" | "medium" }],
+  "recommendations": [{ "action": "string", "priority": "alta" | "media" | "baja" }]
+}
+Responde ÚNICAMENTE con el JSON, sin texto adicional, sin bloques de código markdown. No inventes datos que no estén en el contexto proporcionado.`);
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -121,15 +125,8 @@ export async function POST(request: Request) {
             model: 'claude-haiku-4-5-20251001',
             max_tokens: 1000,
             temperature: 0.3,
-            system: `Eres un analista clínico de apoyo para consultorios médicos en México. Recibirás estadísticas operativas reales de una clínica. Genera un reporte ejecutivo en español con estas secciones exactas en formato JSON:
-{
-  "summary": "string (2-3 oraciones resumen ejecutivo)",
-  "trends": [{ "diagnosis": "string", "frequency": 1, "note": "string" }],
-  "alerts": [{ "message": "string", "severity": "high" | "medium" }],
-  "recommendations": [{ "action": "string", "priority": "alta" | "media" | "baja" }]
-}
-Responde ÚNICAMENTE con el JSON, sin texto adicional, sin bloques de código markdown. No inventes datos que no estén en el contexto proporcionado.`,
-            messages: [{ role: 'user', content: prompt }]
+            system: systemPrompt,
+            messages: [{ role: 'user', content: `Analiza los siguientes datos operativos: ${statsContext}` }]
         })
     });
 

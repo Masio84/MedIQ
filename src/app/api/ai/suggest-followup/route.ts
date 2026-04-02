@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireFeature } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
+import { getDynamicPrompt } from '@/lib/ai-prompts';
 
 export async function POST(request: Request) {
   try {
@@ -26,22 +27,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'API Key no configurada' }, { status: 500 });
     }
 
-    const prompt = `Considere el diagnóstico médico y tratamiento:
-DIAGNÓSTICO: ${diagnosis || 'No especificado'}
-TRATAMIENTO: ${treatment || 'No especificado'}
-SÍNTOMAS: ${symptoms || 'No especificado'}
-
-Tu tarea es sugerir una indicación de seguimiento O próxima cita para el médico. 
+    // Obtener prompt dinámico
+    const systemPrompt = await getDynamicPrompt('followup_suggestion', user.id, `Tu tarea es sugerir una indicación de seguimiento O próxima cita para el médico. 
 Debe ser muy directa y breve. Ej: "Cita en 7 días para revisión", "Cita en 1 mes con estudios de sangre", "Urgencia si presenta fiebre".
-
-Devuelve ÚNICAMENTE la indicación sugerida, sin comillas, sin introducciones ni saludos.`;
+Devuelve ÚNICAMENTE la indicación sugerida, sin comillas, sin introducciones ni saludos.`);
 
     const payload = {
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 100,
       temperature: 0.2,
+      system: systemPrompt,
       messages: [
-        { role: 'user', content: prompt }
+        { 
+          role: 'user', 
+          content: `Considere el diagnóstico médico y tratamiento:
+DIAGNÓSTICO: ${diagnosis || 'No especificado'}
+TRATAMIENTO: ${treatment || 'No especificado'}
+SÍNTOMAS: ${symptoms || 'No especificado'}` 
+        }
       ]
     };
 

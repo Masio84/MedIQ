@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireFeature } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
+import { getDynamicPrompt } from '@/lib/ai-prompts';
 
 export async function POST(req: Request) {
   try {
@@ -33,11 +34,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Se requieren síntomas para sugerir diagnóstico' }, { status: 400 });
     }
 
-    const payload = {
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1000,
-      temperature: 0.1,
-      system: `Eres un asistente de medicina clínica experto. Se te proporcionan datos y síntomas de un paciente.
+    const fallbackSystemPrompt = `Eres un asistente de medicina clínica experto. Se te proporcionan datos y síntomas de un paciente.
 Tu tarea es sugerir de 3 a 5 diagnósticos médicos con sus correspondientes códigos CIE-10 corregidos.
 
 DEBES APLICAR LAS SIGUIENTES REGLAS CLÍNICAS:
@@ -55,7 +52,15 @@ La respuesta DEBE ser únicamente un array JSON válido (sin bloque markdown \`\
     "probabilidad": "alta" o "media" o "baja",
     "razon": "Explicación breve de por qué los síntomas coinciden considerando el perfil demográfico"
   }
-]`,
+]`;
+
+    const systemPrompt = await getDynamicPrompt('diagnose', user.id, fallbackSystemPrompt);
+
+    const payload = {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1000,
+      temperature: 0.1,
+      system: systemPrompt,
       messages: [
         {
           role: 'user',

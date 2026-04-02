@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authorizeUser } from '@/lib/auth-helpers';
+import { getDynamicPrompt } from '@/lib/ai-prompts';
 
 const rateLimitMap = new Map<string, { count: number; reset: number }>();
 
@@ -34,11 +35,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Falta configurar ANTHROPIC_API_KEY en .env.local' }, { status: 500 });
     }
 
+    // Obtener prompt dinámico
+    const systemPrompt = await getDynamicPrompt('patient_summary', user.id, "Eres un médico especialista. Se te proporcionará el expediente digital histórico de un paciente (consultas, diagnósticos, asistencias). Tu tarea es redactar un resumen clínico ejecutivo muy intuitivo, moderno y profesional. Destaca problemas crónicos, tendencias de signos vitales (si aplica), y conclusiones preventivas. No uses intros ni advertencias preámbulos. Redacta en formato Markdown directo.");
+
     const payload = {
       model: 'claude-3-5-sonnet-20240620',
       max_tokens: 1000,
       temperature: 0.3,
-      system: "Eres un médico especialista. Se te proporcionará el expediente digital histórico de un paciente (consultas, diagnósticos, asistencias). Tu tarea es redactar un resumen clínico ejecutivo muy intuitivo, moderno y profesional. Destaca problemas crónicos, tendencias de signos vitales (si aplica), y conclusiones preventivas. No uses intros ni advertencias preámbulos. Redacta en formato Markdown directo.",
+      system: systemPrompt,
       messages: [
         {
           role: 'user',

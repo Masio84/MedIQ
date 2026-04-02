@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireFeature } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
+import { getDynamicPrompt } from '@/lib/ai-prompts';
 
 export async function POST(req: Request) {
   try {
@@ -31,11 +32,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Se requiere un diagnóstico para sugerir tratamiento' }, { status: 400 });
     }
 
+    // Obtener prompt dinámico para tratamiento
+    const systemPrompt = await getDynamicPrompt('treatment_suggestion', user.id, "Eres un asistente médico experto. Debes proponer un tratamiento médico basado en el diagnóstico proporcionado, los síntomas y las constantes vitales del paciente. Actúas apoyando a un médico licenciado. Tu respuesta debe ser una lista de recomendaciones de medicamentos, especificando claramente el nombre del medicamento, la presentación, la dosis, la periodicidad (cada cuántas horas) y la duración del tratamiento. Formatea la respuesta de manera muy limpia, estructurada, usando viñetas o listas. NO agregues introducciones ni notas de advertencia moral, da la receta médica directa.");
+
     const payload = {
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 800,
       temperature: 0.1,
-      system: "Eres un asistente médico experto. Debes proponer un tratamiento médico basado en el diagnóstico proporcionado, los síntomas y las constantes vitales del paciente. Actúas apoyando a un médico licenciado. Tu respuesta debe ser una lista de recomendaciones de medicamentos, especificando claramente el nombre del medicamento, la presentación, la dosis, la periodicidad (cada cuántas horas) y la duración del tratamiento. Formatea la respuesta de manera muy limpia, estructurada, usando viñetas o listas. NO agregues introducciones ni notas de advertencia moral, da la receta médica directa.",
+      system: systemPrompt,
       messages: [
         {
           role: 'user',

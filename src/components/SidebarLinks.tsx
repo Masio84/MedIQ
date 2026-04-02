@@ -18,7 +18,9 @@ import {
   ChevronRight,
   FilePenLine,
   FilePlus2,
-  Settings
+  Settings,
+  Database,
+  Bot
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 
@@ -63,6 +65,18 @@ export default function SidebarLinks({ isMini = false }: SidebarLinksProps) {
       href: '/superadmin/logs',
       label: 'Auditoría NOM-024',
       icon: FileText,
+      roles: ['superadmin'],
+    },
+    {
+      href: '/superadmin/rls',
+      label: 'RLS Policy Manager',
+      icon: Database,
+      roles: ['superadmin'],
+    },
+    {
+      href: '/superadmin/prompts',
+      label: 'AI Prompts Config',
+      icon: Settings,
       roles: ['superadmin'],
     },
     {

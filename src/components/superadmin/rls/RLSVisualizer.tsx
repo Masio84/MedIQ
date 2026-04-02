@@ -23,10 +23,11 @@ import { Shield, Table as TableIcon, Users } from 'lucide-react';
 interface RLSVisualizerProps {
   tables: any[];
   policies: any[];
+  onNodeClick?: (type: 'table' | 'policy', data: any) => void;
 }
 
 const TableNode = ({ data }: any) => (
-  <div className="px-4 py-2 shadow-lg rounded-md bg-white dark:bg-slate-900 border-2 border-blue-500 min-w-[150px]">
+  <div className="px-4 py-2 shadow-lg rounded-md bg-white dark:bg-slate-900 border-2 border-blue-500 min-w-[150px] cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors">
     <Handle type="target" position={Position.Left} className="w-2 h-2 !bg-blue-500" />
     <div className="flex items-center border-b border-gray-100 dark:border-slate-800 pb-1 mb-1">
       <TableIcon className="w-4 h-4 mr-2 text-blue-500" />
@@ -49,7 +50,7 @@ const RoleNode = ({ data }: any) => (
 );
 
 const PolicyNode = ({ data }: any) => (
-  <div className="px-3 py-2 shadow-md rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 min-w-[200px]">
+  <div className="px-3 py-2 shadow-md rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 min-w-[200px] cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors">
     <Handle type="target" position={Position.Left} className="w-2 h-2 !bg-emerald-400" />
     <div className="flex items-center border-b border-emerald-100 dark:border-emerald-900 pb-1 mb-1">
       <Shield className="w-3 h-3 mr-2 text-emerald-600" />
@@ -73,7 +74,7 @@ const nodeTypes = {
   policy: PolicyNode,
 };
 
-export default function RLSVisualizer({ tables, policies }: RLSVisualizerProps) {
+export default function RLSVisualizer({ tables, policies, onNodeClick }: RLSVisualizerProps) {
   const initialNodes: Node[] = useMemo(() => {
     const nodes: Node[] = [];
     
@@ -113,7 +114,10 @@ export default function RLSVisualizer({ tables, policies }: RLSVisualizerProps) 
         data: { 
           label: policy.name, 
           command: policy.command, 
-          qual: policy.qual 
+          qual: policy.qual,
+          table: policy.table,
+          roles: policy.roles,
+          with_check: policy.with_check
         },
         position: { x: 500, y: 50 + idx * 180 },
       });
@@ -158,6 +162,12 @@ export default function RLSVisualizer({ tables, policies }: RLSVisualizerProps) 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
+  const handleNodeClick = useCallback((_: any, node: Node) => {
+    if (onNodeClick && (node.type === 'table' || node.type === 'policy')) {
+      onNodeClick(node.type as 'table' | 'policy', node.data);
+    }
+  }, [onNodeClick]);
+
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
@@ -171,6 +181,7 @@ export default function RLSVisualizer({ tables, policies }: RLSVisualizerProps) 
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView
       >
@@ -179,7 +190,7 @@ export default function RLSVisualizer({ tables, policies }: RLSVisualizerProps) 
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
         <Panel position="top-right" className="bg-white/80 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-200 dark:border-slate-800 backdrop-blur-sm shadow-xl">
            <div className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-2">Simulador de Acceso</div>
-           <p className="text-[10px] text-slate-500">Mueve los nodos para organizar tu vista de seguridad.</p>
+           <p className="text-[10px] text-slate-500">Mueve los nodos o haz clic para gestionar.</p>
         </Panel>
       </ReactFlow>
     </div>

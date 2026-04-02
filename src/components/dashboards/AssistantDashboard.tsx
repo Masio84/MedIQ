@@ -383,7 +383,7 @@ export default function AssistantDashboard() {
       {/* ─── LEFT COLUMN ─── */}
       <div className="space-y-6">
       {/* 3 Metric Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Cobros Pendientes */}
         <div className="bg-white border-[0.5px] border-black/8 rounded-xl p-6 shadow-sm flex flex-col justify-center">
           <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Cobros pendientes</span>
@@ -424,40 +424,42 @@ export default function AssistantDashboard() {
       ) : (
         <div className="bg-white rounded-xl border-[0.5px] border-black/8 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse border-[0.5px] border-black/8">
-              <thead>
-                <tr className="bg-gray-50/50 border-[0.5px] border-black/8 text-[11px] font-medium text-gray-500 uppercase tracking-wider">
-                  <th className="px-6 py-3 border-[0.5px] border-black/8">Paciente</th>
-                  <th className="px-6 py-3 border-[0.5px] border-black/8">Monto a cobrar</th>
-                  <th className="px-6 py-3 text-center border-[0.5px] border-black/8">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y-[0.5px] divide-black/8">
-                {Array.isArray(billings) && billings.map((b) => {
-                  const total = Number(b.normal_fee) + Number(b.extra_charge) - Number(b.discount);
-                  const patientName = b.patients?.name ? b.patients.name : 'Paciente Sin Nombre'; // Requerimiento: jalar el nombre real, no N/A
-                  return (
-                    <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 border-[0.5px] border-black/8">
-                        {patientName}
-                      </td>
-                      <td className="px-6 py-4 font-medium text-gray-900 text-sm border-[0.5px] border-black/8">
-                        ${total.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 text-center border-[0.5px] border-black/8">
-                        <button 
-                          onClick={() => handleMarkAsPaid(b)}
-                          className="px-3 py-1.5 rounded-md text-[11px] font-medium flex items-center justify-center gap-1.5 mx-auto"
-                          style={{ backgroundColor: '#E6F5F0', color: '#0F6E56' }}
-                        >
-                          ✓ Validar
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="min-w-[600px]">
+              <table className="w-full text-left border-collapse border-[0.5px] border-black/8">
+                <thead>
+                  <tr className="bg-gray-50/50 border-[0.5px] border-black/8 text-[11px] font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 border-[0.5px] border-black/8">Paciente</th>
+                    <th className="px-6 py-3 border-[0.5px] border-black/8">Monto a cobrar</th>
+                    <th className="px-6 py-3 text-center border-[0.5px] border-black/8">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y-[0.5px] divide-black/8">
+                  {Array.isArray(billings) && billings.map((b) => {
+                    const total = Number(b.normal_fee) + Number(b.extra_charge) - Number(b.discount);
+                    const patientName = b.patients?.name ? b.patients.name : 'Paciente Sin Nombre'; // Requerimiento: jalar el nombre real, no N/A
+                    return (
+                      <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900 border-[0.5px] border-black/8">
+                          {patientName}
+                        </td>
+                        <td className="px-6 py-4 font-medium text-gray-900 text-sm border-[0.5px] border-black/8">
+                          ${total.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 text-center border-[0.5px] border-black/8">
+                          <button 
+                            onClick={() => handleMarkAsPaid(b)}
+                            className="px-3 py-1.5 rounded-md text-[11px] font-medium flex items-center justify-center gap-1.5 mx-auto"
+                            style={{ backgroundColor: '#E6F5F0', color: '#0F6E56' }}
+                          >
+                            ✓ Validar
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

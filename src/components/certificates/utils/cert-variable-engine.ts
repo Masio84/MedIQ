@@ -47,10 +47,19 @@ export const replaceCertificateVariables = (text: string, mockData?: any): strin
   if (!text) return '';
   const dataMap = getCertificateVariableDataMap(mockData);
   let result = text;
+  
   Object.entries(dataMap).forEach(([key, value]) => {
-    // Usar RegExp global para reemplazar todas las ocurrencias
-    const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    result = result.replace(new RegExp(escapeRegExp(key), 'g'), value?.toString() || '');
+    // Escapar caracteres especiales para el RegExp
+    const cleanKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
+    // Crear RegExp que soporte:
+    // 1. Mayúsculas/minúsculas (flag 'i')
+    // 2. Con o sin llaves externas (opcional)
+    // 3. Globalmente (flag 'g')
+    const pattern = new RegExp(cleanKey, 'gi');
+    
+    result = result.replace(pattern, value?.toString() || '');
   });
+  
   return result;
 };

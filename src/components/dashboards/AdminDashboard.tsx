@@ -186,7 +186,7 @@ export default function AdminDashboard({ profile, plan, stats }: AdminDashboardP
 
       {/* SECCIÓN 1: Métricas y Consumo */}
       <h3 className="text-xxs font-black text-gray-400 uppercase tracking-wider">Consumo del Mes</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-3">
               <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl"><FileText size={18} /></div>
@@ -215,49 +215,51 @@ export default function AdminDashboard({ profile, plan, stats }: AdminDashboardP
       {/* SECCIÓN 2: Gestión de Usuarios */}
       <h3 className="text-xxs font-black text-gray-400 uppercase tracking-wider pt-4">Personal de la Clínica</h3>
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                  <thead>
-                      <tr className="bg-gray-50/50 border-b border-gray-100 text-[11px] font-bold text-gray-500 uppercase">
-                          <th className="px-6 py-4">Usuario</th>
-                          <th className="px-6 py-4">Rol</th>
-                          <th className="px-6 py-4">Email</th>
-                          <th className="px-6 py-4">Estado</th>
-                          <th className="px-6 py-4 text-center">Acciones</th>
-                      </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                      {Array.isArray(profiles) && profiles.map((p) => {
-                          const isUserActive = p.is_active !== false;
-                          return (
-                              <tr key={p.id} className="hover:bg-gray-50/40 transition-colors">
-                                  <td className="px-6 py-4 text-sm font-bold text-gray-900">{p.name || 'Sin nombre'}</td>
-                                  <td className="px-6 py-4">
-                                      <span className={`capitalize text-xxs font-bold px-2 py-0.5 rounded-full ${p.role === 'doctor' ? 'bg-blue-50 text-blue-700' : p.role === 'admin' ? 'bg-purple-50 text-purple-700' : 'bg-gray-50 text-gray-600'}`}>
-                                          {p.role}
-                                      </span>
-                                  </td>
-                                  <td className="px-6 py-4 text-xs font-medium text-gray-500">{p.email || 'N/A'}</td>
-                                  <td className="px-6 py-4">
-                                      <span className={`inline-flex items-center text-xxs font-black ${isUserActive ? 'text-green-600' : 'text-red-500'}`}>
-                                          {isUserActive ? 'Activo' : 'Inactivo'}
-                                      </span>
-                                  </td>
-                                  <td className="px-6 py-4 text-center">
-                                      <button 
-                                          onClick={() => handleToggleUserStatus(p.id, p.is_active)}
-                                          className={`text-xxs font-bold px-2.5 py-1 rounded-lg border ${
-                                              isUserActive ? 'border-red-100 text-red-600 hover:bg-red-50' : 'border-green-100 text-green-600 hover:bg-green-50'
-                                          }`}
-                                      >
-                                          {isUserActive ? 'Desactivar' : 'Activar'}
-                                      </button>
-                                  </td>
-                              </tr>
-                          );
-                      })}
-                  </tbody>
-              </table>
+          <div className="overflow-x-auto whitespace-nowrap">
+              <div className="min-w-[800px]">
+                  <table className="w-full text-left border-collapse">
+                      <thead>
+                          <tr className="bg-gray-50/50 border-b border-gray-100 text-[11px] font-bold text-gray-500 uppercase">
+                              <th className="px-6 py-4">Usuario</th>
+                              <th className="px-6 py-4">Rol</th>
+                              <th className="px-6 py-4">Email</th>
+                              <th className="px-6 py-4">Estado</th>
+                              <th className="px-6 py-4 text-center">Acciones</th>
+                          </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                          {Array.isArray(profiles) && profiles.map((p) => {
+                              const isUserActive = p.is_active !== false;
+                              return (
+                                  <tr key={p.id} className="hover:bg-gray-50/40 transition-colors">
+                                      <td className="px-6 py-4 text-sm font-bold text-gray-900">{p.name || 'Sin nombre'}</td>
+                                      <td className="px-6 py-4">
+                                          <span className={`capitalize text-xxs font-bold px-2 py-0.5 rounded-full ${p.role === 'doctor' ? 'bg-blue-50 text-blue-700' : p.role === 'admin' ? 'bg-purple-50 text-purple-700' : 'bg-gray-50 text-gray-600'}`}>
+                                              {p.role}
+                                          </span>
+                                      </td>
+                                      <td className="px-6 py-4 text-xs font-medium text-gray-500">{p.email || 'N/A'}</td>
+                                      <td className="px-6 py-4">
+                                          <span className={`inline-flex items-center text-xxs font-black ${isUserActive ? 'text-green-600' : 'text-red-500'}`}>
+                                              {isUserActive ? 'Activo' : 'Inactivo'}
+                                          </span>
+                                      </td>
+                                      <td className="px-6 py-4 text-center text-nowrap">
+                                          <button 
+                                              onClick={() => handleToggleUserStatus(p.id, p.is_active)}
+                                              className={`text-xxs font-bold px-2.5 py-1 rounded-lg border ${
+                                                  isUserActive ? 'border-red-100 text-red-600 hover:bg-red-50' : 'border-green-100 text-green-600 hover:bg-green-50'
+                                              }`}
+                                          >
+                                              {isUserActive ? 'Desactivar' : 'Activar'}
+                                          </button>
+                                      </td>
+                                  </tr>
+                              );
+                          })}
+                      </tbody>
+                  </table>
+              </div>
           </div>
       </div>
 

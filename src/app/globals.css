@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 @theme inline {
@@ -22,11 +23,23 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Responsive Padding Utilities */
+.section-padding {
+  padding: clamp(1rem, 5vw, 2.5rem);
+}
+
+.card-padding {
+  padding: clamp(1rem, 3vw, 1.5rem);
 }
 
 input, select, textarea {
   color: #000000;
+  font-family: var(--font-sans);
 }
 
 /* Active Navbar item curves inverse radius */
@@ -82,6 +95,14 @@ input, select, textarea {
 }
 .ripple-badge {
   animation: ripplePulse 1.6s ease-out infinite;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 

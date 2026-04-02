@@ -146,7 +146,8 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
           discount_min: Number(data.discount_min || 0),
           discount_max: Number(data.discount_max || 0),
           increment_min: Number(data.increment_min || 0),
-          clinic_id: data.clinic_id || null,
+          increment_max: Number(data.increment_max || 0),
+          clinic_id: data.clinic_id,
           // Doctor identity fields for prescription snapshot
           name: data.name || '',
           specialty: data.specialty || '',
@@ -476,14 +477,25 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
     setError(null);
 
     try {
-      // 0. Fetch the doctor's prescription template snapshot
+      // 0. Fetch the doctor's prescription template snapshot (use maybeSingle to avoid 406)
       const { data: templateData } = await supabase
         .from('prescription_templates')
         .select('config')
         .eq('doctor_id', doctorId)
-        .single();
+        .maybeSingle();
       
       const templateSnapshot = templateData?.config || {};
+
+      // 0.5 Re-verify clinic_id to avoid RLS errors
+      let finalClinicId = doctorSettings.clinic_id;
+      if (!finalClinicId) {
+        const { data: profile } = await supabase.from('profiles').select('clinic_id').eq('id', doctorId).single();
+        if (profile?.clinic_id) {
+           finalClinicId = profile.clinic_id;
+        } else {
+           throw new Error("No tienes una clínica asignada en tu perfil. Completa tu configuración para guardar consultas.");
+        }
+      }
 
       // 1. Insert or Update Consultation
       let consultation;
@@ -519,7 +531,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
             {
               patient_id: formData.patient_id,
               doctor_id: doctorId,
-              clinic_id: doctorSettings.clinic_id,
+              clinic_id: finalClinicId,
               symptoms: symptomsList.length > 0 ? symptomsList.join(', ') : (formData.symptoms || null),
               diagnosis: formData.diagnosis || null,
               treatment: formData.treatment || null,
@@ -557,7 +569,8 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
             {
               consultation_id: consultation.id,
               patient_id: formData.patient_id,
-              clinic_id: doctorSettings.clinic_id,
+              doctor_id: doctorId, // Mandatory for RLS policy "billing_final_access"
+              clinic_id: finalClinicId,
               normal_fee: doctorSettings.base_price,
               discount: discount,
               extra_charge: extra_charge,
@@ -703,7 +716,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
 
   return (
     <>
-      <form onSubmit={triggerSave} className="space-y-6 bg-white p-6 rounded-xl border border-gray-100/50 shadow-sm transition-all duration-300">
+      <form onSubmit={triggerSave} className="space-y-6 bg-white p-4 sm:p-6 rounded-xl border border-gray-100/50 shadow-sm transition-all duration-300">
         <div className="flex justify-between items-center border-b border-gray-100 pb-2">
           <h3 className="text-lg font-bold text-gray-900">{editingId ? 'Editar Consulta' : 'Registrar Consulta'}</h3>
           {editingId && (
@@ -733,7 +746,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
           </select>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Peso (kg)</label>
             <input type="number" step="0.1" name="weight" value={formData.weight} onChange={handleInputChange} className="w-full px-4 py-2 text-sm border border-gray-100 rounded-lg focus:outline-none" />
@@ -847,7 +860,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
               ) : suggestedDiagnostics.length > 0 ? (
                 <div className="space-y-2">
                   <span className="text-[10px] font-black uppercase text-blue-900 flex items-center gap-1"><Sparkles size={12} className="text-blue-600"/> Diagnósticos Sugeridos por IA</span>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {suggestedDiagnostics.map((sug, ix) => (
                       <button
                         key={ix}
@@ -973,7 +986,7 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
           </div>
 
           {(formData as any).needs_follow_up && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Fecha Sugerida</label>
                 <input 

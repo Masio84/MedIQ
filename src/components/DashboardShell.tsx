@@ -19,6 +19,8 @@ export default function DashboardShell({
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMini, setIsMini] = useState(false);
+
   const [stats, setStats] = useState({ earnedToday: 0, appointmentsToday: 0 });
   const [weatherTemp, setWeatherTemp] = useState<number | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
@@ -46,6 +48,22 @@ export default function DashboardShell({
       }
     };
     fetchWeather();
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      // Mini sidebar for tablets (between 768 and 1280)
+      if (width >= 768 && width < 1280) {
+        setIsMini(true);
+      } else {
+        setIsMini(false);
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
@@ -241,59 +259,60 @@ export default function DashboardShell({
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
-    <div className="flex h-screen bg-gray-100 text-gray-900 overflow-hidden relative">
-      <aside className={`
-        fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-100 flex flex-col h-full transform 
-        md:relative md:translate-x-0 transition-transform duration-300 ease-in-out shadow-lg md:shadow-none
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between md:justify-center">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Image 
-              src="/logo_v1.png" 
-              alt="MedIQ" 
-              width={140} 
-              height={40} 
-              className="h-12 w-auto object-contain"
-              priority
-            />
+    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans">
+      {/* Sidebar Mobile Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`fixed md:static inset-y-0 left-0 z-50 bg-white border-r border-gray-100 flex flex-col transition-all duration-300 ease-in-out shadow-sm ${
+        isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0'
+      } ${
+        isMini ? 'md:w-[72px]' : 'md:w-64'
+      }`}>
+        <div className={`p-4 border-b border-gray-50 bg-white flex items-center ${isMini ? 'justify-center' : 'justify-between'}`}>
+          <Link href="/dashboard" className="flex items-center gap-3">
+            <div className="relative w-8 h-8 flex-shrink-0">
+              <Image src="/logo.png" alt="MedIQ Logo" fill sizes="32px" className="object-contain" priority />
+            </div>
+            {!isMini && <span className="text-xl font-black tracking-tight text-blue-600">MedIQ</span>}
           </Link>
-          <button 
-            className="p-1 rounded-lg text-gray-400 hover:bg-gray-50 md:hidden"
-            onClick={toggleSidebar}
+          {!isMini && (
+            <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 hover:bg-gray-50 rounded-lg text-gray-500">
+              <X size={20} />
+            </button>
+          )}
+        </div>
+
+        <SidebarLinks isMini={isMini} />
+
+        <div className={`p-4 border-t border-gray-50 space-y-2 ${isMini ? 'flex flex-col items-center' : ''}`}>
+          <Link 
+            href="/auth/signout" 
+            title={isMini ? "Cerrar Sesión" : undefined}
+            className={`w-full flex items-center text-sm font-medium text-red-600 hover:bg-red-50 p-3 rounded-xl transition-all group ${
+              isMini ? 'justify-center p-2' : 'gap-3'
+            }`}
           >
-            <X size={20} />
-          </button>
-        </div>
-
-        <SidebarLinks />
-
-        <div className="p-4 border-t border-gray-50 text-center mt-auto">
-          <Link href="/legal" className="text-xs text-gray-400 hover:text-gray-900 transition-colors">
-            Aviso Legal
-          </Link>
-        </div>
-
-        <div className="p-3 border-t border-gray-100 bg-gray-50/50">
-          <Link href="/auth/signout" className="flex items-center justify-center gap-2 py-2 px-3 w-full hover:bg-red-50/80 rounded-lg text-gray-500 hover:text-red-600 transition-all font-semibold text-xs border border-transparent hover:border-red-100">
-            <LogOut size={14} />
-            Cerrar Sesión
+            <div className={`flex items-center justify-center p-2 rounded-lg bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors`}>
+              <LogOut size={18} />
+            </div>
+            {!isMini && <span>Cerrar Sesión</span>}
           </Link>
         </div>
       </aside>
 
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/25 backdrop-blur-sm z-30 md:hidden"
-          onClick={toggleSidebar}
-        />
-      )}
-
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header className="h-16 bg-white border-b border-gray-50/80 flex items-center justify-between px-4 md:px-8 shrink-0">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 h-full relative overflow-hidden">
+        {/* Header */}
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30 shadow-sm shrink-0">
           <div className="flex items-center gap-3">
             <button 
-              className="p-2 -ml-2 rounded-lg text-gray-400 hover:bg-gray-50 md:hidden"
+              className="md:hidden p-2 -ml-2 rounded-lg text-gray-400 hover:bg-gray-50"
               onClick={toggleSidebar}
             >
               <Menu size={22} />
@@ -337,8 +356,8 @@ export default function DashboardShell({
               </div>
           </div>
 
-          <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-2">
+          <div className="flex-1 flex justify-end">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 max-w-[calc(100vw-180px)] md:max-w-none">
                 <div className="group relative bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11 hover:bg-gray-100/50 cursor-pointer transition-colors">
                   <Calendar size={16} className="text-blue-500" />
                   <div className="flex flex-col justify-center">

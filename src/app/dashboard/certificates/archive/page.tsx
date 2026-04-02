@@ -60,7 +60,10 @@ export default function CertificatesArchivePage() {
             name,
             specialty,
             medical_license,
-            specialty_license
+            specialty_license,
+            clinic_name,
+            clinic_address,
+            clinic_phone
           )
         `)
         .eq('doctor_id', user.id)
@@ -111,9 +114,9 @@ export default function CertificatesArchivePage() {
         specialtyCedula: doc.profiles?.specialty_license || 'CEP',
       },
       clinic: {
-        name: 'Clínica',
-        address: 'Dirección Completa',
-        phone: 'Teléfono',
+        name: doc.profiles?.clinic_name || 'Clínica',
+        address: doc.profiles?.clinic_address || 'Dirección Completa',
+        phone: doc.profiles?.clinic_phone || 'Teléfono',
       },
       purpose: doc.purpose,
       findings: doc.findings,

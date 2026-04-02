@@ -17,11 +17,16 @@ import {
   ChevronDown,
   ChevronRight,
   FilePenLine,
-  FilePlus2
+  FilePlus2,
+  Settings
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 
-export default function SidebarLinks() {
+interface SidebarLinksProps {
+  isMini?: boolean;
+}
+
+export default function SidebarLinks({ isMini = false }: SidebarLinksProps) {
   const { role } = useRole();
   const pathname = usePathname();
   const [isPrescriptionsOpen, setIsPrescriptionsOpen] = useState(false);
@@ -29,17 +34,17 @@ export default function SidebarLinks() {
 
   // Auto-expand if the current path is within prescriptions
   useEffect(() => {
-    if (pathname.startsWith('/dashboard/prescriptions')) {
+    if (pathname.startsWith('/dashboard/prescriptions') && !isMini) {
       setIsPrescriptionsOpen(true);
     }
-  }, [pathname]);
+  }, [pathname, isMini]);
 
   // Auto-expand if the current path is within certificates
   useEffect(() => {
-    if (pathname.startsWith('/dashboard/certificates')) {
+    if (pathname.startsWith('/dashboard/certificates') && !isMini) {
       setIsCertificatesOpen(true);
     }
-  }, [pathname]);
+  }, [pathname, isMini]);
 
   const links = [
     {
@@ -95,8 +100,8 @@ export default function SidebarLinks() {
       icon: FileCheck,
       roles: ['doctor', 'assistant'],
       isSubmenu: true,
-      isOpen: isCertificatesOpen,
-      onToggle: () => setIsCertificatesOpen(!isCertificatesOpen),
+      isOpen: isCertificatesOpen && !isMini,
+      onToggle: () => !isMini && setIsCertificatesOpen(!isCertificatesOpen),
       subItems: [
         {
           href: '/dashboard/certificates/new',
@@ -120,8 +125,8 @@ export default function SidebarLinks() {
       icon: FileText,
       roles: ['doctor'],
       isSubmenu: true,
-      isOpen: isPrescriptionsOpen,
-      onToggle: () => setIsPrescriptionsOpen(!isPrescriptionsOpen),
+      isOpen: isPrescriptionsOpen && !isMini,
+      onToggle: () => !isMini && setIsPrescriptionsOpen(!isPrescriptionsOpen),
       subItems: [
         {
           href: '/dashboard/prescriptions/archive',
@@ -144,13 +149,13 @@ export default function SidebarLinks() {
     {
       href: '/dashboard/settings',
       label: 'Configuración',
-      icon: Users,
+      icon: Settings,
       roles: ['admin', 'doctor', 'assistant'],
     },
   ];
 
   return (
-    <nav className="flex-1 p-4 space-y-1">
+    <nav className={`flex-1 p-3 ${isMini ? 'space-y-4' : 'space-y-1'}`}>
       {links
         .filter((link) => link.roles.includes(role))
         .map((link) => {
@@ -163,20 +168,23 @@ export default function SidebarLinks() {
               <div key={link.label} className="space-y-1">
                 <button
                   onClick={link.onToggle}
-                  className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  title={isMini ? link.label : undefined}
+                  className={`w-full flex items-center justify-between gap-3 text-sm font-medium rounded-lg transition-all ${
+                    isMini ? 'px-0 py-2 justify-center' : 'px-4 py-3'
+                  } ${
                     hasActiveSubItem || link.isOpen
                       ? 'bg-gray-50 text-blue-600'
                       : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className={`flex items-center ${isMini ? 'justify-center' : 'gap-3'}`}>
                     <Icon size={20} className={hasActiveSubItem ? 'text-blue-500' : 'text-gray-400'} />
-                    {link.label}
+                    {!isMini && <span>{link.label}</span>}
                   </div>
-                  {link.isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  {!isMini && (link.isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
                 </button>
                 
-                {link.isOpen && (
+                {link.isOpen && !isMini && (
                   <div className="ml-4 space-y-1 border-l border-gray-100 pl-2">
                     {link.subItems?.map((sub) => {
                       const SubIcon = sub.icon;
@@ -209,14 +217,17 @@ export default function SidebarLinks() {
             <Link
               key={link.href}
               href={link.href as string}
-              className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+              title={isMini ? link.label : undefined}
+              className={`flex items-center gap-3 text-sm font-medium rounded-lg transition-all ${
+                isMini ? 'px-0 py-2 justify-center' : 'px-4 py-3'
+              } ${
                 isActive
                   ? 'bg-blue-50 text-blue-600'
                   : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
               <Icon size={20} className={isActive ? 'text-blue-500' : 'text-gray-400'} />
-              {link.label}
+              {!isMini && <span>{link.label}</span>}
             </Link>
           );
         })}

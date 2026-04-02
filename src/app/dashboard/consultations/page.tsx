@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client';
 import { useRole } from '@/context/RoleContext';
 import ConsultationForm from '@/components/ConsultationForm';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Sparkles, Activity, Calendar as CalendarIcon, Heart } from 'lucide-react';
+import { Sparkles, Activity, Calendar as CalendarIcon, Heart, ChevronDown, ChevronUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ConsultationsPage() {
   const { role, isLoading } = useRole();
@@ -22,8 +23,16 @@ export default function ConsultationsPage() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showSummary, setShowSummary] = useState(true);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { 
+    setMounted(true);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const initialSymptoms = searchParams.get('symptoms') || undefined;
   const initialWeight = searchParams.get('weight') || undefined;
@@ -164,27 +173,44 @@ export default function ConsultationsPage() {
                       </div>
                    )}
                    {aiSummary && !loadingSummary && (
-                      <div className="bg-gradient-to-br from-blue-50/70 to-indigo-50/30 p-4 rounded-xl border border-blue-100 shadow-sm mb-1">
-                         <div className="flex items-center gap-1 mb-2">
-                            <Sparkles size={15} className="text-blue-600 animate-pulse" />
-                            <h4 className="text-xs font-black text-blue-900 uppercase">Resumen Ejecutivo de Expediente</h4>
-                         </div>
-                         <div className="text-[11px] text-blue-950 leading-relaxed font-medium space-y-1 prose prose-sm max-w-none">
-                            {aiSummary.split('\n').map((line, ix) => (
-                               <p key={ix} className="mb-1">{line}</p>
-                            ))}
-                         </div>
+                      <div className="bg-gradient-to-br from-blue-50/70 to-indigo-50/30 rounded-xl border border-blue-100 shadow-sm mb-1 overflow-hidden">
+                         <button 
+                            onClick={() => setShowSummary(!showSummary)}
+                            className="w-full flex items-center justify-between p-4 hover:bg-blue-100/30 transition-colors"
+                         >
+                            <div className="flex items-center gap-1.5">
+                               <Sparkles size={15} className="text-blue-600 animate-pulse" />
+                               <h4 className="text-xs font-black text-blue-900 uppercase">Resumen Ejecutivo de Expediente</h4>
+                            </div>
+                            {showSummary ? <ChevronUp size={16} className="text-blue-600" /> : <ChevronDown size={16} className="text-blue-600" />}
+                         </button>
+                         <AnimatePresence>
+                            {showSummary && (
+                               <motion.div 
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.3 }}
+                               >
+                                  <div className="px-4 pb-4 pt-0 text-[11px] text-blue-950 leading-relaxed font-medium space-y-1 prose prose-sm max-w-none">
+                                     {aiSummary.split('\n').map((line, ix) => (
+                                        <p key={ix} className="mb-1">{line}</p>
+                                     ))}
+                                  </div>
+                               </motion.div>
+                            )}
+                         </AnimatePresence>
                       </div>
                    )}
 
                    {/* 📈 GRÁFICAS */}
                    {mounted && patientRecord.consultations?.length > 1 && (
-                      <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                          <div className="bg-gray-50/80 p-3 rounded-xl border-[0.5px] border-black/5">
                             <span className="text-[10px] font-black text-gray-500 flex items-center gap-1"><Activity size={12}/> Monitoreo Peso</span>
                             <div className="h-24 mt-2">
                                <ResponsiveContainer width="100%" height="100%">
-                                  <LineChart data={patientRecord.consultations?.filter((c: any) => c.weight).map((c: any) => ({ date: new Date(c.created_at).toLocaleDateString([], {day: 'numeric', month: 'short'}), peso: Number(c.weight) })).reverse()}>
+                                  <LineChart data={patientRecord.consultations?.filter((c: any) => c.weight).map((c: any) => ({ date: new Date(c.created_at).toLocaleDateString([], {day: 'numeric', month: 'short'}), peso: Number(c.weight) })).reverse().slice(isMobile ? -5 : undefined)}>
                                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1}/>
                                      <XAxis dataKey="date" fontSize={7} tickLine={false} />
                                      <YAxis fontSize={7} width={12} tickLine={false} />
@@ -201,7 +227,7 @@ export default function ConsultationsPage() {
                                   <LineChart data={patientRecord.consultations?.filter((c: any) => c.blood_pressure && c.blood_pressure.includes('/')).map((c: any) => {
                                      const parts = c.blood_pressure.split('/');
                                      return { date: new Date(c.created_at).toLocaleDateString([], {day: 'numeric', month: 'short'}), sys: Number(parts[0]), dia: Number(parts[1]) };
-                                  }).reverse()}>
+                                  }).reverse().slice(isMobile ? -5 : undefined)}>
                                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1}/>
                                      <XAxis dataKey="date" fontSize={7} tickLine={false}/>
                                      <YAxis fontSize={7} width={12} tickLine={false}/>

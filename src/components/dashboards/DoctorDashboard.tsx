@@ -222,7 +222,7 @@ export default function DoctorDashboard() {
       </div>
 
       {/* 3 Metric Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Consultas Hoy */}
         <div className="bg-white border-[0.5px] border-black/8 rounded-xl p-6 shadow-sm flex flex-col justify-center">
           <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Consultas hoy</span>
@@ -428,10 +428,10 @@ export default function DoctorDashboard() {
                 };
 
                 return (
-                  <table className="w-full text-xs border-collapse" style={{ minWidth: '600px' }}>
+                  <table className="w-full text-xs border-separate border-spacing-0" style={{ minWidth: '700px' }}>
                     <thead>
                       <tr>
-                        <th className="w-14 py-2 border-b border-r border-black/8 bg-gray-50/50 text-gray-400 font-medium text-[10px] text-center">Hora</th>
+                        <th className="sticky left-0 top-0 z-20 w-14 py-2 border-b border-r border-black/8 bg-gray-50 font-medium text-[10px] text-center shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">Hora</th>
                         {weekDays.map(({ dayStr, dayNum }) => {
                           const isToday = dayStr === todayStr;
                           const dateObj = new Date(dayStr + 'T00:00:00');
@@ -439,7 +439,7 @@ export default function DoctorDashboard() {
                           return (
                             <th
                               key={dayStr}
-                              className="py-2 border-b border-l border-black/8 text-[11px] font-bold text-center"
+                              className="sticky top-0 z-10 py-2 border-b border-l border-black/8 text-[11px] font-bold text-center"
                               style={isToday ? { color: '#1A4A8A', backgroundColor: '#EEF4FF' } : { color: '#374151', backgroundColor: '#f9fafb' }}
                             >
                               <div>{label}</div>

@@ -16,6 +16,7 @@ export default function NewCertificatePage() {
   const [patients, setPatients] = useState<any[]>([]);
   const [doctorProfile, setDoctorProfile] = useState<any>(null);
   const [patientData, setPatientData] = useState<any>(null);
+  const [currentDate, setCurrentDate] = useState<string>(''); // Para hidratación segura
 
   const { template, loadTemplate } = useCertificateStore();
 
@@ -81,6 +82,7 @@ export default function NewCertificatePage() {
     };
 
     fetchContext();
+    setCurrentDate(new Date().toLocaleDateString('es-MX')); // Establecer fecha solo en cliente
   }, [supabase, loadTemplate]);
 
   useEffect(() => {
@@ -183,7 +185,7 @@ export default function NewCertificatePage() {
         age: age,
         gender: patientData?.gender || 'Sexo',
         folio: 'Borrador', // O el real si ya existe
-        date: new Date().toLocaleDateString('es-MX'),
+        date: currentDate || '...',
       },
       doctor: {
         name: doctorProfile?.name || 'Nombre Médico',
@@ -192,9 +194,9 @@ export default function NewCertificatePage() {
         specialtyCedula: doctorProfile?.specialty_license || 'CEP',
       },
       clinic: {
-        name: 'Clínica/Hospital', // O de profile si lo tienes
-        address: 'Dirección Completa',
-        phone: 'Teléfono',
+        name: doctorProfile?.clinic_name || 'Nombre Clínica',
+        address: doctorProfile?.clinic_address || 'Dirección de la Clínica',
+        phone: doctorProfile?.clinic_phone || 'Teléfono de la Clínica',
       },
       purpose: formData.purpose || 'Propósito del certificado...',
       findings: formData.findings || 'Hallazgos clínicos...',

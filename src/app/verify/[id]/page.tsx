@@ -12,7 +12,7 @@ export default async function DocumentVerificationPage({ params }: { params: { i
     .from('document_verification')
     .select(`
       *,
-      profiles:doctor_id (name, specialty, medical_license, specialty_license),
+      profiles:doctor_id (name, specialty, medical_license, specialty_license, clinic_name, clinic_address, clinic_phone),
       patients:patient_id (name, curp)
     `)
     .eq('id', params.id)

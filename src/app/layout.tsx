@@ -19,7 +19,13 @@ export const metadata: Metadata = {
   title: "MedIQ",
   description: "Plataforma Médica MedIQ",
   icons: {
-    icon: "/logo.png",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icon.png" },
+    ],
   },
 };
 

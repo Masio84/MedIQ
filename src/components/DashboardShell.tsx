@@ -347,7 +347,7 @@ export default function DashboardShell({
                       }
                     </h2>
                     {role === 'doctor' && (
-                      <span className="text-[10px] font-medium px-2 py-0.5" style={{ backgroundColor: '#E8F0FB', color: '#1A4A8A', borderRadius: '6px' }}>Doctor</span>
+                      <span className="text-[10px] font-medium px-2 py-0.5" style={{ backgroundColor: '#E8F0FB', color: '#1A4A8A', borderRadius: '6px' }}>Médico</span>
                     )}
                     {role === 'assistant' && (
                       <span className="text-[10px] font-medium px-2 py-0.5" style={{ backgroundColor: '#E6F5F0', color: '#0F6E56', borderRadius: '6px' }}>Asistente</span>
@@ -377,7 +377,7 @@ export default function DashboardShell({
 
                   {(role === 'admin' || role === 'superadmin') && (
                     <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[150px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
-                      <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Citas por Doctor:</p>
+                      <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Citas por Médico:</p>
                       <div className="space-y-0.5">
                         {!Array.isArray(doctorAppts) || doctorAppts.length === 0 ? (
                           <p className="text-[11px] text-gray-500">Sin citas hoy</p>
@@ -419,12 +419,12 @@ export default function DashboardShell({
                     <div className="group relative bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11 hover:bg-gray-100/50 cursor-pointer transition-colors">
                       <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                       <div className="flex flex-col justify-center">
-                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Doctores en línea</span>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Médicos en línea</span>
                         <span className="text-sm font-black text-gray-800 leading-none">{onlineDoctors}</span>
                       </div>
                       
                       <div className="absolute top-12 left-0 bg-gray-900/90 backdrop-blur-sm p-1.5 rounded-lg shadow-md text-white z-50 min-w-[120px] hidden group-hover:block border border-gray-800/20 animate-in fade-in-0 zoom-in-95 duration-100">
-                        <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Doctores Conectados:</p>
+                        <p className="text-[9px] font-bold text-gray-400 border-b border-gray-800/30 pb-0.5 mb-1">Médicos Conectados:</p>
                         <div className="space-y-0.5">
                           {!Array.isArray(doctorNames) || doctorNames.length === 0 ? (
                             <p className="text-[11px] text-gray-500">Sin usuarios</p>
@@ -467,7 +467,7 @@ export default function DashboardShell({
                     <div className="group relative bg-gray-50/80 px-4 py-2 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm h-11 hover:bg-gray-100/50 cursor-pointer transition-colors">
                       <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
                       <div className="flex flex-col justify-center">
-                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Admins en línea</span>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Administradores en línea</span>
                         <span className="text-sm font-black text-gray-800 leading-none">{onlineAdmins}</span>
                       </div>
 

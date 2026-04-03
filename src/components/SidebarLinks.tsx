@@ -81,7 +81,7 @@ export default function SidebarLinks({ isMini = false }: SidebarLinksProps) {
     },
     {
       href: '/dashboard',
-      label: 'Dashboard',
+      label: 'Panel Principal',
       icon: LayoutDashboard,
       roles: ['admin', 'doctor', 'assistant'],
     },

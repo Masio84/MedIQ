@@ -50,8 +50,6 @@ export async function POST(req: Request) {
     }
 
     // Ejecutar SQL usando la función RPC existente en el backend
-    // Nota: Se asume que 'execute_sql' o similar está disponible. 
-    // Usaremos 'execute_sql' que es la estándar en este repo.
     const { data, error } = await supabaseAdmin.rpc('execute_sql', { sql_query: sql });
 
     if (error) {
@@ -61,6 +59,29 @@ export async function POST(req: Request) {
          details: error.message,
          sql: sql 
        }, { status: 500 });
+    }
+
+    // Registrar en la bitácora de auditoría
+    try {
+      const summary = action === 'ENABLE_RLS' ? `RLS habilitado`
+                  : action === 'DISABLE_RLS' ? `RLS deshabilitado`
+                  : action === 'DROP_POLICY' ? `Política "${policyName}" eliminada`
+                  : `Política "${policyName}" creada/actualizada (${definition?.command || ''})`;
+
+      await supabaseAdmin.from('logs').insert({
+        user_id: user.id,
+        action_type: 'SECURITY_RLS',
+        table_name: tableName || 'database',
+        new_data: { 
+          summary, 
+          action, 
+          policy_name: policyName,
+          sql: sql.substring(0, 500) // Guardamos un extracto por si acaso
+        }
+      });
+    } catch (logError) {
+      console.error('Error al registrar auditoría RLS:', logError);
+      // No bloqueamos la respuesta principal si falla el log, pero lo reportamos en consola
     }
 
     return NextResponse.json({ success: true, message: `Operación ${action} completada`, sql });

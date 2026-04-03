@@ -386,12 +386,12 @@ export default function AssistantDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Cobros Pendientes */}
         <div className="bg-white border-[0.5px] border-black/8 rounded-xl p-6 shadow-sm flex flex-col justify-center">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Cobros pendientes</span>
+          <span className="text-xxs font-black text-gray-400 uppercase tracking-wider">Cobros pendientes</span>
           <span className="text-3xl font-medium" style={{ color: '#854F0B' }}>{billings.length}</span>
         </div>
         {/* Recaudado Hoy */}
         <div className="bg-white border-[0.5px] border-black/8 rounded-xl p-6 shadow-sm flex flex-col justify-center">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Recaudado hoy</span>
+          <span className="text-xxs font-black text-gray-400 uppercase tracking-wider">Recaudado hoy</span>
           <span className="text-3xl font-medium" style={{ color: '#0F6E56' }}>${todayEarnings.toFixed(2)}</span>
         </div>
         {/* Citas Hoy */}

@@ -235,7 +235,7 @@ export default function AdminDashboard({ profile, plan, stats }: AdminDashboardP
                                       <td className="px-6 py-4 text-sm font-bold text-gray-900">{p.name || 'Sin nombre'}</td>
                                       <td className="px-6 py-4">
                                           <span className={`capitalize text-xxs font-bold px-2 py-0.5 rounded-full ${p.role === 'doctor' ? 'bg-blue-50 text-blue-700' : p.role === 'admin' ? 'bg-purple-50 text-purple-700' : 'bg-gray-50 text-gray-600'}`}>
-                                              {p.role}
+                                              {p.role === 'doctor' ? 'Médico' : p.role === 'admin' ? 'Administrador' : p.role === 'assistant' ? 'Asistente' : p.role}
                                           </span>
                                       </td>
                                       <td className="px-6 py-4 text-xs font-medium text-gray-500">{p.email || 'N/A'}</td>
@@ -288,7 +288,14 @@ export default function AdminDashboard({ profile, plan, stats }: AdminDashboardP
                       return (
                           <div key={feat} className={`flex items-center gap-2 p-2 rounded-lg ${isEnabled ? 'bg-green-50/50 text-green-700' : 'bg-gray-50 text-gray-400'}`}>
                               <CheckCircle size={14} className={isEnabled ? 'text-green-600' : 'text-gray-300'} />
-                              <span className="text-xxs font-bold capitalize">{feat.replace('_', ' ')}</span>
+                              <span className="text-xxs font-bold capitalize">
+                                {feat === 'max_doctors' ? 'Médicos' : 
+                                 feat === 'max_assistants' ? 'Asistentes' : 
+                                 feat === 'max_consultations' ? 'Consultas' : 
+                                 feat === 'max_patients' ? 'Pacientes' : 
+                                 feat === 'storage_mb' ? 'Almacenamiento' : 
+                                 feat.replace('_', ' ')}
+                              </span>
                           </div>
                       );
                   })}

@@ -619,7 +619,11 @@ export default function DoctorDashboard() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-gray-900">{selectedAppt.patients?.name || selectedAppt.patient_name}</h3>
-                  <p className="text-xs text-blue-600 font-bold capitalize">{(selectedAppt.appointment_type || 'consultation').replace('_', ' ')}</p>
+                  <p className="text-xs text-blue-600 font-bold capitalize">
+                    {selectedAppt.appointment_type === 'consultation' ? 'Consulta' : 
+                     selectedAppt.appointment_type === 'follow_up' ? 'Seguimiento' : 
+                     selectedAppt.appointment_type || 'Consulta'}
+                  </p>
                 </div>
               </div>
 

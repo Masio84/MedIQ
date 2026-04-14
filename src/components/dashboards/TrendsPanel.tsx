@@ -40,8 +40,9 @@ export default function TrendsPanel({ clinicId }: { clinicId: string }) {
      // Default: Mes actual
      const today = new Date();
      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-     setDateFrom(firstDay.toISOString().split('T')[0]);
-     setDateTo(today.toISOString().split('T')[0]);
+     const toLocalISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+     setDateFrom(toLocalISO(firstDay));
+     setDateTo(toLocalISO(today));
 
      const fetchDoctors = async () => {
          const res = await fetch(`/api/admin/list-users?clinic_id=${clinicId}&role=doctor`);

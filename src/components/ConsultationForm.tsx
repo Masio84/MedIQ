@@ -403,9 +403,12 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
       setFormData(prev => ({ ...prev, follow_up_notes: aiData.follow_up }));
 
       // Abrir modal de agendado automático
-      setScheduleModal({
-         isOpen: true,
-         date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      setScheduleModal({ 
+        isOpen: true, 
+        date: (() => {
+          const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        })(),
          start_time: '10:00',
          reason: aiData.follow_up,
          notes: 'Sugerido por Inteligencia Artificial',
@@ -605,7 +608,9 @@ export default function ConsultationForm({ doctorId, initialPatientId, initialSy
       } else {
         // 3. Crear Receta Automática (Prescription) - for new consultations
         const generateFolio = () => {
-          const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      const d = new Date();
+      const date = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+      const time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/:/g, '');
           const shortDoc = doctorId.split('-')[0].toUpperCase();
           const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
           return `REC-${shortDoc}-${date}-${rand}`;

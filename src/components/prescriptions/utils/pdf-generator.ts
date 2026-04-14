@@ -137,7 +137,9 @@ export async function generatePrescriptionPDF(template: PrescriptionTemplate, el
     pdf.addImage(imgData, 'PNG', 0, 0, docWidth, docHeight);
     
     // Save the PDF
-    pdf.save(`Receta_${template.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    pdf.save(`Receta_${template.name.replace(/\s+/g, '_')}_${dateStr}.pdf`);
     
     return true;
   } catch (error) {

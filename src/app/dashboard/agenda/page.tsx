@@ -51,13 +51,17 @@ export default function AgendaPage() {
 
   const [modalError, setModalError] = useState<string | null>(null);
   const supabase = createClient();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     // Expandir rango para cubrir días remanentes de semanas que tocan otros meses
-    const startCount = new Date(currentDate.getFullYear(), currentDate.getMonth(), -7).toISOString().split('T')[0];
-    const endCount = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 7).toISOString().split('T')[0];
+    const sDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), -7);
+    const startCount = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, '0')}-${String(sDate.getDate()).padStart(2, '0')}`;
+    
+    const eDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 7);
+    const endCount = `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}-${String(eDate.getDate()).padStart(2, '0')}`;
 
     try {
       const [apptsRes, blocksRes, waitRes] = await Promise.all([

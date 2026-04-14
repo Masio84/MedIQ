@@ -98,8 +98,9 @@ export default function AssistantDashboard() {
   }, [isAppointmentModalOpen, currentDate]);
 
   const fetchMonthAppointments = async () => {
-    const startCount = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
-    const endCount = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
+    const startCount = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+    const endCount = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;

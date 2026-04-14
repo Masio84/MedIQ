@@ -73,9 +73,8 @@ export default function DashboardShell({
       const supabase = createClient();
 
       const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-      const localToday = new Date();
-      const todayStr = `${localToday.getFullYear()}-${String(localToday.getMonth() + 1).padStart(2, '0')}-${String(localToday.getDate()).padStart(2, '0')}`;
 
       try {
         const { data: billings } = await supabase

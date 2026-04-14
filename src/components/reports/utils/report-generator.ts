@@ -82,7 +82,9 @@ export async function generateFullRecordPDF(patientName: string, elementId: stri
        }
     }
 
-    pdf.save(`Expediente_${patientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    pdf.save(`Expediente_${patientName.replace(/\s+/g, '_')}_${dateStr}.pdf`);
     return true;
   } catch (error) {
     console.error('Error generating full record PDF:', error);

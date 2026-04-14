@@ -39,7 +39,10 @@ export default function DoctorDashboard() {
 
   const supabase = useMemo(() => createClient(), []);
 
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }, []);
 
   const monthNames = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
@@ -107,11 +110,15 @@ export default function DoctorDashboard() {
 
   // Fetch data
   const fetchData = useCallback(async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     // Fetch monthly range for sidebar calendar & grid consistency
-    const startCount = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
-    const endCount = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
+    const sDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const startCount = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, '0')}-${String(sDate.getDate()).padStart(2, '0')}`;
+    
+    const eDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const endCount = `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}-${String(eDate.getDate()).padStart(2, '0')}`;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -133,13 +140,12 @@ export default function DoctorDashboard() {
     
     const startOfToday = new Date();
     startOfToday.setHours(0,0,0,0);
-
     if (filter === 'today') {
-      query = query.gte('created_at', startOfToday.toISOString());
+      query = query.gte('created_at', today);
     } else if (filter === 'weekly') {
       const lastWeek = new Date();
       lastWeek.setDate(lastWeek.getDate() - 7);
-      query = query.gte('created_at', lastWeek.toISOString());
+      query = query.gte('created_at', `${lastWeek.getFullYear()}-${String(lastWeek.getMonth() + 1).padStart(2, '0')}-${String(lastWeek.getDate()).padStart(2, '0')}`);
     } else if (filter === 'range' && dateRange.start && dateRange.end) {
       query = query.gte('created_at', dateRange.start).lte('created_at', dateRange.end);
     }
